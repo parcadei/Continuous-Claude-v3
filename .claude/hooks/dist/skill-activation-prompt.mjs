@@ -110,7 +110,8 @@ async function main() {
       output += "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n";
       console.log(output);
     }
-    const contextFile = "/tmp/claude-context-pct.txt";
+    const sessionId = process.env.CLAUDE_SESSION_ID || "default";
+    const contextFile = `/tmp/claude-context-pct-${sessionId}.txt`;
     if (existsSync(contextFile)) {
       try {
         const pct = parseInt(readFileSync(contextFile, "utf-8").trim(), 10);

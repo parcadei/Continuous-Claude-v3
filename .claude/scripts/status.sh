@@ -23,8 +23,8 @@ context_size=$(echo "$input" | jq -r '.context_window.context_window_size // 200
 context_pct=$((total_tokens * 100 / context_size))
 [[ "$context_pct" -gt 100 ]] && context_pct=100
 
-# Write for hooks
-echo "$context_pct" > /tmp/claude-context-pct.txt
+# Write for hooks (per-session to avoid multi-instance conflicts)
+echo "$context_pct" > "/tmp/claude-context-pct-${CLAUDE_SESSION_ID:-default}.txt"
 
 # Format as K with one decimal
 token_display=$(awk "BEGIN {printf \"%.1fK\", $total_tokens/1000}")

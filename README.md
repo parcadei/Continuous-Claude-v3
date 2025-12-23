@@ -302,7 +302,7 @@ The colored status bar shows context usage in real-time:
 | 🟡 Yellow | 60-79% | Warning - consider creating handoff soon |
 | 🔴 Red | ≥ 80% | Critical - shows `⚠` icon, prompts handoff |
 
-The StatusLine writes context % to `/tmp/claude-context-pct.txt` so other hooks can read it.
+The StatusLine writes context % to `/tmp/claude-context-pct-{SESSION_ID}.txt` (per-session to avoid multi-instance conflicts).
 
 ### Hook Events
 

@@ -167,7 +167,8 @@ async function main() {
         }
 
         // Check context % from statusLine temp file and add tiered warnings
-        const contextFile = '/tmp/claude-context-pct.txt';
+        const sessionId = process.env.CLAUDE_SESSION_ID || 'default';
+        const contextFile = `/tmp/claude-context-pct-${sessionId}.txt`;
         if (existsSync(contextFile)) {
             try {
                 const pct = parseInt(readFileSync(contextFile, 'utf-8').trim(), 10);
