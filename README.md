@@ -584,6 +584,59 @@ ls scripts/
 }
 ```
 
+### Developing Custom MCP Scripts
+
+After running `install-global.sh`, you can create and run MCP scripts from any project:
+
+```bash
+# Global commands available everywhere
+mcp-exec scripts/my_script.py      # Run a script
+mcp-generate                        # Generate wrappers for configured servers
+```
+
+**Config Merging:** Global config (`~/.claude/mcp_config.json`) is merged with project config (`.mcp.json` or `mcp_config.json`). Project settings override global for same-named servers.
+
+**Creating a new script:**
+
+```python
+# scripts/my_tool.py
+"""
+USAGE: uv run python -m runtime.harness scripts/my_tool.py --query "search term"
+"""
+import argparse
+from runtime.mcp_client import call_mcp_tool
+
+async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--query", required=True)
+    args = parser.parse_args()
+
+    # Tool format: serverName__toolName
+    result = await call_mcp_tool("my-server__search", {"query": args.query})
+    print(result)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
+```
+
+**Creating a skill wrapper:**
+
+```bash
+mkdir -p .claude/skills/my-tool
+cat > .claude/skills/my-tool/SKILL.md << 'EOF'
+---
+name: my-tool
+description: Search with my tool
+---
+# My Tool
+
+```bash
+uv run python -m runtime.harness scripts/my_tool.py --query "your query"
+```
+EOF
+```
+
 ---
 
 ## Continuity System
