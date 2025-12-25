@@ -29,9 +29,11 @@ mkdir -p "$PROJECT_DIR/thoughts/shared/handoffs"
 mkdir -p "$PROJECT_DIR/thoughts/shared/plans"
 mkdir -p "$PROJECT_DIR/.claude/cache/artifact-index"
 
-# Initialize the Artifact Index database
+# Initialize the Artifact Index database (skip if exists - brownfield safe)
 echo "Initializing Artifact Index database..."
-if [ -f "$SCRIPT_DIR/scripts/artifact_schema.sql" ]; then
+if [ -f "$PROJECT_DIR/.claude/cache/artifact-index/context.db" ]; then
+    echo "  ✓ Database already exists, skipping (brownfield project)"
+elif [ -f "$SCRIPT_DIR/scripts/artifact_schema.sql" ]; then
     sqlite3 "$PROJECT_DIR/.claude/cache/artifact-index/context.db" < "$SCRIPT_DIR/scripts/artifact_schema.sql"
     echo "  ✓ Database created at .claude/cache/artifact-index/context.db"
 else
