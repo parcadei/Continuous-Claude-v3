@@ -637,6 +637,104 @@ uv run python -m runtime.harness scripts/my_tool.py --query "your query"
 EOF
 ```
 
+**Adding skill triggers for auto-activation:**
+
+```json
+// .claude/skills/skill-rules.json
+{
+  "skills": {
+    "my-tool": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Search with my tool",
+      "promptTriggers": {
+        "keywords": ["my-tool", "search with tool"],
+        "intentPatterns": ["(search|find).*?with.*?tool"]
+      }
+    }
+  }
+}
+```
+
+**Enforcement levels:**
+- `suggest` - Skill appears as suggestion (most common)
+- `block` - Requires skill before proceeding (guardrail)
+- `warn` - Shows warning but allows proceeding
+
+**Priority levels:** `critical` > `high` > `medium` > `low`
+
+#### Agent Integration
+
+Agents can reference your scripts for complex workflows. Example from `.claude/agents/research-agent.md`:
+
+```markdown
+## Step 3: Research with MCP Tools
+
+### For External Knowledge
+```bash
+# Documentation search (Nia)
+uv run python -m runtime.harness scripts/nia_docs.py --query "your query"
+
+# Web research (Perplexity)
+uv run python -m runtime.harness scripts/perplexity_search.py --query "your query"
+```
+
+### For Codebase Knowledge
+```bash
+# Fast code search (Morph)
+uv run python -m runtime.harness scripts/morph_search.py --query "pattern" --path "."
+```
+\```
+```
+
+Agents use MCP scripts to:
+- Perform research across multiple sources
+- Investigate issues with codebase search
+- Apply fixes using fast editing tools
+- Gather information for analysis
+
+See `.claude/agents/research-agent.md` and `.claude/agents/debug-agent.md` for complete examples.
+
+#### Full Pattern: MCP Server → Scripts → Skills → Agents
+
+The complete integration flow:
+
+```
+1. MCP Server Configuration
+   ↓ (mcp_config.json or .mcp.json)
+
+2. Script Creation
+   ↓ (scripts/my_tool.py with CLI args)
+
+3. Skill Wrapper
+   ↓ (.claude/skills/my-tool/SKILL.md)
+
+4. Skill Triggers
+   ↓ (.claude/skills/skill-rules.json)
+
+5. Agent Integration (optional)
+   ↓ (.claude/agents/my-agent.md references the script)
+
+6. Auto-activation
+   → User types trigger keyword → Skill suggests → Script executes
+```
+
+**Real-world example:** `morph-search`
+
+1. **Server:** `morph` MCP server in `mcp_config.json`
+2. **Script:** `scripts/morph_search.py` with `--query`, `--path` args
+3. **Skill:** `.claude/skills/morph-search/SKILL.md` documents usage
+4. **Triggers:** `.claude/skills/skill-rules.json` activates on "search code", "fast search"
+5. **Agents:** `research-agent.md` and `debug-agent.md` use for codebase search
+6. **Activation:** User says "search code for error handling" → auto-suggests
+
+**Key benefits:**
+- **Progressive disclosure:** 110 tokens (99.6% reduction) vs full tool schemas
+- **Reusability:** Scripts work for agents, skills, and direct execution
+- **Auto-discovery:** skill-rules.json enables context-aware suggestions
+- **Flexibility:** Change parameters via CLI, no code edits needed
+
 ---
 
 ## Continuity System
