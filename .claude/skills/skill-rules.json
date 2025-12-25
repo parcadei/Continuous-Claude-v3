@@ -530,6 +530,36 @@
                 ]
             }
         },
+        "onboard": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Onboard to a brownfield project - analyze codebase and create initial continuity ledger",
+            "promptTriggers": {
+                "keywords": [
+                    "onboard",
+                    "onboarding",
+                    "new to this project",
+                    "first time",
+                    "get familiar",
+                    "understand this project",
+                    "analyze this project",
+                    "new project",
+                    "just cloned",
+                    "just started",
+                    "initialize project",
+                    "set up project"
+                ],
+                "intentPatterns": [
+                    "(onboard|familiarize).*?(me|project|codebase)",
+                    "(new|first time).*?(project|codebase|repo)",
+                    "(get|become).*?familiar.*?(with|codebase|project)",
+                    "(understand|learn).*?(this|project|codebase)",
+                    "(just|recently).*?(cloned|started|joined)",
+                    "(set up|initialize).*?(continuity|project)"
+                ]
+            }
+        },
         "test-driven-development": {
             "type": "process",
             "enforcement": "warn",
