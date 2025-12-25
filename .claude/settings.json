@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-compact-continuity.sh"
+            "command": "$HOME/.claude/hooks/pre-compact-continuity.sh"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-continuity.sh"
+            "command": "$HOME/.claude/hooks/session-start-continuity.sh"
           }
         ]
       }
@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/handoff-index.sh"
+            "command": "$HOME/.claude/hooks/handoff-index.sh"
           }
         ]
       },
@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-tracker.sh",
+            "command": "$HOME/.claude/hooks/post-tool-use-tracker.sh",
             "timeout": 120
           }
         ]
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-stop-continuity.sh"
+            "command": "$HOME/.claude/hooks/subagent-stop-continuity.sh"
           }
         ]
       }
@@ -102,11 +102,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end-cleanup.sh"
+            "command": "$HOME/.claude/hooks/session-end-cleanup.sh"
           },
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-outcome.sh"
+            "command": "$HOME/.claude/hooks/session-outcome.sh"
           },
           {
             "type": "command",
