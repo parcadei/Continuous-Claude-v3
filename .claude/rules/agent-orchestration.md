@@ -55,3 +55,51 @@ When user says these, consider using an agent:
 - "implement", "build", "create feature"
 - "follow the plan", "do phase X"
 - "use implementation agents"
+
+## Multi-Agent Pattern Selection
+
+When orchestrating complex tasks, select the appropriate pattern based on task characteristics.
+Reference: `scripts/agentica/PATTERNS.md` for full pattern details.
+
+### Pattern Selection Guide
+
+| Task Involves... | Pattern | Implementation |
+|------------------|---------|----------------|
+| Research, exploration, "investigate" | **Swarm** | Spawn 3+ agents with different angles, synthesize |
+| Implementation, "build", "create" | **Hierarchical** | Coordinator → specialists → grunts |
+| Review, critique, "feedback" | **Generator/Critic** | One proposes → one critiques → iterate |
+| Validation, "is correct", high-stakes | **Jury** | 3+ agents vote independently, majority wins |
+| Linear workflow, clear steps | **Pipeline** | A → B → C → D (sequential handoff) |
+| Parallel independent work | **Map/Reduce** | Fan out N agents → aggregator combines |
+| Unknown complexity | **Start Hierarchical** | Adapt and spawn swarms as needed |
+
+### Hybrid Patterns
+
+Patterns can compose:
+- **Hierarchical + Swarm**: Coordinator spawns swarm for research phase
+- **Generator/Critic + Jury**: Multiple critics vote on generator output
+- **Pipeline + Circuit Breaker**: Fallback agents on step failure
+
+### Meta-Pattern: Claude IS the Router
+
+Don't build a separate router - Claude selects patterns based on:
+1. Task keywords (see table above)
+2. Complexity assessment
+3. Risk level (high-stakes → Jury)
+4. Parallelizability (independent subtasks → Swarm/Map-Reduce)
+
+## Avoid Hot-Path LLMs
+
+Don't use LLMs for retrieval. Use them for reasoning.
+
+**DO:**
+- Store facts in SQLite/structured data
+- Query DB for "what's done" (milliseconds)
+- Use LLMs for summarization, ambiguity resolution
+
+**DON'T:**
+- Ask an "Oracle agent" to recall state
+- Route coordination queries through LLMs
+- Use LLMs for anything that could be a database lookup
+
+**Source Sessions:** a6a1772c, a8b5a799
