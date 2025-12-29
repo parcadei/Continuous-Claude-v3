@@ -122,6 +122,8 @@ class TestUnifiedScopeSessionIsolation:
 
         # Session B should not see session A's memory
         result_b = scope_b["recall"]("secret_key")
+        assert "secret_value_a" not in result_b, "Session B should not see A's memory immediately"
+
         # But recall in session A should work
         result_a = scope_a["recall"]("secret_key")
 
@@ -484,3 +486,76 @@ class TestUnifiedScopeIntegration:
         # Search for tech stack
         search_results = scope["search_memory"]("tech stack")
         assert len(search_results) >= 1, "Should find tech stack fact"
+
+
+# ============================================================================
+# Test 8: bash() args parameter (Phase 1 of claude_scope refactor)
+# ============================================================================
+
+
+class TestBashArgsParameter:
+    """Test bash() with args parameter for security (shlex.quote)."""
+
+    def test_bash_with_args_quotes_safely(self, db_path: Path, session_id: str):
+        """bash() should shlex.quote args for security."""
+        from scripts.agentica.unified_scope import create_unified_scope
+
+        scope = create_unified_scope(
+            db_path=db_path,
+            session_id=session_id,
+            enable_memory=False,
+            enable_tasks=False,
+        )
+
+        with patch('scripts.agentica.unified_scope._call_claude_cli') as mock_cli:
+            mock_cli.return_value = "output"
+
+            # Args with spaces/special chars should be quoted
+            result = scope["bash"]("echo", args=["hello world", "foo;bar"])
+
+            # Verify the command was built correctly
+            call_args = mock_cli.call_args
+            prompt = call_args[0][0]
+            # shlex.quote uses single quotes: 'hello world' 'foo;bar'
+            assert "'hello world'" in prompt, f"Args not quoted in prompt: {prompt}"
+            assert "'foo;bar'" in prompt, f"Special chars not quoted: {prompt}"
+
+    def test_bash_without_args_works(self, db_path: Path, session_id: str):
+        """bash() should work without args parameter."""
+        from scripts.agentica.unified_scope import create_unified_scope
+
+        scope = create_unified_scope(
+            db_path=db_path,
+            session_id=session_id,
+            enable_memory=False,
+            enable_tasks=False,
+        )
+
+        with patch('scripts.agentica.unified_scope._call_claude_cli') as mock_cli:
+            mock_cli.return_value = "file1.txt"
+
+            result = scope["bash"]("ls -la")
+
+            assert result["success"] is True
+            assert result["command"] == "ls -la"
+            assert result["output"] == "file1.txt"
+
+    def test_bash_args_returns_full_command(self, db_path: Path, session_id: str):
+        """bash() with args should return full_command in result."""
+        from scripts.agentica.unified_scope import create_unified_scope
+
+        scope = create_unified_scope(
+            db_path=db_path,
+            session_id=session_id,
+            enable_memory=False,
+            enable_tasks=False,
+        )
+
+        with patch('scripts.agentica.unified_scope._call_claude_cli') as mock_cli:
+            mock_cli.return_value = "output"
+
+            result = scope["bash"]("echo", args=["test arg"])
+
+            # Result should include full command with quoted args
+            assert "echo" in result["command"]
+            assert "'test arg'" in result["command"]
