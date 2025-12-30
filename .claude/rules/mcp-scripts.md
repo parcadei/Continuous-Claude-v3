@@ -24,7 +24,7 @@ Tool IDs use double underscore: `serverName__toolName`
 Examples:
 - `morph__warpgrep_codebase_search`
 - `ast-grep__ast_grep`
-- `perplexity__perplexity_ask`
+- `nia__search`
 
 ## Testing
 Test with: `uv run python -m runtime.harness scripts/<script>.py --help`

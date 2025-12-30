@@ -80,8 +80,7 @@ thoughts/             # Research, plans, handoffs (gitignored)
 - `/repoprompt` - Codemaps for token-efficient exploration
 - `/morph-search` - Fast codebase search (20x grep)
 - `/nia-docs` - Library documentation lookup
-- `/perplexity-search` - Web research
-- `/firecrawl-scrape` - Web scraping
+- `/exa-search` - Web search and code documentation (built-in)
 - `/github-search` - GitHub code/repo search
 - `/ast-grep-find` - AST-based code patterns
 

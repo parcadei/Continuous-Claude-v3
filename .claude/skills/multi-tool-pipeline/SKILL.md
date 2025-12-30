@@ -67,6 +67,6 @@ Tools are named `serverName__toolName` (double underscore):
 
 ```python
 await call_mcp_tool("git__git_status", {...})
-await call_mcp_tool("firecrawl__firecrawl_scrape", {...})
-await call_mcp_tool("perplexity__perplexity_ask", {...})
+await call_mcp_tool("morph__warpgrep_codebase_search", {...})
+await call_mcp_tool("nia__search", {...})
 ```

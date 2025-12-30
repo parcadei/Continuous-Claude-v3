@@ -159,5 +159,5 @@ Look at existing skills for patterns:
 ```bash
 ls $CLAUDE_PROJECT_DIR/.claude/skills/
 cat $CLAUDE_PROJECT_DIR/.claude/skills/commit/SKILL.md
-cat $CLAUDE_PROJECT_DIR/.claude/skills/firecrawl-scrape/SKILL.md
+cat $CLAUDE_PROJECT_DIR/.claude/skills/exa-search/SKILL.md
 ```

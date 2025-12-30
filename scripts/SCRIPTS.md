@@ -26,8 +26,8 @@ Discover (ls) → Read (cat) → Execute with CLI args (--query, --num-urls, etc
 2. `cat ./scripts/{script}.py` - Read script documentation and CLI arguments
 3. Execute with CLI args:
    ```bash
-   uv run python -m runtime.harness scripts/firecrawl_scrape.py \
-       --url "https://example.com"
+   uv run python -m runtime.harness scripts/morph_search.py \
+       --search "authentication" --path "."
    ```
 
 **For novel workflows:**
@@ -106,10 +106,10 @@ if __name__ == "__main__":
 
 | Category | Script | CLI Arguments |
 |----------|--------|---------------|
-| **Web** | firecrawl_scrape.py | `--url` (required) |
+| **Search** | morph_search.py | `--search` (required), `--path` (default: ".") |
 | **Pipeline** | multi_tool_pipeline.py | `--repo-path` (default: "."), `--max-commits` (default: 10) |
-| **Search** | perplexity_search.py | `--query` (required) |
 | **Docs** | nia_docs.py | `--package`, `--query` |
+| **GitHub** | github_search.py | `--query`, `--type` |
 
 ## Creating New Skills
 
@@ -157,9 +157,9 @@ if __name__ == "__main__":
 ## Example Usage
 
 ```bash
-# Web scraping (requires FIRECRAWL_API_KEY)
-uv run python -m runtime.harness scripts/firecrawl_scrape.py \
-    --url "https://example.com"
+# Fast codebase search (requires MORPH_API_KEY)
+uv run python -m runtime.harness scripts/morph_search.py \
+    --search "authentication" --path "."
 
 # Multi-tool pipeline (uses git server - works without API keys)
 uv run python -m runtime.harness scripts/multi_tool_pipeline.py \

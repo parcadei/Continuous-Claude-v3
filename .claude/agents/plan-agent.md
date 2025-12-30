@@ -47,10 +47,17 @@ Use these for gathering information:
 ```bash
 # Best practices & documentation (Nia)
 uv run python -m runtime.harness scripts/nia_docs.py --query "best practices for [topic]"
+```
 
-# Latest approaches (Perplexity)
-uv run python -m runtime.harness scripts/perplexity_search.py --query "modern approach to [topic] 2024"
+**Latest approaches (Exa):**
+```
+mcp__exa__web_search_exa with:
+  query: "modern approach to [topic] 2025"
+  numResults: 8
+  type: "auto"
+```
 
+```bash
 # Codebase exploration (RepoPrompt) - understand existing patterns
 rp-cli -e 'workspace list'  # Check workspace
 rp-cli -e 'structure src/'  # See architecture

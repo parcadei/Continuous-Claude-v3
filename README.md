@@ -97,15 +97,14 @@ Session continuity, token-efficient MCP execution, and agentic workflows for Cla
 │                                                                             │
 │  Artifact Index              Braintrust              MCP Tools              │
 │  ┌──────────────────┐        ┌──────────────────┐    ┌──────────────────┐   │
-│  │ artifact_index   │        │ braintrust_       │    │ perplexity_      │   │
-│  │ artifact_query   │        │    analyze        │    │    search        │   │
-│  │ artifact_mark    │        │ (--learn,         │    │ nia_docs         │   │
-│  └──────────────────┘        │  --sessions)      │    │ firecrawl_scrape │   │
-│                              └──────────────────┘    │ github_search    │   │
-│                                                      │ morph_search     │   │
-│                                                      │ ast_grep_find    │   │
-│                                                      │ qlty_check       │   │
+│  │ artifact_index   │        │ braintrust_       │    │ nia_docs         │   │
+│  │ artifact_query   │        │    analyze        │    │ github_search    │   │
+│  │ artifact_mark    │        │ (--learn,         │    │ morph_search     │   │
+│  └──────────────────┘        │  --sessions)      │    │ ast_grep_find    │   │
+│                              └──────────────────┘    │ qlty_check       │   │
 │                                                      └──────────────────┘   │
+│                                                                             │
+│  Built-in Claude: mcp__exa__web_search_exa, mcp__exa__get_code_context_exa │
 │                                                                             │
 │  Executed via: uv run python -m runtime.harness scripts/<script>.py        │
 │                                                                             │
@@ -116,10 +115,10 @@ Session continuity, token-efficient MCP execution, and agentic workflows for Cla
 │                        EXTERNAL SERVICES (Optional)                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│  │Braintrust│  │Perplexity│  │ Firecrawl│  │   Morph  │  │   Nia    │      │
-│  │ Tracing  │  │  Search  │  │  Scrape  │  │ WarpGrep │  │   Docs   │      │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐                    │
+│  │Braintrust│  │   Morph  │  │   Nia    │  │   Exa    │                    │
+│  │ Tracing  │  │ WarpGrep │  │   Docs   │  │ (built-in│                    │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘                    │
 │                                                                             │
 │  Local-only: git, ast-grep, qlty                                           │
 │  License required: repoprompt (Pro for MCP tools)                          │
@@ -394,7 +393,7 @@ All external services are optional. Without API keys:
 - **Continuity system**: Works (no external deps)
 - **TDD workflow**: Works (no external deps)
 - **Session tracing**: Disabled (needs BRAINTRUST_API_KEY)
-- **Web search**: Disabled (needs PERPLEXITY_API_KEY)
+- **Web search**: Built-in Exa tools available (no key needed)
 - **Code search**: Falls back to grep (MORPH_API_KEY speeds it up)
 
 See `.env.example` for the full list of optional services.
@@ -492,7 +491,7 @@ claude
 | "research", "investigate", "find out", "best practices" | Spawns **research-agent** (uses MCP tools) |
 | "research repo", "analyze this repo", "clone and analyze" | Spawns **repo-research-analyst** |
 | "docs", "documentation", "library docs", "API reference" | Runs **nia-docs** for library documentation |
-| "web search", "look up", "latest", "current info" | Runs **perplexity-search** for web research |
+| "web search", "look up", "latest", "current info" | Runs **exa-search** for web research (built-in) |
 
 ### Debugging
 
@@ -536,7 +535,7 @@ claude
 
 | Say This | What Happens |
 |----------|--------------|
-| "scrape", "fetch url", "crawl" | Runs **firecrawl-scrape** |
+| "scrape", "fetch url", "code context" | Runs **exa-search** (built-in Exa tools) |
 | "create skill", "skill triggers", "skill system" | Runs **skill-developer** meta-skill |
 | "codebase structure", "file tree", "signatures" | Runs **repoprompt** for code maps |
 
@@ -696,9 +695,12 @@ Agents can reference your scripts for complex workflows. Example from `.claude/a
 ```bash
 # Documentation search (Nia)
 uv run python -m runtime.harness scripts/nia_docs.py --query "your query"
+```
 
-# Web research (Perplexity)
-uv run python -m runtime.harness scripts/perplexity_search.py --query "your query"
+**Web research (Exa)** - Use built-in Claude tools:
+```
+mcp__exa__web_search_exa with query: "your query"
+mcp__exa__get_code_context_exa with query: "library API examples"
 ```
 
 ### For Codebase Knowledge
@@ -1356,11 +1358,11 @@ Add to `.env`:
 ```bash
 # Required for paid services
 GITHUB_PERSONAL_ACCESS_TOKEN="ghp_..."
-PERPLEXITY_API_KEY="pplx-..."
-FIRECRAWL_API_KEY="fc-..."
 MORPH_API_KEY="sk-..."
 NIA_API_KEY="nk_..."
 ```
+
+**Web search uses built-in Exa tools (no API key needed).**
 
 Services without API keys still work:
 - `git` - local git operations
@@ -1419,7 +1421,7 @@ License-based (no API key, requires purchase):
 - **[ast-grep](https://github.com/ast-grep/ast-grep)** - AST-based code search and refactoring
 - **[Nia](https://trynia.ai)** - Library documentation search
 - **[Morph](https://www.morphllm.com)** - WarpGrep fast code search
-- **[Firecrawl](https://www.firecrawl.dev)** - Web scraping API
+- **[Exa](https://exa.ai)** - AI-powered web search (built into Claude Code)
 - **[RepoPrompt](https://repoprompt.com)** - Token-efficient codebase maps (Pro license for MCP tools)
 
 ---

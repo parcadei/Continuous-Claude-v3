@@ -21,10 +21,10 @@
 
 **This directory contains MCP workflow scripts:**
 
-### firecrawl_scrape.py
-- Web scraping pattern
-- CLI: `--url` (required)
-- Requires: `FIRECRAWL_API_KEY`
+### morph_search.py
+- Fast codebase search (20x faster than grep)
+- CLI: `--search` (required), `--path` (default: ".")
+- Requires: `MORPH_API_KEY`
 
 ### multi_tool_pipeline.py
 - Multi-tool chaining pattern (git analysis)
@@ -32,7 +32,7 @@
 - Works without API keys (uses git server)
 
 ### Other scripts
-See `ls scripts/` for all available workflows (perplexity, github, nia, etc.)
+See `ls scripts/` for all available workflows (github, nia, etc.)
 
 ---
 
@@ -41,9 +41,9 @@ See `ls scripts/` for all available workflows (perplexity, github, nia, etc.)
 **Execute scripts with CLI arguments:**
 
 ```bash
-# Web scraping (requires FIRECRAWL_API_KEY)
-uv run python -m runtime.harness scripts/firecrawl_scrape.py \
-    --url "https://example.com"
+# Fast codebase search (requires MORPH_API_KEY)
+uv run python -m runtime.harness scripts/morph_search.py \
+    --search "authentication" --path "."
 
 # Multi-tool pipeline (works without API keys)
 uv run python -m runtime.harness scripts/multi_tool_pipeline.py \

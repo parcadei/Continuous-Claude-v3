@@ -1,6 +1,6 @@
 ---
 name: research-agent
-description: Comprehensive research using MCP tools (nia, perplexity, repoprompt, firecrawl)
+description: Comprehensive research using MCP tools (nia, exa, repoprompt)
 model: opus
 ---
 
@@ -42,15 +42,29 @@ $CLAUDE_PROJECT_DIR = /path/to/project (if relevant)
 Use appropriate tools based on research type:
 
 ### For External Knowledge
+
+**Web search (Exa)** - Use built-in MCP tools directly:
+```
+# General web search
+mcp__exa__web_search_exa with:
+  query: "your search query"
+  numResults: 8
+  type: "auto"
+
+# Fetch specific URL content
+mcp__exa__web_search_exa with:
+  query: "site:docs.example.com topic"
+  livecrawl: "preferred"
+
+# Code/library documentation
+mcp__exa__get_code_context_exa with:
+  query: "library name API examples"
+  tokensNum: 10000
+```
+
+**Library documentation (Nia)** - For detailed package docs:
 ```bash
-# Best practices & documentation (Nia)
 uv run python -m runtime.harness scripts/nia_docs.py --query "your query"
-
-# Web research (Perplexity)
-uv run python -m runtime.harness scripts/perplexity_search.py --query "your query"
-
-# Web scraping (Firecrawl) - for specific URLs
-uv run python -m runtime.harness scripts/firecrawl_scrape.py --url "https://..."
 ```
 
 ### For Codebase Knowledge

@@ -313,24 +313,34 @@
                 ]
             }
         },
-        "firecrawl-scrape": {
+        "exa-search": {
             "type": "domain",
             "enforcement": "suggest",
             "priority": "high",
-            "description": "Scrape web pages and search via Firecrawl MCP",
+            "description": "Web search and code documentation via Exa AI (built-in MCP tools)",
             "promptTriggers": {
                 "keywords": [
+                    "exa",
+                    "web search",
+                    "search the web",
+                    "look up",
+                    "current information",
+                    "latest",
+                    "research topic",
                     "scrape",
-                    "web scrape",
                     "fetch url",
                     "get page",
-                    "crawl",
-                    "extract from url",
-                    "firecrawl"
+                    "code context",
+                    "library docs",
+                    "api documentation",
+                    "sdk examples"
                 ],
                 "intentPatterns": [
-                    "(scrape|fetch|get|crawl).*?(url|page|website|site)",
-                    "(extract|get).*?(content|data).*?from.*?(url|page|website)"
+                    "(search|look up|find).*?(web|online|internet)",
+                    "(what is|how does).*?(latest|current|new)",
+                    "(scrape|fetch|get).*?(url|page|website|site)",
+                    "(get|find).*?(code|library|api|sdk).*?(context|docs|examples)",
+                    "(research|investigate).*?(topic|question)"
                 ]
             }
         },
@@ -486,29 +496,6 @@
                     "(apply|make).*?(edit|change).*?(file|code)",
                     "morph.*?(edit|apply)",
                     "batch.*?edit"
-                ]
-            }
-        },
-        "perplexity-search": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "AI-powered web search, research, and reasoning via Perplexity",
-            "promptTriggers": {
-                "keywords": [
-                    "perplexity",
-                    "web search",
-                    "search the web",
-                    "look up",
-                    "current information",
-                    "latest",
-                    "research topic"
-                ],
-                "intentPatterns": [
-                    "(search|look up|find).*?(web|online|internet)",
-                    "(what is|how does).*?(latest|current|new)",
-                    "perplexity.*?(search|ask|research)",
-                    "(research|investigate).*?(topic|question)"
                 ]
             }
         },
@@ -685,7 +672,7 @@
             "type": "research",
             "enforcement": "suggest",
             "priority": "critical",
-            "description": "Comprehensive research using MCP tools (nia, perplexity, repoprompt, firecrawl)",
+            "description": "Comprehensive research using MCP tools (nia, exa, repoprompt)",
             "promptTriggers": {
                 "keywords": [
                     "research",
