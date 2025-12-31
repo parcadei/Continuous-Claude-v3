@@ -34,6 +34,7 @@ Instructions for Claude...
 | **Context** | continuity_ledger, create_handoff, resume_handoff, recall-reasoning |
 | **Learning** | compound-learnings, skill-developer, describe_pr, qlty-check |
 | **Research** | perplexity-search, firecrawl-scrape, repoprompt |
+| **Documentation** | upgrade-claude-documentation |
 
 ## Activation
 

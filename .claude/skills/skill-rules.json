@@ -930,6 +930,33 @@
                     "(understand|learn).*?(codebase|project)"
                 ]
             }
+        },
+        "upgrade-claude-documentation": {
+            "type": "documentation",
+            "enforcement": "suggest",
+            "priority": "medium",
+            "description": "Recursively update CLAUDE.md files after major implementation changes",
+            "promptTriggers": {
+                "keywords": [
+                    "upgrade claude docs",
+                    "update claude.md",
+                    "refresh documentation",
+                    "sync claude docs",
+                    "update documentation",
+                    "upgrade documentation",
+                    "claude.md out of date",
+                    "docs need updating",
+                    "refresh claude.md",
+                    "update the claude files"
+                ],
+                "intentPatterns": [
+                    "(upgrade|update|refresh|sync).*?(claude|documentation|docs)",
+                    "(claude\\.md|CLAUDE\\.md).*(update|refresh|upgrade|out of date)",
+                    "(after|following).*?(implementation|changes).*?(update|refresh).*?doc",
+                    "doc.*(need|require).*(update|refresh|sync)",
+                    "(major|significant).*?change.*?(update|sync).*?doc"
+                ]
+            }
         }
     },
     "notes": {
