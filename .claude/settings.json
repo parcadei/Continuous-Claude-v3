@@ -1,7 +1,7 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "$HOME/.claude/scripts/status.sh"
+    "command": ".claude/scripts/status.sh"
   },
   "hooks": {
     "PreCompact": [
@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/pre-compact-continuity.sh"
+            "command": ".claude/hooks/pre-compact-continuity.sh"
           }
         ]
       }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/session_start.sh"
+            "command": "bash .claude/plugins/braintrust-tracing/hooks/session_start.sh"
           }
         ]
       },
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/session-start-continuity.sh"
+            "command": ".claude/hooks/session-start-continuity.sh"
           }
         ]
       }
@@ -38,11 +38,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/skill-activation-prompt.sh"
+            "command": ".claude/hooks/skill-activation-prompt.sh"
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/user_prompt_submit.sh"
+            "command": "bash .claude/plugins/braintrust-tracing/hooks/user_prompt_submit.sh"
           }
         ]
       }
@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/typescript-preflight.sh",
+            "command": ".claude/hooks/typescript-preflight.sh",
             "timeout": 40
           }
         ]
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/handoff-index.sh"
+            "command": ".claude/hooks/handoff-index.sh"
           }
         ]
       },
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/post-tool-use-tracker.sh",
+            "command": ".claude/hooks/post-tool-use-tracker.sh",
             "timeout": 120
           }
         ]
@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/post_tool_use.sh"
+            "command": "bash .claude/plugins/braintrust-tracing/hooks/post_tool_use.sh"
           }
         ]
       }
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh"
+            "command": "bash .claude/plugins/braintrust-tracing/hooks/stop_hook.sh"
           }
         ]
       }
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/subagent-stop-continuity.sh"
+            "command": ".claude/hooks/subagent-stop-continuity.sh"
           }
         ]
       }
@@ -112,15 +112,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/session-end-cleanup.sh"
+            "command": ".claude/hooks/session-end-cleanup.sh"
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/session-outcome.sh"
+            "command": ".claude/hooks/session-outcome.sh"
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/session_end.sh"
+            "command": "bash .claude/plugins/braintrust-tracing/hooks/session_end.sh"
           }
         ]
       }
