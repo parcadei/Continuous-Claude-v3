@@ -72,6 +72,16 @@ if [ -f "$PROJECT_DIR/.gitignore" ]; then
     fi
 fi
 
+# Link global skills if available and no local skills exist
+SKILLS_LINKED=false
+if [ -d "$HOME/.claude/skills" ] && [ ! -e "$PROJECT_DIR/.claude/skills" ]; then
+    ln -s "$HOME/.claude/skills" "$PROJECT_DIR/.claude/skills"
+    echo "  ✓ Linked to global skills (~/.claude/skills)"
+    SKILLS_LINKED=true
+elif [ -e "$PROJECT_DIR/.claude/skills" ]; then
+    echo "  → Using existing .claude/skills (not linking global)"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Project initialized! Directory structure:"
@@ -83,6 +93,9 @@ echo "      ├── handoffs/      ← Session handoffs (git tracked)"
 echo "      └── plans/         ← Implementation plans (git tracked)"
 echo ""
 echo "  .claude/"
+if [ "$SKILLS_LINKED" = true ]; then
+echo "  ├── skills/ → ~/.claude/skills (symlink)"
+fi
 echo "  └── cache/"
 echo "      └── artifact-index/"
 echo "          └── context.db ← Search index (gitignored)"
@@ -90,6 +103,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Next steps:"
 echo "  1. Start Claude Code in this project"
-echo "  2. Use /continuity_ledger to create your first ledger"
-echo "  3. Hooks will now work fully!"
+if [ "$SKILLS_LINKED" = true ]; then
+echo "  2. Skills available via /skill_name (linked from global)"
+else
+echo "  2. Add skills to .claude/skills/ or run install-global.sh"
+fi
+echo "  3. Use /continuity_ledger to create your first ledger"
+echo "  4. Hooks will now work fully!"
 echo ""
