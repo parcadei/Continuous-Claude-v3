@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS archival_memory (
     agent_id TEXT,
     content TEXT NOT NULL,
     metadata JSONB DEFAULT '{}',
-    embedding vector(4096),
+    embedding vector(1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
