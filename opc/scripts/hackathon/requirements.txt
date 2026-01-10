@@ -1,0 +1,7 @@
+# Hackathon dependencies for Vercel deployment
+fastapi>=0.100.0
+uvicorn>=0.23.0
+httpx>=0.24.0
+motor>=3.3.0
+pymongo>=4.6.0
+pydantic>=2.0.0

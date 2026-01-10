@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "opc/scripts/hackathon/api.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "opc/scripts/hackathon/api.py"
+    }
+  ],
+  "env": {
+    "MONGODB_URI": "@mongodb-uri",
+    "FIREWORKS_API_KEY": "@fireworks-api-key",
+    "JINA_API_KEY": "@jina-api-key"
+  }
+}
