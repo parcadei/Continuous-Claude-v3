@@ -428,88 +428,84 @@ async function main() {
     // Limit to 20 callers for token efficiency
   });
   if (queryType === "literal") {
-    const reason2 = `\u{1F50D} Use TLDR search for code exploration (95% token savings):
+    const projectDir2 = process.env.CLAUDE_PROJECT_DIR || ".";
+    const searchResults = tldrSearch(pattern, projectDir2);
+    let systemMsg2 = `\u{1F50D} **TLDR Search Results** for "${pattern}":
 
-**Option 1 - TLDR Skill:**
-/tldr-search ${pattern}
-
-**Option 2 - Direct CLI:**
-\`\`\`bash
-tldr search "${pattern}" .
-\`\`\`
-
-**Option 3 - Read specific file (TLDR auto-enriches):**
-Read the file containing "${pattern}" - the tldr-read-enforcer will return structured context.
-
-TLDR finds location + provides call graph + docstrings in one call.`;
+`;
+    if (searchResults.length > 0) {
+      systemMsg2 += searchResults.slice(0, 10).map(
+        (r) => `  - ${r.file}:${r.line}: ${r.content.trim().substring(0, 80)}`
+      ).join("\n");
+      systemMsg2 += "\n\n*Grep proceeding as fallback. Consider using Read tool on specific files above.*";
+    } else {
+      systemMsg2 += `No TLDR results found. Grep proceeding normally.`;
+    }
     const output2 = {
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: reason2
-      }
+        permissionDecision: "allow"
+      },
+      systemMessage: systemMsg2
     };
     console.log(JSON.stringify(output2));
     return;
   }
   if (queryType === "structural") {
     const astPattern = getAstGrepSuggestion(pattern);
-    const reason2 = `\u{1F3AF} Structural query - Use AST-grep OR TLDR:
+    const projectDir2 = process.env.CLAUDE_PROJECT_DIR || ".";
+    const searchResults = tldrSearch(pattern, projectDir2);
+    let systemMsg2 = `\u{1F3AF} **Structural Query Detected**: "${pattern}"
 
-**Option 1 - AST-grep (pattern matching):**
-ast-grep --pattern "${astPattern}" --lang python
+`;
+    systemMsg2 += `**AST-grep pattern**: \`${astPattern}\`
 
-**Option 2 - TLDR (richer context):**
-/tldr-search ${target || pattern}
-
-AST-grep: precise pattern match, file:line only
-TLDR: finds + call graph + docstrings + complexity`;
+`;
+    if (searchResults.length > 0) {
+      systemMsg2 += `**TLDR found**:
+`;
+      systemMsg2 += searchResults.slice(0, 5).map(
+        (r) => `  - ${r.file}:${r.line}`
+      ).join("\n");
+      systemMsg2 += "\n\n";
+    }
+    systemMsg2 += `*Grep proceeding. For richer context, try: \`tldr search "${target || pattern}" .\`*`;
     const output2 = {
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: reason2
-      }
+        permissionDecision: "allow"
+      },
+      systemMessage: systemMsg2
     };
     console.log(JSON.stringify(output2));
     return;
   }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || ".";
   const semanticResults = tldrSemantic(pattern, projectDir);
-  let reason;
+  let systemMsg;
   if (semanticResults.length > 0) {
     const resultsStr = semanticResults.map((r) => {
       const loc = `${r.file}:${r.function || "module"}`;
       const score = r.score ? ` (${(r.score * 100).toFixed(0)}%)` : "";
       return `  - ${loc}${score}`;
     }).join("\n");
-    reason = `\u{1F9E0} **Semantic Search Results** (via TLDR daemon):
+    systemMsg = `\u{1F9E0} **Semantic Search Results** (via TLDR daemon):
 
 ${resultsStr}
 
-**Next steps:**
-1. Read the most relevant file: \`Read ${semanticResults[0].file}\`
-2. For deeper analysis: \`/tldr-search ${target || pattern} --layer all\`
-
-The results above are semantically similar to "${pattern}".`;
+`;
+    systemMsg += `*Grep proceeding as fallback. Consider Read tool on: \`${semanticResults[0].file}\`*`;
   } else {
-    reason = `\u{1F9E0} Semantic query - Use TLDR or Explore agent:
-
-**Option 1 - TLDR with context:**
-/tldr-search ${target || pattern} --layer all
-
-**Option 2 - Explore agent (for complex questions):**
-Task(subagent_type="Explore", prompt="${pattern}")
-
-TLDR provides: L1 AST + L2 Call Graph + L3 CFG + L4 DFG + L5 PDG
-Explore agent uses TLDR internally for deep analysis.`;
+    systemMsg = `\u{1F9E0} Semantic query detected: "${pattern}"
+`;
+    systemMsg += `*No TLDR semantic results. Grep proceeding. For deep analysis, try: Task(subagent_type="scout")*`;
   }
   const output = {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: reason
-    }
+      permissionDecision: "allow"
+    },
+    systemMessage: systemMsg
   };
   console.log(JSON.stringify(output));
 }
