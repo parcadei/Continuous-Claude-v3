@@ -10,11 +10,64 @@
  * - Graceful degradation when indexing
  */
 
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { execSync, spawnSync } from 'child_process';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
+
+/**
+ * Resolve project directory to absolute path.
+ * Handles relative paths like "." which would otherwise hash differently.
+ */
+function resolveProjectDir(projectDir: string): string {
+  return resolve(projectDir);
+}
+
+/**
+ * Get lock file path for daemon startup.
+ * Prevents race condition when multiple hooks try to start daemon.
+ */
+function getLockPath(projectDir: string): string {
+  const resolvedPath = resolveProjectDir(projectDir);
+  const hash = crypto.createHash('md5').update(resolvedPath).digest('hex').substring(0, 8);
+  return `/tmp/tldr-${hash}.lock`;
+}
+
+/**
+ * Try to acquire startup lock (non-blocking).
+ * Returns true if lock acquired, false if another process holds it.
+ */
+function tryAcquireLock(projectDir: string): boolean {
+  const lockPath = getLockPath(projectDir);
+  try {
+    // Check if lock exists and is recent (within 30s)
+    if (existsSync(lockPath)) {
+      const lockContent = readFileSync(lockPath, 'utf-8');
+      const lockTime = parseInt(lockContent, 10);
+      if (!isNaN(lockTime) && Date.now() - lockTime < 30000) {
+        return false;  // Lock is held by another process
+      }
+      // Stale lock - remove it
+      try { unlinkSync(lockPath); } catch { /* ignore */ }
+    }
+    // Create lock atomically with O_EXCL - fails if file exists (race-safe)
+    writeFileSync(lockPath, Date.now().toString(), { flag: 'wx' });
+    return true;
+  } catch {
+    // Either lock exists (race lost) or write failed - either way, don't acquire
+    return false;
+  }
+}
+
+/**
+ * Release startup lock.
+ */
+function releaseLock(projectDir: string): void {
+  try {
+    unlinkSync(getLockPath(projectDir));
+  } catch { /* ignore */ }
+}
 
 /** Query timeout in milliseconds (3 seconds) */
 const QUERY_TIMEOUT = 3000;
@@ -23,7 +76,7 @@ const QUERY_TIMEOUT = 3000;
  * Query structure for daemon commands.
  */
 export interface DaemonQuery {
-  cmd: 'ping' | 'search' | 'impact' | 'extract' | 'status' | 'dead' | 'arch' | 'cfg' | 'dfg' | 'slice' | 'calls' | 'warm' | 'semantic' | 'tree' | 'structure' | 'context' | 'imports' | 'importers' | 'notify' | 'diagnostics';
+  cmd: 'ping' | 'search' | 'impact' | 'extract' | 'status' | 'dead' | 'arch' | 'cfg' | 'dfg' | 'slice' | 'calls' | 'warm' | 'semantic' | 'tree' | 'structure' | 'context' | 'imports' | 'importers' | 'notify' | 'diagnostics' | 'track';
   pattern?: string;
   func?: string;
   file?: string;
@@ -41,10 +94,15 @@ export interface DaemonQuery {
   // New fields for tree, structure, context, imports, importers
   extensions?: string[];
   exclude_hidden?: boolean;
-  max_results?: number;
   entry?: string;
   depth?: number;
   module?: string;
+  // Session tracking for token stats (P7)
+  session?: string;
+  // Hook activity tracking (P8)
+  hook?: string;
+  success?: boolean;
+  metrics?: Record<string, number>;
 }
 
 /**
@@ -75,6 +133,32 @@ export interface DaemonResponse {
     severity: 'error' | 'warning';
     source: 'pyright' | 'ruff' | 'tsc' | 'eslint';
   }>;
+  // Session stats (P7)
+  session_stats?: {
+    session_id: string;
+    raw_tokens: number;
+    tldr_tokens: number;
+    requests: number;
+    savings_percent: number;
+  };
+  all_sessions?: {
+    active_sessions: number;
+    total_raw_tokens: number;
+    total_tldr_tokens: number;
+    total_requests: number;
+  };
+  // Hook activity stats (P8)
+  hook_stats?: Record<string, {
+    hook_name: string;
+    invocations: number;
+    successes: number;
+    failures: number;
+    success_rate: number;
+    metrics: Record<string, number>;
+  }>;
+  // Track response fields
+  hook?: string;
+  total_invocations?: number;
 }
 
 /**
@@ -95,7 +179,8 @@ export interface ConnectionInfo {
  * @returns Connection info for Unix socket or TCP
  */
 export function getConnectionInfo(projectDir: string): ConnectionInfo {
-  const hash = crypto.createHash('md5').update(projectDir).digest('hex').substring(0, 8);
+  const resolvedPath = resolveProjectDir(projectDir);
+  const hash = crypto.createHash('md5').update(resolvedPath).digest('hex').substring(0, 8);
 
   if (process.platform === 'win32') {
     // TCP on localhost with deterministic port
@@ -115,7 +200,8 @@ export function getConnectionInfo(projectDir: string): ConnectionInfo {
  * @returns Socket path string (Unix only, use getConnectionInfo for cross-platform)
  */
 export function getSocketPath(projectDir: string): string {
-  const hash = crypto.createHash('md5').update(projectDir).digest('hex').substring(0, 8);
+  const resolvedPath = resolveProjectDir(projectDir);
+  const hash = crypto.createHash('md5').update(resolvedPath).digest('hex').substring(0, 8);
   return `/tmp/tldr-${hash}.sock`;
 }
 
@@ -199,7 +285,6 @@ function isDaemonReachable(projectDir: string): boolean {
     } catch {
       // Connection failed - socket is stale, remove it
       try {
-        const { unlinkSync } = require('fs');
         unlinkSync(connInfo.path!);
       } catch {
         // Ignore unlink errors
@@ -211,6 +296,7 @@ function isDaemonReachable(projectDir: string): boolean {
 
 /**
  * Try to start the daemon for a project.
+ * Uses a lock file to prevent race conditions when multiple hooks fire in parallel.
  *
  * @param projectDir - Project directory path
  * @returns true if start was attempted successfully
@@ -223,37 +309,57 @@ export function tryStartDaemon(projectDir: string): boolean {
       return true;  // Already running, no need to spawn
     }
 
-    // Try using uv run tldr to start the daemon (ensures correct version)
-    // Fall back to direct tldr if uv not available
-    const tldrPath = join(projectDir, 'opc', 'packages', 'tldr-code');
-    const result = spawnSync('uv', ['run', 'tldr', 'daemon', 'start', '--project', projectDir], {
-      timeout: 10000,
-      stdio: 'ignore',
-      cwd: tldrPath,
-    });
+    // Try to acquire lock - if another process is starting daemon, wait for it
+    if (!tryAcquireLock(projectDir)) {
+      // Another process is starting the daemon - wait and check if it succeeds
+      const start = Date.now();
+      while (Date.now() - start < 5000) {
+        if (isDaemonReachable(projectDir)) {
+          return true;
+        }
+        // Brief wait
+        const end = Date.now() + 100;
+        while (Date.now() < end) { /* spin */ }
+      }
+      return isDaemonReachable(projectDir);
+    }
 
-    // If uv failed, try direct tldr (might work if installed globally with daemon support)
-    if (result.status !== 0) {
-      spawnSync('tldr', ['daemon', 'start', '--project', projectDir], {
-        timeout: 5000,
+    try {
+      // We hold the lock - start the daemon
+      const tldrPath = join(projectDir, 'opc', 'packages', 'tldr-code');
+      const result = spawnSync('uv', ['run', 'tldr', 'daemon', 'start', '--project', projectDir], {
+        timeout: 10000,
         stdio: 'ignore',
+        cwd: tldrPath,
       });
-    }
 
-    // Give daemon a moment to start
-    const start = Date.now();
-    while (Date.now() - start < 2000) {
-      if (isDaemonReachable(projectDir)) {
-        return true;
+      // If uv failed, try direct tldr (might work if installed globally with daemon support)
+      if (result.status !== 0) {
+        spawnSync('tldr', ['daemon', 'start', '--project', projectDir], {
+          timeout: 5000,
+          stdio: 'ignore',
+        });
       }
-      // Busy wait (small delay)
-      const end = Date.now() + 50;
-      while (Date.now() < end) {
-        // spin
-      }
-    }
 
-    return isDaemonReachable(projectDir);
+      // Wait for daemon to become reachable (up to 10s for slow starts)
+      const start = Date.now();
+      while (Date.now() - start < 10000) {
+        if (isDaemonReachable(projectDir)) {
+          // Daemon is ready - keep lock for a bit longer to prevent races
+          const cooldown = Date.now() + 1000;
+          while (Date.now() < cooldown) { /* spin */ }
+          return true;
+        }
+        // Brief wait
+        const end = Date.now() + 100;
+        while (Date.now() < end) { /* spin */ }
+      }
+
+      return isDaemonReachable(projectDir);
+    } finally {
+      // Always release lock
+      releaseLock(projectDir);
+    }
   } catch {
     return false;
   }
@@ -750,4 +856,57 @@ export async function importersDaemon(
   language: string = 'python'
 ): Promise<any> {
   return queryDaemon({ cmd: 'importers', module, language }, projectDir);
+}
+
+/**
+ * Track hook activity via the daemon (P8).
+ *
+ * Fire-and-forget: this function catches errors silently so hooks
+ * don't fail just because stats tracking is unavailable.
+ *
+ * @param hookName - Name of the hook (e.g., 'post-edit-diagnostics')
+ * @param projectDir - Project directory path
+ * @param success - Whether the hook succeeded (default: true)
+ * @param metrics - Hook-specific metrics to track
+ */
+export function trackHookActivity(
+  hookName: string,
+  projectDir: string,
+  success: boolean = true,
+  metrics: Record<string, number> = {}
+): void {
+  // Fire-and-forget - don't await, don't block
+  queryDaemon(
+    { cmd: 'track', hook: hookName, success, metrics },
+    projectDir
+  ).catch(() => {
+    // Silently ignore errors - stats tracking is best-effort
+  });
+}
+
+/**
+ * Track hook activity synchronously via the daemon (P8).
+ *
+ * Use this version in hooks that run synchronously and can't await.
+ * Errors are silently ignored for graceful degradation.
+ *
+ * @param hookName - Name of the hook (e.g., 'post-edit-diagnostics')
+ * @param projectDir - Project directory path
+ * @param success - Whether the hook succeeded (default: true)
+ * @param metrics - Hook-specific metrics to track
+ */
+export function trackHookActivitySync(
+  hookName: string,
+  projectDir: string,
+  success: boolean = true,
+  metrics: Record<string, number> = {}
+): void {
+  try {
+    queryDaemonSync(
+      { cmd: 'track', hook: hookName, success, metrics },
+      projectDir
+    );
+  } catch {
+    // Silently ignore errors - stats tracking is best-effort
+  }
 }

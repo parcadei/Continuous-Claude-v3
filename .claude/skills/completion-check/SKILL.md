@@ -1,6 +1,6 @@
 ---
 name: completion-check
-description: Completion Check: Verify Infrastructure Is Wired
+description: "Completion Check: Verify Infrastructure Is Wired"
 user-invocable: false
 ---
 

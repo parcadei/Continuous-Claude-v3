@@ -23,7 +23,7 @@ Query Type?
 │   → TLDR Search - 95% token savings
 │   DEFAULT FOR ALL CODE SEARCH - use instead of Grep
 │   Examples: "spawn_agent", "DataPoller", "redis usage"
-│   Command: cd opc/packages/tldr-code && uv run python scripts/tldr_search.py "query"
+│   Command: tldr search "query" .
 │
 ├── STRUCTURAL (AST patterns)
 │   → AST-grep (/ast-grep-find) - ~50 tokens output
@@ -58,8 +58,8 @@ Query Type?
 
 ```bash
 # CODE EXPLORATION → TLDR (DEFAULT)
-cd opc/packages/tldr-code && uv run python scripts/tldr_search.py "spawn_agent"
-cd opc/packages/tldr-code && uv run python scripts/tldr_search.py "redis" --layer call_graph
+tldr search "spawn_agent" .
+tldr search "redis" . --layer call_graph
 
 # STRUCTURAL → AST-grep
 /ast-grep-find "async def $FUNC($$$):" --lang python

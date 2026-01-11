@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'fs';
-import { queryDaemonSync } from './daemon-client.js';
+import { queryDaemonSync, trackHookActivitySync } from './daemon-client.js';
 
 interface HookInput {
   tool_name: string;
@@ -96,6 +96,13 @@ async function main() {
     const typeErrors = summary.type_errors || 0;
     const lintIssues = summary.lint_errors || summary.lint_issues || 0;
     const errors = response.errors || [];
+
+    // Track hook activity (P8) - reuse projectDir from above
+    trackHookActivitySync('post-edit-diagnostics', projectDir, true, {
+      edits_analyzed: 1,
+      type_errors: typeErrors,
+      lint_issues: lintIssues,
+    });
 
     // No errors - silent success
     if (typeErrors === 0 && lintIssues === 0) {

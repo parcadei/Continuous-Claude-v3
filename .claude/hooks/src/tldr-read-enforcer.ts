@@ -9,9 +9,9 @@
  * Result: 95% token savings (50-500 tokens vs 3000-20000 raw)
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { basename, extname } from 'path';
-import { queryDaemonSync, DaemonResponse } from './daemon-client';
+import { queryDaemonSync, DaemonResponse, trackHookActivitySync } from './daemon-client';
 
 // Search context from smart-search-router
 interface SearchContext {
@@ -199,7 +199,8 @@ function getTldrContext(
   filePath: string,
   language: string,
   layers: string[] = ['ast', 'call_graph'],
-  target: string | null = null
+  target: string | null = null,
+  sessionId: string | null = null
 ): string | null {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const fileName = basename(filePath);
@@ -212,8 +213,12 @@ function getTldrContext(
     results.push('');
 
     // L1/L2: Extract file info (AST + Call Graph) using daemon
+    // Pass session ID for token tracking (P7)
     if (layers.includes('ast') || layers.includes('call_graph')) {
-      const extractResp = queryDaemonSync({ cmd: 'extract', file: filePath }, projectDir);
+      const extractResp = queryDaemonSync(
+        { cmd: 'extract', file: filePath, session: sessionId || undefined },
+        projectDir
+      );
 
       if (extractResp.status === 'ok' && extractResp.result) {
         const info = extractResp.result;
@@ -367,7 +372,7 @@ async function main() {
 
   // Small files: TLDR overhead not worth it, just read directly
   try {
-    const stats = require('fs').statSync(filePath);
+    const stats = statSync(filePath);
     if (stats.size < 3000) {  // ~100 lines
       console.log('{}');
       return;
@@ -403,7 +408,7 @@ async function main() {
     }
   }
 
-  const tldrContext = getTldrContext(filePath, language, layers, target);
+  const tldrContext = getTldrContext(filePath, language, layers, target, input.session_id);
 
   if (!tldrContext) {
     // TLDR failed, allow normal read
@@ -444,6 +449,13 @@ ${callerLines.join('\n')}${searchContext.callers.length > 10 ? `\n  ... and ${se
   if (searchContext?.definitionLocation && !searchContext.definitionLocation.includes(basename(filePath))) {
     definitionSection = `\n📍 Defined at: ${searchContext.definitionLocation}\n`;
   }
+
+  // Track hook activity (P8)
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  trackHookActivitySync('tldr-read-enforcer', projectDir, true, {
+    reads_intercepted: 1,
+    layers_returned: layers.length,
+  });
 
   // BLOCK the read and return TLDR context
   const output: HookOutput = {

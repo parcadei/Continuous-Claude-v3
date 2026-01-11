@@ -14,6 +14,7 @@ Or run as a standalone script:
 
 import asyncio
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -850,8 +851,8 @@ async def run_setup_wizard() -> None:
                         except ValueError:
                             threshold = 20
 
-                        # Save config to .claude/settings.json
-                        settings_path = Path.cwd() / ".claude" / "settings.json"
+                        # Save config to global ~/.claude/settings.json
+                        settings_path = get_global_claude_dir() / "settings.json"
                         settings = {}
                         if settings_path.exists():
                             try:
@@ -886,26 +887,32 @@ async def run_setup_wizard() -> None:
                         settings_path.write_text(json.dumps(settings, indent=2))
                         console.print(f"  [green]OK[/green] Semantic search enabled (threshold: {threshold})")
 
-                        # Offer to run initial indexing
-                        if Confirm.ask("\n  Run initial semantic indexing now?", default=False):
-                            console.print("  Building semantic index (may take a few minutes)...")
+                        # Offer to pre-download embedding model
+                        # Note: We only download the model here, not index any directory.
+                        # Indexing happens per-project when user runs `tldr semantic index .`
+                        if Confirm.ask("\n  Pre-download embedding model now?", default=False):
+                            console.print(f"  Downloading {model} embedding model...")
                             try:
-                                index_result = subprocess.run(
-                                    ["tldr", "semantic", "index", str(Path.cwd()), "--model", model],
+                                # Just load the model to trigger download (no indexing)
+                                download_result = subprocess.run(
+                                    [sys.executable, "-c", f"from tldr.semantic import get_model; get_model('{model}')"],
                                     capture_output=True,
                                     text=True,
                                     timeout=timeout,
+                                    env={**os.environ, "TLDR_AUTO_DOWNLOAD": "1"},
                                 )
-                                if index_result.returncode == 0:
-                                    console.print("  [green]OK[/green] Semantic index built")
+                                if download_result.returncode == 0:
+                                    console.print("  [green]OK[/green] Embedding model downloaded")
                                 else:
-                                    console.print("  [yellow]WARN[/yellow] Indexing had issues, run manually: tldr semantic index .")
+                                    console.print("  [yellow]WARN[/yellow] Download had issues")
+                                    if download_result.stderr:
+                                        console.print(f"       {download_result.stderr[:200]}")
                             except subprocess.TimeoutExpired:
-                                console.print("  [yellow]WARN[/yellow] Indexing timed out, run manually: tldr semantic index .")
+                                console.print("  [yellow]WARN[/yellow] Download timed out")
                             except Exception as e:
                                 console.print(f"  [yellow]WARN[/yellow] {e}")
                         else:
-                            console.print("  [dim]Run later: tldr semantic index .[/dim]")
+                            console.print("  [dim]Model downloads on first use of: tldr semantic index .[/dim]")
                     else:
                         console.print("  Semantic search disabled")
                         console.print("  [dim]Enable later in .claude/settings.json[/dim]")

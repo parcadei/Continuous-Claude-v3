@@ -1,23 +1,51 @@
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
-
 // src/edit-context-inject.ts
 import { readFileSync as readFileSync2 } from "fs";
 import { basename } from "path";
 
 // src/daemon-client.ts
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { execSync, spawnSync } from "child_process";
-import { join } from "path";
+import { join, resolve } from "path";
 import * as net from "net";
 import * as crypto from "crypto";
+function resolveProjectDir(projectDir) {
+  return resolve(projectDir);
+}
+function getLockPath(projectDir) {
+  const resolvedPath = resolveProjectDir(projectDir);
+  const hash = crypto.createHash("md5").update(resolvedPath).digest("hex").substring(0, 8);
+  return `/tmp/tldr-${hash}.lock`;
+}
+function tryAcquireLock(projectDir) {
+  const lockPath = getLockPath(projectDir);
+  try {
+    if (existsSync(lockPath)) {
+      const lockContent = readFileSync(lockPath, "utf-8");
+      const lockTime = parseInt(lockContent, 10);
+      if (!isNaN(lockTime) && Date.now() - lockTime < 3e4) {
+        return false;
+      }
+      try {
+        unlinkSync(lockPath);
+      } catch {
+      }
+    }
+    writeFileSync(lockPath, Date.now().toString(), { flag: "wx" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function releaseLock(projectDir) {
+  try {
+    unlinkSync(getLockPath(projectDir));
+  } catch {
+  }
+}
 var QUERY_TIMEOUT = 3e3;
 function getConnectionInfo(projectDir) {
-  const hash = crypto.createHash("md5").update(projectDir).digest("hex").substring(0, 8);
+  const resolvedPath = resolveProjectDir(projectDir);
+  const hash = crypto.createHash("md5").update(resolvedPath).digest("hex").substring(0, 8);
   if (process.platform === "win32") {
     const port = 49152 + parseInt(hash, 16) % 1e4;
     return { type: "tcp", host: "127.0.0.1", port };
@@ -74,7 +102,6 @@ function isDaemonReachable(projectDir) {
       return true;
     } catch {
       try {
-        const { unlinkSync } = __require("fs");
         unlinkSync(connInfo.path);
       } catch {
       }
@@ -87,28 +114,47 @@ function tryStartDaemon(projectDir) {
     if (isDaemonReachable(projectDir)) {
       return true;
     }
-    const tldrPath = join(projectDir, "opc", "packages", "tldr-code");
-    const result = spawnSync("uv", ["run", "tldr", "daemon", "start", "--project", projectDir], {
-      timeout: 1e4,
-      stdio: "ignore",
-      cwd: tldrPath
-    });
-    if (result.status !== 0) {
-      spawnSync("tldr", ["daemon", "start", "--project", projectDir], {
-        timeout: 5e3,
-        stdio: "ignore"
+    if (!tryAcquireLock(projectDir)) {
+      const start = Date.now();
+      while (Date.now() - start < 5e3) {
+        if (isDaemonReachable(projectDir)) {
+          return true;
+        }
+        const end = Date.now() + 100;
+        while (Date.now() < end) {
+        }
+      }
+      return isDaemonReachable(projectDir);
+    }
+    try {
+      const tldrPath = join(projectDir, "opc", "packages", "tldr-code");
+      const result = spawnSync("uv", ["run", "tldr", "daemon", "start", "--project", projectDir], {
+        timeout: 1e4,
+        stdio: "ignore",
+        cwd: tldrPath
       });
-    }
-    const start = Date.now();
-    while (Date.now() - start < 2e3) {
-      if (isDaemonReachable(projectDir)) {
-        return true;
+      if (result.status !== 0) {
+        spawnSync("tldr", ["daemon", "start", "--project", projectDir], {
+          timeout: 5e3,
+          stdio: "ignore"
+        });
       }
-      const end = Date.now() + 50;
-      while (Date.now() < end) {
+      const start = Date.now();
+      while (Date.now() - start < 1e4) {
+        if (isDaemonReachable(projectDir)) {
+          const cooldown = Date.now() + 1e3;
+          while (Date.now() < cooldown) {
+          }
+          return true;
+        }
+        const end = Date.now() + 100;
+        while (Date.now() < end) {
+        }
       }
+      return isDaemonReachable(projectDir);
+    } finally {
+      releaseLock(projectDir);
     }
-    return isDaemonReachable(projectDir);
   } catch {
     return false;
   }

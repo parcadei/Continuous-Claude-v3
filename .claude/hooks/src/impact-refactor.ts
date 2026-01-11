@@ -9,7 +9,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { queryDaemonSync, DaemonResponse } from './daemon-client';
+import { queryDaemonSync, DaemonResponse, trackHookActivitySync } from './daemon-client';
 
 interface UserPromptInput {
   session_id: string;
@@ -205,6 +205,13 @@ async function main() {
 
     results.push(impact);
   }
+
+  // Track hook activity (P8)
+  const totalCallers = results.length > 0 ? results.join(' ').match(/Callers:/g)?.length || 0 : 0;
+  trackHookActivitySync('impact-refactor', projectDir, true, {
+    analyses_run: functions.length,
+    results_found: results.length,
+  });
 
   if (results.length > 0) {
     console.log(`\n⚠️ **REFACTORING IMPACT ANALYSIS**\n\n${results.join('\n\n')}\n\nConsider callers AND importers before making changes.\n`);

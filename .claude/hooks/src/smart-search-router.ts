@@ -11,7 +11,7 @@
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
-import { queryDaemonSync, DaemonResponse } from './daemon-client.js';
+import { queryDaemonSync, DaemonResponse, trackHookActivitySync } from './daemon-client.js';
 
 interface GrepInput {
   pattern: string;
@@ -433,15 +433,21 @@ async function main() {
     callers: callers.slice(0, 20),  // Limit to 20 callers for token efficiency
   });
 
-  // LITERAL: Run tldr search and provide results via systemMessage
+  // Track hook activity (P8) - get project dir early for tracking
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || '.';
+
+  // LITERAL: Run tldr search and provide results via systemMessage (Option 2)
   if (queryType === 'literal') {
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || '.';
+    trackHookActivitySync('smart-search-router', projectDir, true, {
+      queries_routed: 1, literal_queries: 1,
+    });
+
     const searchResults = tldrSearch(pattern, projectDir);
-    
+
     let systemMsg = `🔍 **TLDR Search Results** for "${pattern}":\n\n`;
-    
+
     if (searchResults.length > 0) {
-      systemMsg += searchResults.slice(0, 10).map(r => 
+      systemMsg += searchResults.slice(0, 10).map(r =>
         `  - ${r.file}:${r.line}: ${r.content.trim().substring(0, 80)}`
       ).join('\n');
       systemMsg += '\n\n*Grep proceeding as fallback. Consider using Read tool on specific files above.*';
@@ -462,8 +468,11 @@ async function main() {
 
   // STRUCTURAL: Provide AST-grep suggestion via systemMessage, allow Grep as fallback
   if (queryType === 'structural') {
+    trackHookActivitySync('smart-search-router', projectDir, true, {
+      queries_routed: 1, structural_queries: 1,
+    });
+
     const astPattern = getAstGrepSuggestion(pattern);
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || '.';
     const searchResults = tldrSearch(pattern, projectDir);
     
     let systemMsg = `🎯 **Structural Query Detected**: "${pattern}"\n\n`;
@@ -491,7 +500,10 @@ async function main() {
   }
 
   // SEMANTIC: Run semantic search and provide results via systemMessage
-  const projectDir = process.env.CLAUDE_PROJECT_DIR || '.';
+  trackHookActivitySync('smart-search-router', projectDir, true, {
+    queries_routed: 1, semantic_queries: 1,
+  });
+
   const semanticResults = tldrSemantic(pattern, projectDir);
 
   let systemMsg: string;

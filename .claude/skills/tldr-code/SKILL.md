@@ -363,6 +363,40 @@ print(ctx.to_llm_string())
 
 ---
 
+## Bug Fixing Workflow (Navigation + Read)
+
+**Key insight:** TLDR navigates, then you read. Don't try to fix bugs from summaries alone.
+
+### The Pattern
+
+```bash
+# 1. NAVIGATE: Find which files matter
+tldr imports file.py              # What does buggy file depend on?
+tldr impact func_name .           # Who calls the buggy function?
+tldr calls .                      # Cross-file edges (follow 2-hop for models)
+
+# 2. READ: Get actual code for critical files (2-4 files, not all 50)
+# Use Read tool or tldr search -C for code with context
+tldr search "def buggy_func" . -C 20
+```
+
+### Why This Works
+
+For cross-file bugs (e.g., wrong field name, type mismatch), you need to see:
+- The file with the bug (handler accessing `task.user_id`)
+- The file with the contract (model defining `owner_id`)
+
+TLDR finds which files matter. Then you read them.
+
+### Getting More Context
+
+If TLDR output isn't enough:
+- `tldr search "pattern" . -C 20` - Get actual code with 20 lines context
+- `tldr imports file.py` - See what a file depends on
+- Read the file directly if you need the full implementation
+
+---
+
 ## Token Savings Evidence
 
 ```

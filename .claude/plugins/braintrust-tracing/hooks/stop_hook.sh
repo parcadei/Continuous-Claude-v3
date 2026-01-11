@@ -25,9 +25,21 @@ log "INFO" "=== STOP HOOK CALLED ==="
 tracing_enabled || { log "WARN" "Tracing disabled"; exit 0; }
 check_requirements || exit 0
 
-# Read input from stdin
+# Read input from stdin (must be done synchronously)
 INPUT=$(cat)
-debug "Stop input: $(echo "$INPUT" | jq -c '.' 2>/dev/null | head -c 500)"
+
+# Run heavy processing in background to avoid blocking session end
+# Save input to temp file for background process
+ASYNC_INPUT_FILE=$(mktemp)
+echo "$INPUT" > "$ASYNC_INPUT_FILE"
+
+(
+    # Background process - read input from temp file
+    INPUT=$(cat "$ASYNC_INPUT_FILE")
+    rm -f "$ASYNC_INPUT_FILE"
+
+    # Rest of processing continues below...
+    debug "Stop input: $(echo "$INPUT" | jq -c '.' 2>/dev/null | head -c 500)"
 
 # Get session ID
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
@@ -370,4 +382,7 @@ set_session_state "$SESSION_ID" "current_turn_span_id" ""
 [ "$LLM_CALLS_CREATED" -gt 0 ] && log "INFO" "Created $LLM_CALLS_CREATED LLM spans for turn"
 log "INFO" "Turn finalized (end=$END_TIME)"
 
+) </dev/null >/dev/null 2>&1 &
+# Background process launched, exit immediately
+log "INFO" "Stop hook launched background processing"
 exit 0

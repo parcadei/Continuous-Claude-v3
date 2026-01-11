@@ -83,17 +83,44 @@ def cleanup_old_context_files(tmp_dir: Path, max_age_hours: int = 1) -> None:
         pass  # Non-critical
 
 
+def log_context_drop(session_id: str, prev_pct: int, curr_pct: int) -> None:
+    """Log significant context drops (likely auto-compaction).
+
+    Logs to ~/.claude/autocompact.log (local, not pushed to repo).
+    """
+    from datetime import datetime
+    log_file = Path.home() / ".claude" / "autocompact.log"
+    try:
+        with open(log_file, "a") as f:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"{timestamp} | session:{session_id} | {prev_pct}% → {curr_pct}% (drop: {prev_pct - curr_pct}%)\n")
+    except OSError:
+        pass
+
+
 def write_context_pct(context_pct: int, data: dict) -> None:
     """Write context percentage for other hooks to read.
 
     Uses tempfile.gettempdir() for cross-platform compatibility.
     On macOS this returns $TMPDIR (/var/folders/...) which matches
     Node.js os.tmpdir() used by skill-activation-prompt.ts.
+
+    Also detects and logs significant context drops (auto-compaction).
     """
     session_id = get_session_id(data)
     tmp_dir = Path(tempfile.gettempdir())
     tmp_file = tmp_dir / f"claude-context-pct-{session_id}.txt"
     try:
+        # Check for context drop (auto-compaction detection)
+        if tmp_file.exists():
+            try:
+                prev_pct = int(tmp_file.read_text().strip())
+                # Log if drop > 10% (likely auto-compact, not normal variation)
+                if prev_pct - context_pct > 10:
+                    log_context_drop(session_id, prev_pct, context_pct)
+            except (ValueError, OSError):
+                pass
+
         tmp_file.write_text(str(context_pct))
         # Occasionally clean up old files
         cleanup_old_context_files(tmp_dir)
