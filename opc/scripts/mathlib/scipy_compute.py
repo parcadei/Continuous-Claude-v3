@@ -34,7 +34,7 @@ EXAMPLES:
 
 import sys
 
-from scripts.math_base import (
+from .math_base import (
     create_main_parser,
     get_registry,
     main_cli,

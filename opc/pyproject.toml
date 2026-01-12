@@ -68,6 +68,12 @@ math = [
     "sympy>=1.14.0",
     "z3-solver>=4.15.4.0",
 ]
+embeddings = [
+    # Local embeddings for memory system (fallback when no VOYAGE_API_KEY)
+    # Required by scripts/core/store_learning.py and recall_learnings.py
+    "sentence-transformers>=2.2.0",
+    "torch>=2.0.0",  # Required by sentence-transformers
+]
 
 [project.scripts]
 mcp-exec = "runtime.harness:main"

@@ -189,7 +189,7 @@ Use whatever's available, in order:
 | WebSearch | General references | WebSearch tool |
 | WebFetch | Specific paper/page content | WebFetch tool |
 
-**Loogle setup:** Requires `~/tools/loogle` with Mathlib index. Run `loogle-server &` for fast queries.
+**Loogle setup:** Requires `~/.local/share/loogle` with Mathlib index. Run `loogle-server &` for fast queries.
 
 If no search tools available, proceed with caution and note "research phase skipped".
 

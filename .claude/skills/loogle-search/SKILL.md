@@ -59,7 +59,7 @@ loogle-search "Fintype.card"
 
 Loogle must be built first:
 ```bash
-cd ~/tools/loogle && lake build
+cd ~/.local/share/loogle && lake build
 lake build LoogleMathlibCache  # or use --write-index
 ```
 

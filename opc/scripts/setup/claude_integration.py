@@ -495,10 +495,10 @@ def install_opc_integration(
             shutil.copytree(opc_scripts_core, target_scripts_core)
             result["installed_scripts"] = len(list(target_scripts_core.rglob("*.py")))
 
-        # Copy scripts/math/ for math computation support
+        # Copy scripts/mathlib/ for math computation support
         # This enables sympy_compute, pint_compute, math_router, etc.
-        opc_scripts_math = opc_source.parent / "opc" / "scripts" / "math"
-        target_scripts_math = target_dir / "scripts" / "math"
+        opc_scripts_math = opc_source.parent / "opc" / "scripts" / "mathlib"
+        target_scripts_math = target_dir / "scripts" / "mathlib"
         if opc_scripts_math.exists():
             if target_scripts_math.exists():
                 shutil.rmtree(target_scripts_math)

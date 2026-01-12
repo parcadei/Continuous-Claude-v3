@@ -97,7 +97,9 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
 
         # Build OR-based query: "session affinity terminal" -> 'session' | 'affinity' | 'terminal'
         # This matches documents containing ANY of the terms, ranked by how many match
-        words = [w for w in clean_query.split() if len(w) > 2]
+        import re
+        words = [re.sub(r'[^a-zA-Z0-9]', '', w) for w in clean_query.split()]
+        words = [w for w in words if len(w) > 2]
         if not words:
             words = clean_query.split()[:1] or [query.split()[0]]
         or_query = ' | '.join(words)

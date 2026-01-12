@@ -505,7 +505,7 @@ class EmbeddingService:
 
     def __init__(
         self,
-        provider: str = "openai",
+        provider: str = "local",
         cache_enabled: bool = True,
         dimension: int | None = None,
         max_batch_size: int = 100,

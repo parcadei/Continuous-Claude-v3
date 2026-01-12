@@ -166,8 +166,8 @@ async def run_migrations(
     migrations_path = migrations_dir or MIGRATIONS_DIR
     compose_path = compose_file or DOCKER_COMPOSE_FILE
 
-    # First, try to run init-schema.sql if it exists
-    init_sql = PROJECT_ROOT / "init-schema.sql"
+    # First, try to run docker/init-schema.sql (memory tables: sessions, file_claims, archival_memory, handoffs)
+    init_sql = DOCKER_DIR / "init-schema.sql"
 
     try:
         if init_sql.exists():

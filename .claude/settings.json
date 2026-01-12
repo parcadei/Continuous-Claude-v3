@@ -94,7 +94,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.opc-dev/.claude/hooks/persist-project-dir.sh"
+            "command": "bash $HOME/.claude/hooks/persist-project-dir.sh"
           },
           {
             "type": "command",

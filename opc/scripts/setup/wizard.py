@@ -621,8 +621,65 @@ async def run_setup_wizard() -> None:
         else:
             console.print(f"  [red]ERROR[/red] {result.get('error', 'Unknown error')}")
 
-    # Step 7: Claude Code Integration
-    console.print("\n[bold]Step 7/12: Claude Code Integration[/bold]")
+    # Step 7: Memory & Embeddings
+    console.print("\n[bold]Step 7/12: Memory & Embeddings[/bold]")
+    console.print("  Memory features enable semantic recall of past learnings:")
+    console.print("    - Store session learnings with embeddings")
+    console.print("    - Recall similar past solutions (semantic search)")
+    console.print("    - Cross-terminal coordination (sessions, file claims)")
+    console.print("")
+    console.print("  [dim]Note: sentence-transformers requires ~2GB for model download.[/dim]")
+
+    if Confirm.ask("\nInstall memory features (embeddings)?", default=True):
+        import subprocess
+
+        # Install sentence-transformers and torch
+        console.print("  Installing sentence-transformers and torch...")
+        try:
+            result = subprocess.run(
+                ["uv", "sync", "--extra", "embeddings"],
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 min for torch download
+            )
+            if result.returncode == 0:
+                console.print("  [green]OK[/green] Embeddings installed")
+
+                # Verify imports work
+                console.print("  Verifying installation...")
+                verify_result = subprocess.run(
+                    [
+                        "uv",
+                        "run",
+                        "python",
+                        "-c",
+                        "from sentence_transformers import SentenceTransformer; print('OK')",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+                if verify_result.returncode == 0 and "OK" in verify_result.stdout:
+                    console.print("  [green]OK[/green] sentence-transformers verified")
+                else:
+                    console.print("  [yellow]WARN[/yellow] Verification failed")
+                    console.print(f"       {verify_result.stderr[:200]}")
+            else:
+                console.print("  [red]ERROR[/red] Installation failed")
+                console.print(f"       {result.stderr[:200]}")
+                console.print("  Install manually with: uv sync --extra embeddings")
+        except subprocess.TimeoutExpired:
+            console.print("  [yellow]WARN[/yellow] Installation timed out")
+            console.print("  Install manually with: uv sync --extra embeddings")
+        except Exception as e:
+            console.print(f"  [red]ERROR[/red] {e}")
+            console.print("  Install manually with: uv sync --extra embeddings")
+    else:
+        console.print("  Skipped memory features")
+        console.print("  [dim]Install later with: uv sync --extra embeddings[/dim]")
+
+    # Step 8: Claude Code Integration
+    console.print("\n[bold]Step 8/12: Claude Code Integration[/bold]")
     from scripts.setup.claude_integration import (
         analyze_conflicts,
         backup_claude_dir,
@@ -732,8 +789,8 @@ async def run_setup_wizard() -> None:
             else:
                 console.print(f"  [red]ERROR[/red] {result.get('error', 'Unknown error')}")
 
-    # Step 8: Math Features (Optional)
-    console.print("\n[bold]Step 8/12: Math Features (Optional)[/bold]")
+    # Step 9: Math Features (Optional)
+    console.print("\n[bold]Step 9/12: Math Features (Optional)[/bold]")
     console.print("  Math features include:")
     console.print("    - SymPy: symbolic algebra, calculus, equation solving")
     console.print("    - Z3: SMT solver for constraint satisfaction & proofs")
@@ -791,8 +848,8 @@ async def run_setup_wizard() -> None:
         console.print("  Skipped math features")
         console.print("  [dim]Install later with: uv sync --extra math[/dim]")
 
-    # Step 9: TLDR Code Analysis Tool
-    console.print("\n[bold]Step 9/12: TLDR Code Analysis Tool[/bold]")
+    # Step 10: TLDR Code Analysis Tool
+    console.print("\n[bold]Step 10/12: TLDR Code Analysis Tool[/bold]")
     console.print("  TLDR provides token-efficient code analysis for LLMs:")
     console.print("    - 95% token savings vs reading raw files")
     console.print("    - 155x faster queries with daemon mode")
@@ -932,8 +989,8 @@ async def run_setup_wizard() -> None:
         console.print("  Skipped TLDR installation")
         console.print("  [dim]Install later with: pip install llm-tldr[/dim]")
 
-    # Step 10: Diagnostics Tools (Shift-Left Feedback)
-    console.print("\n[bold]Step 10/12: Diagnostics Tools (Shift-Left Feedback)[/bold]")
+    # Step 11: Diagnostics Tools (Shift-Left Feedback)
+    console.print("\n[bold]Step 11/12: Diagnostics Tools (Shift-Left Feedback)[/bold]")
     console.print("  Claude gets immediate type/lint feedback after editing files.")
     console.print("  This catches errors before tests run (shift-left).")
     console.print("")
@@ -970,8 +1027,8 @@ async def run_setup_wizard() -> None:
     console.print("  [dim]Note: Currently only Python diagnostics are wired up.[/dim]")
     console.print("  [dim]TypeScript, Go, Rust coming soon.[/dim]")
 
-    # Step 11: Loogle (Lean 4 type search for /prove skill)
-    console.print("\n[bold]Step 11/12: Loogle (Lean 4 Type Search)[/bold]")
+    # Step 12: Loogle (Lean 4 type search for /prove skill)
+    console.print("\n[bold]Step 12/12: Loogle (Lean 4 Type Search)[/bold]")
     console.print("  Loogle enables type-aware search of Mathlib theorems:")
     console.print("    - Used by /prove skill for theorem proving")
     console.print("    - Search by type signature (e.g., 'Nontrivial _ ↔ _')")

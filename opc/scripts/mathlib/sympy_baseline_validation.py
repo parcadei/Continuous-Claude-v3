@@ -24,7 +24,7 @@ from typing import Any
 
 # Import from sympy_compute
 sys.path.insert(0, ".")
-from scripts.sympy_compute import (
+from .sympy_compute import (
     binomial_coeff,
     catalan_number,
     det_matrix,
