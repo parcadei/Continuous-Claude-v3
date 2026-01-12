@@ -15,6 +15,7 @@ node_modules/
 *.log
 .env
 .env.local
+opc/.env
 stats-cache.json
 
 # Session artifacts (per-session, not shareable)
