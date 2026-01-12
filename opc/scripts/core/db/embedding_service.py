@@ -340,20 +340,21 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     Runs embeddings locally - no API calls, no cost, works offline.
 
     Supported models:
-    - BAAI/bge-large-en-v1.5: High quality, 1024 dim (default, matches Voyage)
+    - Qwen/Qwen3-Embedding-0.6B: SOTA MTEB 70.58, 1024 dim (RECOMMENDED)
+    - BAAI/bge-large-en-v1.5: High quality, 1024 dim
     - BAAI/bge-base-en-v1.5: Good balance, 768 dim
     - all-MiniLM-L6-v2: Fast but outdated, 384 dim
     - all-mpnet-base-v2: Medium quality, 768 dim
 
-    Default is bge-large-en-v1.5 to match the 1024-dim schema used by Voyage.
-    This ensures local embeddings are compatible with existing stored embeddings.
+    Default is Qwen3-Embedding-0.6B for highest quality on M4 Max.
 
     Requires: pip install sentence-transformers torch
     RAM: ~3-4GB for bge-large, works on 8GB+ machines
     """
 
     MODELS = {
-        "BAAI/bge-large-en-v1.5": 1024,  # Default - matches Voyage dim
+        "Qwen/Qwen3-Embedding-0.6B": 1024,  # SOTA MTEB 70.58 - RECOMMENDED
+        "BAAI/bge-large-en-v1.5": 1024,  # Proven quality
         "BAAI/bge-base-en-v1.5": 768,
         "all-MiniLM-L6-v2": 384,
         "all-mpnet-base-v2": 768,
@@ -361,7 +362,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
 
     def __init__(
         self,
-        model: str = "BAAI/bge-large-en-v1.5",
+        model: str = "Qwen/Qwen3-Embedding-0.6B",
         device: str | None = None,
     ):
         """Initialize local embedding provider.
@@ -409,6 +410,117 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     def dimension(self) -> int:
         """Return model dimension."""
         return self._dimension
+
+
+class RerankerProvider:
+    """Cross-encoder reranker for reordering search results.
+
+    Rerankers take query-document pairs and output relevance scores.
+    Used after vector search to improve result quality.
+
+    Supported models:
+    - BAAI/bge-reranker-base: Good cross-encoder reranker
+    - BAAI/bge-reranker-large: Higher quality, more memory
+    - Thenlper/gte-reranker-base: GTE-based reranker
+
+    Usage:
+        reranker = RerankerProvider()
+        scores = await reranker.rerank("query", ["doc1", "doc2", "doc3"])
+        # scores = [0.92, 0.45, 0.31] - higher = more relevant
+    """
+
+    MODELS = {
+        "BAAI/bge-reranker-base": 768,
+        "BAAI/bge-reranker-large": 1024,
+        "Thenlper/gte-reranker-base": 768,
+    }
+
+    def __init__(
+        self,
+        model: str = "BAAI/bge-reranker-base",
+        device: str | None = None,
+        batch_size: int = 32,
+    ):
+        """Initialize reranker provider.
+
+        Args:
+            model: Model name from sentence-transformers
+            device: Device to use ('cpu', 'cuda', 'mps', or None for auto)
+            batch_size: Maximum documents per batch
+        """
+        try:
+            from sentence_transformers import CrossEncoder
+        except ImportError:
+            raise ImportError(
+                "sentence-transformers required for reranking. "
+                "Install with: pip install sentence-transformers torch"
+            )
+
+        self.model_name = model
+        self._model = CrossEncoder(
+            model,
+            device=device,
+            trust_remote_code=True,
+        )
+        self.batch_size = batch_size
+
+    async def rerank(self, query: str, documents: list[str]) -> list[float]:
+        """Score query-document pairs for relevance.
+
+        Args:
+            query: Search query
+            documents: List of documents to rerank
+
+        Returns:
+            List of relevance scores (0.0-1.0), same order as input documents
+        """
+        import asyncio
+
+        # Create query-document pairs
+        pairs = [[query, doc] for doc in documents]
+
+        loop = asyncio.get_event_loop()
+        scores = await loop.run_in_executor(
+            None, lambda: self._model.predict(pairs, batch_size=self.batch_size)
+        )
+
+        # Normalize scores to 0-1 range if needed
+        import numpy as np
+
+        if isinstance(scores, np.ndarray):
+            # Cross-encoders often output raw logits - normalize with sigmoid
+            scores = 1 / (1 + np.exp(-scores))  # sigmoid
+
+        return scores.tolist()
+
+    async def rerank_with_scores(
+        self, query: str, documents: list[str], top_k: int | None = None
+    ) -> list[tuple[str, float]]:
+        """Rerank documents and return sorted results.
+
+        Args:
+            query: Search query
+            documents: List of documents to rerank
+            top_k: Return only top k results (default: all)
+
+        Returns:
+            List of (document, score) tuples sorted by score descending
+        """
+        scores = await self.rerank(query, documents)
+
+        # Sort by score descending
+        sorted_results = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
+
+        if top_k:
+            sorted_results = sorted_results[:top_k]
+
+        return sorted_results
+
+    @property
+    def dimension(self) -> int:
+        """Return model dimension (for compatibility)."""
+        return self.MODELS.get(self.model_name, 1024)
+
 
 
 # Global reference for lazy import in EmbeddingService
@@ -505,7 +617,7 @@ class EmbeddingService:
 
     def __init__(
         self,
-        provider: str = "openai",
+        provider: str = "local",
         cache_enabled: bool = True,
         dimension: int | None = None,
         max_batch_size: int = 100,
@@ -554,7 +666,7 @@ class EmbeddingService:
                 max_retries=max_retries,
             )
         elif provider == "local":
-            local_model = model if model is not None else "BAAI/bge-large-en-v1.5"
+            local_model = model if model is not None else "Qwen/Qwen3-Embedding-0.6B"
             device = kwargs.get("device", None)
             self._provider = LocalEmbeddingProvider(model=local_model, device=device)
         else:

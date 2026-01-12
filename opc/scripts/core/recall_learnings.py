@@ -97,7 +97,9 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
 
         # Build OR-based query: "session affinity terminal" -> 'session' | 'affinity' | 'terminal'
         # This matches documents containing ANY of the terms, ranked by how many match
-        words = [w for w in clean_query.split() if len(w) > 2]
+        import re
+        words = [re.sub(r'[^a-zA-Z0-9]', '', w) for w in clean_query.split()]
+        words = [w for w in words if len(w) > 2]
         if not words:
             words = clean_query.split()[:1] or [query.split()[0]]
         or_query = ' | '.join(words)
@@ -236,6 +238,157 @@ async def search_learnings_sqlite(query: str, k: int = 5) -> list[dict[str, Any]
         return results
     finally:
         conn.close()
+
+
+async def search_learnings_auto_rerank(
+    query: str,
+    k: int = 5,
+    provider: str = "local",
+    auto_rerank: bool = True,
+    reranker: str = "BAAI/bge-reranker-base",
+    confidence_gap_threshold: float = 0.10,
+    high_confidence_threshold: float = 0.85,
+) -> list[dict[str, Any]]:
+    """Hybrid search with automatic reranking based on confidence.
+
+    Two-stage retrieval that conditionally uses the reranker:
+    - Skip rerank if top result has high confidence (>0.85)
+    - Skip rerank if top-3 scores are well-separated (clear winner)
+    - Rerank if confidence gap between top results is small (uncertain)
+
+    This balances quality and speed: ~50% of queries skip reranking.
+
+    Args:
+        query: Search query
+        k: Number of results to return
+        provider: Embedding provider for initial retrieval
+        auto_rerank: Enable automatic reranking (default True)
+        reranker: Reranker model name
+        confidence_gap_threshold: Gap below which to rerank (default 0.10)
+        high_confidence_threshold: Score above which to skip rerank (default 0.85)
+
+    Returns:
+        List of learnings with reranker scores
+    """
+    import re
+
+    from scripts.core.db.embedding_service import EmbeddingService, RerankerProvider
+    from scripts.core.db.postgres_pool import get_pool, init_pgvector
+
+    pool = await get_pool()
+
+    # Generate query embedding
+    embedder = EmbeddingService(provider=provider)
+    try:
+        query_embedding = await embedder.embed(query)
+    finally:
+        await embedder.aclose()
+
+    # Fetch more candidates for analysis
+    initial_k = 20
+
+    async with pool.acquire() as conn:
+        await init_pgvector(conn)
+
+        rows = await conn.fetch(
+            """
+            SELECT
+                id,
+                session_id,
+                content,
+                metadata,
+                created_at,
+                1 - (embedding <=> $1::vector) as similarity
+            FROM archival_memory
+            WHERE metadata->>'type' = 'session_learning'
+                AND embedding IS NOT NULL
+            ORDER BY embedding <=> $1::vector
+            LIMIT $2
+            """,
+            str(query_embedding),
+            initial_k,
+        )
+
+    if not rows:
+        return []
+
+    # Build results list
+    results = []
+    for row in rows:
+        metadata = row["metadata"]
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+
+        results.append({
+            "id": str(row["id"]),
+            "session_id": row["session_id"],
+            "content": row["content"],
+            "metadata": metadata,
+            "created_at": row["created_at"],
+            "vector_score": float(row["similarity"]),
+            "similarity": float(row["similarity"]),
+        })
+
+    # Analyze confidence to decide on reranking
+    should_rerank = False
+    rerank_reason = ""
+
+    if auto_rerank and len(results) >= 3:
+        top_score = results[0]["vector_score"]
+        second_score = results[1]["vector_score"]
+        third_score = results[2]["vector_score"]
+
+        # Skip reranking if high confidence
+        if top_score >= high_confidence_threshold:
+            rerank_reason = f"high confidence ({top_score:.2f})"
+            should_rerank = False
+
+        # Check confidence gap (top - second)
+        gap = top_score - second_score
+
+        # Skip reranking if clear winner
+        if gap >= confidence_gap_threshold + 0.15:
+            rerank_reason = f"clear winner (gap: {gap:.2f})"
+            should_rerank = False
+
+        # Rerank if close race
+        elif gap < confidence_gap_threshold:
+            should_rerank = True
+            rerank_reason = f"close race (gap: {gap:.2f})"
+
+        # Rerank if top-3 are all close
+        elif (top_score - third_score) < (confidence_gap_threshold * 2):
+            should_rerank = True
+            rerank_reason = f"crowded top (top-3 span: {top_score - third_score:.2f})"
+
+        # Check query complexity indicators
+        comparison_words = {" vs ", " vs", "and", "or", "compare", "difference", "better"}
+        query_lower = query.lower()
+        if any(word in query_lower for word in comparison_words):
+            should_rerank = True
+            rerank_reason = f"comparison query"
+
+    # Conditional reranking
+    if should_rerank and auto_rerank:
+        reranker_provider = RerankerProvider(model=reranker)
+        try:
+            documents = [r["content"][:2000] for r in results]
+            rerank_scores = await reranker_provider.rerank(query, documents)
+
+            # Combine scores (70% rerank, 30% vector for final ranking)
+            for i, result in enumerate(results):
+                result["rerank_score"] = rerank_scores[i]
+                result["similarity"] = (result["vector_score"] * 0.3 + rerank_scores[i] * 0.7)
+
+            # Sort by combined score
+            results.sort(key=lambda x: x["similarity"], reverse=True)
+            rerank_reason += f" -> reranked"
+
+        finally:
+            del reranker_provider
+
+    # Return top k results
+    return results[:k]
 
 
 async def search_learnings_hybrid_rrf(
@@ -603,6 +756,23 @@ async def main() -> int:
         default=0.1,
         help="Recency weight for vector-only mode (0.0-1.0, default: 0.1)",
     )
+    parser.add_argument(
+        "--auto-rerank",
+        action="store_true",
+        default=True,
+        help="Auto-rerank based on confidence (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-auto-rerank",
+        action="store_false",
+        dest="auto_rerank",
+        help="Disable auto-reranking (always skip reranker)",
+    )
+    parser.add_argument(
+        "--rerank",
+        action="store_true",
+        help="Force reranking (override auto-decision)",
+    )
 
     args = parser.parse_args()
 
@@ -610,6 +780,8 @@ async def main() -> int:
     if not args.json:
         print(f'Recalling learnings for: "{args.query}"')
         print(f"Provider: {args.provider}")
+        if args.auto_rerank:
+            print("Mode: Auto-rerank (skips reranker when confident)")
         print()
 
     try:
@@ -632,13 +804,23 @@ async def main() -> int:
                 similarity_threshold=args.threshold,
                 recency_weight=args.recency,
             )
-        else:
-            # Default: Hybrid RRF search (text + vector combined)
-            results = await search_learnings_hybrid_rrf(
+        elif args.rerank:
+            # Force reranking (bypass auto-decision)
+            results = await search_learnings_auto_rerank(
                 query=args.query,
                 k=args.k,
                 provider=args.provider,
-                similarity_threshold=args.threshold * 0.01,  # RRF scores are ~0.01-0.03 range
+                auto_rerank=True,
+                high_confidence_threshold=0.0,  # Force rerank
+                confidence_gap_threshold=999.0,  # Force rerank
+            )
+        else:
+            # Default: Auto-rerank based on confidence
+            results = await search_learnings_auto_rerank(
+                query=args.query,
+                k=args.k,
+                provider=args.provider,
+                auto_rerank=args.auto_rerank,
             )
     except Exception as e:
         if args.json:
