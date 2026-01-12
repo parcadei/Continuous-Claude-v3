@@ -1138,17 +1138,20 @@ tldr arch src/  # See layer structure
 ## Installation
 
 ```bash
-# From PyPI
-pip install tldr-code
+# From the local fork (opc/packages/llm-tldr)
+cd opc/packages/llm-tldr
+pip install -e .
 
 # With all language support
-pip install tldr-code[all]
+pip install -e ".[all]"
 
-# Development install
-git clone https://github.com/yourusername/tldr-code
-cd tldr-code
-pip install -e ".[dev]"
+# Or from PyPI (upstream)
+pip install llm-tldr
 ```
+
+### Related Projects
+
+- **[llm-tldr](https://github.com/parcadei/llm-tldr)**: Original implementation by parcadei. Our fork is at `opc/packages/llm-tldr` for local development and customization.
 
 ### Dependencies
 

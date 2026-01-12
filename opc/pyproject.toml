@@ -35,6 +35,9 @@ dependencies = [
     "redis>=7.1.0",
 ]
 
+[tool.uv]
+package = true
+
 [project.optional-dependencies]
 discovery = [
     "anthropic>=0.28.0",

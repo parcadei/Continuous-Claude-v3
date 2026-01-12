@@ -6,19 +6,35 @@ Handles prerequisite checking, database configuration, API keys,
 and environment file generation.
 
 USAGE:
+    # Interactive install (default)
     python -m scripts.setup.wizard
 
+    # Update mode (pull latest, smart sync)
+    python -m scripts.setup.wizard --update
+
+    # Update with dry-run (preview changes)
+    python -m scripts.setup.wizard --update --dry-run
+
+    # Update with verbose output
+    python -m scripts.setup.wizard --update --verbose
+
+    # Force skip confirmations
+    python -m scripts.setup.wizard --update --force
+
 Or run as a standalone script:
-    python scripts/setup/wizard.py
+    python scripts/setup/wizard.py --update --dry-run
 """
 
+import argparse
 import asyncio
+import hashlib
 import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -45,6 +61,604 @@ except ImportError:
             print(*args)
 
     console = Console()
+
+
+# =============================================================================
+# CLI Argument Parsing
+# =============================================================================
+
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments.
+
+    Returns:
+        Namespace with parsed arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="OPC v3 Setup Wizard - Install or update Claude Code integration",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                    # Interactive install wizard
+  %(prog)s --update           # Pull latest and update integration
+  %(prog)s --update --dry-run # Preview what would be updated
+  %(prog)s --update -f -v     # Force update with verbose output
+        """,
+    )
+
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Switch from install to update mode",
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        "-n",
+        action="store_true",
+        help="Show what would be changed without making modifications",
+    )
+
+    parser.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Skip all confirmations (use defaults)",
+    )
+
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show detailed output",
+    )
+
+    parser.add_argument(
+        "--skip-git",
+        action="store_true",
+        help="Skip git pull during update (use local files only)",
+    )
+
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["validate"],
+        help="Command to run: validate - Check installation integrity",
+    )
+
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output validation results as JSON (use with validate command)",
+    )
+
+    return parser.parse_args()
+
+
+@dataclass
+class UpdateSummary:
+    """Summary of what was/would be updated."""
+
+    hooks_added: list[str] = field(default_factory=list)
+    hooks_updated: list[str] = field(default_factory=list)
+    hooks_unchanged: list[str] = field(default_factory=list)
+    skills_added: list[str] = field(default_factory=list)
+    skills_updated: list[str] = field(default_factory=list)
+    skills_unchanged: list[str] = field(default_factory=list)
+    rules_added: list[str] = field(default_factory=list)
+    rules_updated: list[str] = field(default_factory=list)
+    rules_unchanged: list[str] = field(default_factory=list)
+    agents_added: list[str] = field(default_factory=list)
+    agents_updated: list[str] = field(default_factory=list)
+    agents_unchanged: list[str] = field(default_factory=list)
+    servers_added: list[str] = field(default_factory=list)
+    servers_updated: list[str] = field(default_factory=list)
+    servers_unchanged: list[str] = field(default_factory=list)
+    scripts_updated: list[str] = field(default_factory=list)
+    scripts_unchanged: list[str] = field(default_factory=list)
+    typescript_rebuilt: bool = False
+    files_changed: int = 0
+
+    @property
+    def total_changes(self) -> int:
+        return (
+            len(self.hooks_added)
+            + len(self.hooks_updated)
+            + len(self.skills_added)
+            + len(self.skills_updated)
+            + len(self.rules_added)
+            + len(self.rules_updated)
+            + len(self.agents_added)
+            + len(self.agents_updated)
+            + len(self.servers_added)
+            + len(self.servers_updated)
+        )
+
+
+def compute_file_hash(file_path: Path) -> str:
+    """Compute SHA256 hash of a file.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Hex string of the file's SHA256 hash
+    """
+    if not file_path.exists() or not file_path.is_file():
+        return ""
+
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest()
+
+
+def compute_dir_hash(dir_path: Path, extensions: tuple | None = None) -> dict[str, str]:
+    """Compute hashes for all files in a directory.
+
+    Args:
+        dir_path: Path to the directory
+        extensions: Only include files with these extensions (e.g., (".py", ".sh"))
+
+    Returns:
+        Dict mapping relative file paths to their hashes
+    """
+    hashes = {}
+
+    if not dir_path.exists():
+        return hashes
+
+    for file_path in dir_path.rglob("*"):
+        if file_path.is_file():
+            if extensions is None or file_path.suffix in extensions:
+                rel_path = str(file_path.relative_to(dir_path))
+                hashes[rel_path] = compute_file_hash(file_path)
+
+    return hashes
+
+
+def git_pull(repo_path: Path) -> tuple[bool, str]:
+    """Pull latest changes from git.
+
+    Args:
+        repo_path: Path to the repository
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        # Check if it's a git repo
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return False, "Not a git repository"
+
+        # Check for uncommitted changes
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return False, "Uncommitted changes - stash or commit first"
+
+        # Fetch and pull
+        console.print("  Fetching latest changes...")
+        result = subprocess.run(
+            ["git", "fetch"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return False, f"Git fetch failed: {result.stderr[:200]}"
+
+        result = subprocess.run(
+            ["git", "pull", "--ff-only"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return False, f"Git pull failed: {result.stderr[:200]}"
+
+        return True, result.stdout.strip() or "Already up to date"
+
+    except subprocess.TimeoutExpired:
+        return False, "Git command timed out"
+    except FileNotFoundError:
+        return False, "Git not found in PATH"
+    except Exception as e:
+        return False, f"Git error: {e}"
+
+
+def copy_file_if_changed(
+    src: Path,
+    dst: Path,
+    summary: UpdateSummary,
+    category: str,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> bool:
+    """Copy a file only if content has changed.
+
+    Args:
+        src: Source file path
+        dst: Destination file path
+        summary: UpdateSummary to record changes
+        category: Category name for logging (e.g., "hooks")
+        dry_run: If True, only show what would change
+        verbose: If True, show detailed output
+
+    Returns:
+        True if file was copied, False if unchanged
+    """
+    src_hash = compute_file_hash(src)
+    dst_hash = compute_file_hash(dst) if dst.exists() else ""
+
+    if src_hash == dst_hash:
+        if hasattr(summary, f"{category}_unchanged"):
+            getattr(summary, f"{category}_unchanged").append(dst.name)
+        if verbose:
+            console.print(f"    [dim]Unchanged: {dst.name}[/dim]")
+        return False
+
+    # File has changed
+    if not dst.parent.exists():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+
+    if dry_run:
+        console.print(f"    [yellow]Would update: {dst.name}[/yellow]")
+    else:
+        if verbose:
+            console.print(f"    [green]Updating: {dst.name}[/green]")
+        shutil.copy2(src, dst)
+
+    if hasattr(summary, f"{category}_updated"):
+        getattr(summary, f"{category}_updated").append(dst.name)
+    summary.files_changed += 1
+
+    return True
+
+
+def sync_directory_update(
+    src_dir: Path,
+    dst_dir: Path,
+    summary: UpdateSummary,
+    category: str,
+    extensions: tuple | None = None,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> None:
+    """Sync a directory using hash-based comparison.
+
+    Only copies files that have changed, preserves user customizations.
+
+    Args:
+        src_dir: Source directory (OPC source)
+        dst_dir: Destination directory (~/.claude/...)
+        summary: UpdateSummary to record changes
+        category: Category name for logging
+        extensions: Only sync files with these extensions
+        dry_run: If True, only show what would change
+        verbose: If True, show detailed output
+    """
+    if not src_dir.exists():
+        if verbose:
+            console.print(f"  [dim]Source directory not found: {src_dir}[/dim]")
+        return
+
+    # Ensure destination exists
+    dst_dir.mkdir(parents=True, exist_ok=True)
+
+    # Compute source hashes
+    src_hashes = compute_dir_hash(src_dir, extensions)
+
+    # Track which files we've processed
+    processed_files = set()
+
+    # Check each source file
+    for rel_path, src_hash in src_hashes.items():
+        src_file = src_dir / rel_path
+        dst_file = dst_dir / rel_path
+        processed_files.add(rel_path)
+
+        if not dst_file.exists():
+            # New file
+            dst_file.parent.mkdir(parents=True, exist_ok=True)
+            if dry_run:
+                console.print(f"    [green]Would add: {rel_path}[/green]")
+            else:
+                if verbose:
+                    console.print(f"    [green]Adding: {rel_path}[/green]")
+                shutil.copy2(src_file, dst_file)
+
+            if hasattr(summary, f"{category}_added"):
+                getattr(summary, f"{category}_added").append(rel_path)
+            summary.files_changed += 1
+        else:
+            # File exists - compare hashes
+            dst_hash = compute_file_hash(dst_file)
+            if src_hash != dst_hash:
+                if dry_run:
+                    console.print(f"    [yellow]Would update: {rel_path}[/yellow]")
+                else:
+                    if verbose:
+                        console.print(f"    [green]Updating: {rel_path}[/green]")
+                    shutil.copy2(src_file, dst_file)
+
+                if hasattr(summary, f"{category}_updated"):
+                    getattr(summary, f"{category}_updated").append(rel_path)
+                summary.files_changed += 1
+            else:
+                if verbose:
+                    console.print(f"    [dim]Unchanged: {rel_path}[/dim]")
+                if hasattr(summary, f"{category}_unchanged"):
+                    getattr(summary, f"{category}_unchanged").append(rel_path)
+
+    if verbose and not processed_files:
+        console.print(f"  [dim]No files found in {src_dir}[/dim]")
+
+
+def check_typescript_files_changed(hooks_dir: Path) -> bool:
+    """Check if any TypeScript files have changed.
+
+    Args:
+        hooks_dir: Path to hooks directory
+
+    Returns:
+        True if any .ts files exist and may need rebuilding
+    """
+    if not hooks_dir.exists():
+        return False
+
+    for ts_file in hooks_dir.glob("*.ts"):
+        if ts_file.exists():
+            return True
+    return False
+
+
+def run_update_mode(
+    dry_run: bool = False,
+    force: bool = False,
+    verbose: bool = False,
+    skip_git: bool = False,
+) -> dict[str, Any]:
+    """Run the update mode - pull latest and sync changes.
+
+    Args:
+        dry_run: If True, only preview changes
+        force: If True, skip confirmations
+        verbose: If True, show detailed output
+        skip_git: If True, skip git pull
+
+    Returns:
+        Dict with update results
+    """
+    result = {
+        "success": False,
+        "git_updated": False,
+        "summary": None,
+        "error": None,
+    }
+
+    summary = UpdateSummary()
+
+    try:
+        # Get paths
+        script_dir = Path(__file__).parent
+        opc_root = script_dir.parent.parent
+        project_root = opc_root.parent
+        opc_source = project_root / ".claude"
+        claude_dir = Path.home() / ".claude"
+
+        console.print(Panel.fit("[bold]OPC v3 - UPDATE MODE[/bold]", border_style="green"))
+        console.print("\n[bold]Pulling latest changes...[/bold]")
+
+        # Step 1: Pull latest from git
+        if not skip_git:
+            success, msg = git_pull(project_root)
+            if success:
+                console.print(f"  [green]OK[/green] {msg}")
+                result["git_updated"] = True
+            else:
+                console.print(f"  [yellow]WARN[/yellow] {msg}")
+                console.print("  [dim]Continuing with local files...[/dim]")
+        else:
+            console.print("  [dim]Skipping git pull (--skip-git)[/dim]")
+
+        console.print("\n[bold]Syncing integration files...[/bold]")
+
+        # Step 2: Sync hooks
+        console.print("\n  [bold]Hooks:[/bold]")
+        sync_directory_update(
+            opc_source / "hooks",
+            claude_dir / "hooks",
+            summary,
+            "hooks",
+            extensions=(".sh", ".ts", ".py"),
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 3: Sync skills
+        console.print("\n  [bold]Skills:[/bold]")
+        sync_directory_update(
+            opc_source / "skills",
+            claude_dir / "skills",
+            summary,
+            "skills",
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 4: Sync rules
+        console.print("\n  [bold]Rules:[/bold]")
+        sync_directory_update(
+            opc_source / "rules",
+            claude_dir / "rules",
+            summary,
+            "rules",
+            extensions=(".md",),
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 5: Sync agents
+        console.print("\n  [bold]Agents:[/bold]")
+        sync_directory_update(
+            opc_source / "agents",
+            claude_dir / "agents",
+            summary,
+            "agents",
+            extensions=(".md",),
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 6: Sync servers (MCP tool wrappers)
+        console.print("\n  [bold]Servers:[/bold]")
+        sync_directory_update(
+            opc_source / "servers",
+            claude_dir / "servers",
+            summary,
+            "servers",
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 7: Sync settings.json
+        opc_settings = opc_source / "settings.json"
+        dst_settings = claude_dir / "settings.json"
+        if opc_settings.exists():
+            console.print("\n  [bold]Settings:[/bold]")
+            copy_file_if_changed(
+                opc_settings,
+                dst_settings,
+                summary,
+                "settings",
+                dry_run=dry_run,
+                verbose=verbose,
+            )
+
+        # Step 8: Sync scripts/core/
+        console.print("\n  [bold]Scripts (core):[/bold]")
+        sync_directory_update(
+            opc_root / "scripts" / "core",
+            claude_dir / "scripts" / "core",
+            summary,
+            "scripts",
+            extensions=(".py",),
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 9: Sync scripts/mathlib/
+        console.print("\n  [bold]Scripts (mathlib):[/bold]")
+        sync_directory_update(
+            opc_root / "scripts" / "mathlib",
+            claude_dir / "scripts" / "mathlib",
+            summary,
+            "scripts",
+            extensions=(".py",),
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 10: Sync scripts/tldr/
+        console.print("\n  [bold]Scripts (tldr):[/bold]")
+        sync_directory_update(
+            opc_root / "scripts" / "tldr",
+            claude_dir / "scripts" / "tldr",
+            summary,
+            "scripts",
+            extensions=(".py",),
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        # Step 11: Rebuild TypeScript hooks if needed
+        if check_typescript_files_changed(claude_dir / "hooks"):
+            console.print("\n[bold]TypeScript hooks detected...[/bold]")
+            if dry_run:
+                console.print("  [yellow]Would rebuild TypeScript hooks[/yellow]")
+            else:
+                success, msg = build_typescript_hooks(claude_dir / "hooks")
+                if success:
+                    console.print(f"  [green]OK[/green] {msg}")
+                    summary.typescript_rebuilt = True
+                else:
+                    console.print(f"  [yellow]WARN[/yellow] {msg}")
+                    console.print("  [dim]Build manually: cd ~/.claude/hooks && npm install && npm run build[/dim]")
+
+        # Show summary
+        console.print("\n" + "=" * 60)
+        console.print("[bold]Update Summary[/bold]")
+
+        if dry_run:
+            console.print("[yellow](DRY RUN - no changes made)[/yellow]")
+            console.print("")
+
+        changes = summary.total_changes
+        unchanged = (
+            len(summary.hooks_unchanged)
+            + len(summary.skills_unchanged)
+            + len(summary.rules_unchanged)
+            + len(summary.agents_unchanged)
+            + len(summary.servers_unchanged)
+            + len(summary.scripts_unchanged)
+        )
+
+        console.print(f"  Files changed: {changes}")
+        console.print(f"  Files unchanged: {unchanged}")
+
+        if changes > 0:
+            console.print("\n  [bold]Changed files:[/bold]")
+            if summary.hooks_added:
+                console.print(f"    [green]+[/green] Hooks: {', '.join(summary.hooks_added)}")
+            if summary.hooks_updated:
+                console.print(f"    [yellow]~[/yellow] Hooks: {', '.join(summary.hooks_updated)}")
+            if summary.skills_added:
+                console.print(f"    [green]+[/green] Skills: {', '.join(summary.skills_added)}")
+            if summary.skills_updated:
+                console.print(f"    [yellow]~[/yellow] Skills: {', '.join(summary.skills_updated)}")
+            if summary.rules_added:
+                console.print(f"    [green]+[/green] Rules: {', '.join(summary.rules_added)}")
+            if summary.rules_updated:
+                console.print(f"    [yellow]~[/yellow] Rules: {', '.join(summary.rules_updated)}")
+            if summary.agents_added:
+                console.print(f"    [green]+[/green] Agents: {', '.join(summary.agents_added)}")
+            if summary.agents_updated:
+                console.print(f"    [yellow]~[/yellow] Agents: {', '.join(summary.agents_updated)}")
+            if summary.servers_added:
+                console.print(f"    [green]+[/green] Servers: {', '.join(summary.servers_added)}")
+            if summary.servers_updated:
+                console.print(f"    [yellow]~[/yellow] Servers: {', '.join(summary.servers_updated)}")
+
+            if summary.typescript_rebuilt:
+                console.print("\n  [green]TypeScript hooks rebuilt[/green]")
+
+        if dry_run:
+            console.print("\n[bold]To apply changes, run without --dry-run:[/bold]")
+            console.print("  python -m scripts.setup.wizard --update")
+        else:
+            console.print("\n[bold green]Update complete![/bold green]")
+
+        result["success"] = not dry_run or changes > 0
+        result["summary"] = summary
+
+    except Exception as e:
+        result["error"] = str(e)
+        console.print(f"\n[red]Error during update: {e}[/red]")
+
+    return result
 
 
 # =============================================================================
@@ -483,6 +1097,9 @@ async def run_setup_wizard() -> None:
         Panel.fit("[bold]CLAUDE CONTINUITY KIT v3 - SETUP WIZARD[/bold]", border_style="blue")
     )
 
+    # Determine project root (opc/ directory)
+    project_root = Path.cwd()
+
     # Step 0: Backup global ~/.claude (safety first)
     console.print("\n[bold]Step 0/12: Backing up global Claude configuration...[/bold]")
     from scripts.setup.claude_integration import (
@@ -858,18 +1475,34 @@ async def run_setup_wizard() -> None:
     console.print("")
     console.print("  [dim]Note: First semantic search downloads ~1.3GB embedding model.[/dim]")
 
+    # Check for local llm-tldr fork
+    local_tldr_path = project_root / "packages" / "llm-tldr"
+    use_local = local_tldr_path.exists() and (local_tldr_path / "pyproject.toml").exists()
+
+    if use_local:
+        console.print(f"  [green]Using local fork: {local_tldr_path}[/green]")
+
     if Confirm.ask("\nInstall TLDR code analysis tool?", default=True):
         console.print("  Installing TLDR...")
         import subprocess
 
         try:
-            # Install from PyPI
-            result = subprocess.run(
-                ["uv", "pip", "install", "llm-tldr"],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
+            if use_local:
+                # Install from local path using pip install -e
+                result = subprocess.run(
+                    ["uv", "pip", "install", "-e", str(local_tldr_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+            else:
+                # Install from PyPI
+                result = subprocess.run(
+                    ["uv", "pip", "install", "llm-tldr"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
 
             if result.returncode == 0:
                 console.print("  [green]OK[/green] TLDR installed")
@@ -978,7 +1611,10 @@ async def run_setup_wizard() -> None:
             else:
                 console.print("  [red]ERROR[/red] Installation failed")
                 console.print(f"       {result.stderr[:200]}")
-                console.print("  You can install manually with: pip install llm-tldr")
+                if use_local:
+                    console.print("  Try installing from PyPI: pip install llm-tldr")
+                else:
+                    console.print("  You can install manually with: pip install llm-tldr")
         except subprocess.TimeoutExpired:
             console.print("  [yellow]WARN[/yellow] Installation timed out")
             console.print("  You can install manually with: pip install llm-tldr")
@@ -1164,7 +1800,7 @@ async def run_setup_wizard() -> None:
                 console.print(f"  [yellow]WARN[/yellow] loogle_search.py not found at {src_script}")
 
             console.print("")
-            console.print("  [dim]Usage: loogle-search \"Nontrivial _ ↔ _\"[/dim]")
+            console.print('  [dim]Usage: loogle-search "Nontrivial _ ↔ _"[/dim]')
             console.print("  [dim]Or use /prove skill which calls it automatically[/dim]")
     else:
         console.print("  Skipped Loogle installation")
@@ -1182,16 +1818,175 @@ async def run_setup_wizard() -> None:
     console.print("  2. View docs: [bold]docs/QUICKSTART.md[/bold]")
 
 
+def run_validate_mode(json_output: bool = False) -> dict:
+    """Run validation checks on the installation.
+
+    Args:
+        json_output: If True, output results as JSON
+
+    Returns:
+        dict with validation results
+    """
+    from scripts.setup.claude_integration import get_global_claude_dir
+
+    if not json_output:
+        console.print("\n[bold]OPC v3 - VALIDATION MODE[/bold]\n")
+
+    claude_dir = get_global_claude_dir()
+    results = {
+        "all_passed": True,
+        "checks": [],
+        "summary": {"passed": 0, "failed": 0, "warnings": 0},
+    }
+
+    # Helper to run a validation check
+    def check(name: str, condition: bool, details: str = "") -> bool:
+        status = "PASS" if condition else "FAIL"
+        if not condition:
+            results["all_passed"] = False
+            results["summary"]["failed"] += 1
+        else:
+            results["summary"]["passed"] += 1
+
+        check_result = {"name": name, "status": status, "details": details}
+        results["checks"].append(check_result)
+
+        if json_output:
+            return condition
+
+        if condition:
+            console.print(f"  [green]✓[/green] {name}")
+        else:
+            console.print(f"  [red]✗[/green] {name}")
+            if details:
+                console.print(f"      [yellow]{details}[/yellow]")
+        return condition
+
+    # Check 1: Directory exists
+    check("Global .claude directory exists", claude_dir.exists(),
+          str(claude_dir))
+
+    if not claude_dir.exists():
+        console.print("  [red]Cannot continue - ~/.claude/ not found[/red]")
+        return results
+
+    # Check 2: settings.json exists and is valid
+    settings_path = claude_dir / "settings.json"
+    settings_valid = False
+    settings_content = None
+    if settings_path.exists():
+        try:
+            settings_content = json.loads(settings_path.read_text())
+            settings_valid = True
+        except json.JSONDecodeError as e:
+            pass
+    check("settings.json is valid JSON", settings_valid, str(settings_path))
+
+    # Check 3: hooks/dist directory exists
+    hooks_dist = claude_dir / "hooks" / "dist"
+    check("hooks/dist directory exists", hooks_dist.exists())
+
+    # Check 4: Built hooks exist
+    hook_count = 0
+    if hooks_dist.exists():
+        hook_count = len(list(hooks_dist.glob("*.mjs")))
+    check(f"Built hooks present ({hook_count} files)", hook_count > 0,
+          f"Found {hook_count} hook files")
+
+    # Check 5: skills directory has content
+    skills_dir = claude_dir / "skills"
+    skill_count = 0
+    if skills_dir.exists():
+        skill_count = len([d for d in skills_dir.iterdir() if d.is_dir()])
+    check(f"Skills installed ({skill_count} skills)", skill_count > 0,
+          f"Found {skill_count} skill directories")
+
+    # Check 6: rules directory has content
+    rules_dir = claude_dir / "rules"
+    rule_count = 0
+    if rules_dir.exists():
+        rule_count = len(list(rules_dir.glob("*.md")))
+    check(f"Rules installed ({rule_count} rules)", rule_count > 0,
+          f"Found {rule_count} rule files")
+
+    # Check 7: agents directory has content
+    agents_dir = claude_dir / "agents"
+    agent_count = 0
+    if agents_dir.exists():
+        agent_count = len(list(agents_dir.glob("*.md")))
+    check(f"Agents installed ({agent_count} agents)", agent_count > 0,
+          f"Found {agent_count} agent files")
+
+    # Check 8: Scripts are executable
+    scripts_dir = claude_dir / "scripts"
+    if scripts_dir.exists():
+        shell_scripts = list(scripts_dir.rglob("*.sh"))
+        non_executable = [s for s in shell_scripts if not (s.stat().st_mode & 0o111)]
+        check(f"All shell scripts executable ({len(shell_scripts)} scripts)",
+              len(non_executable) == 0,
+              f"{len(non_executable)} non-executable" if non_executable else "")
+
+    # Check 9: MCP config
+    mcp_path = claude_dir / "mcp_config.json"
+    mcp_valid = False
+    if mcp_path.exists():
+        try:
+            mcp_content = json.loads(mcp_path.read_text())
+            mcp_valid = "mcpServers" in mcp_content
+        except json.JSONDecodeError:
+            pass
+    check("mcp_config.json is valid", mcp_valid or not mcp_path.exists(),
+          str(mcp_path) if mcp_path.exists() else "(not found - optional)")
+
+    # Print summary
+    if not json_output:
+        console.print(f"\n{'=' * 60}")
+        console.print(f"[bold]Validation Summary[/bold]")
+        console.print(f"  Passed: {results['summary']['passed']}")
+        console.print(f"  Failed: {results['summary']['failed']}")
+        if results["all_passed"]:
+            console.print("  [green]All checks passed![/green]")
+        else:
+            console.print("  [red]Some checks failed - review above[/red]")
+    else:
+        import json as json_mod
+        console.print(json_mod.dumps(results, indent=2))
+
+    return results
+
+
 async def main():
     """Entry point for the setup wizard."""
-    try:
-        await run_setup_wizard()
-    except KeyboardInterrupt:
-        console.print("\n\n[yellow]Setup cancelled.[/yellow]")
-        sys.exit(130)
-    except Exception as e:
-        console.print(f"\n[red]Error: {rich_escape(str(e))}[/red]")
-        sys.exit(1)
+    args = parse_args()
+
+    if args.command == "validate":
+        # Run validation mode
+        from scripts.setup.claude_integration import get_global_claude_dir
+        result = run_validate_mode(
+            json_output=args.json,
+        )
+        sys.exit(0 if result["all_passed"] else 1)
+
+    elif args.update:
+        # Run update mode (synchronous, no async needed)
+        result = run_update_mode(
+            dry_run=args.dry_run,
+            force=args.force,
+            verbose=args.verbose,
+            skip_git=args.skip_git,
+        )
+        if not result["success"]:
+            sys.exit(1)
+    else:
+        # Run interactive install wizard
+        try:
+            await run_setup_wizard()
+        except KeyboardInterrupt:
+            console.print("\n\n[yellow]Setup cancelled.[/yellow]")
+            sys.exit(130)
+        except Exception as e:
+            console.print(f"\n[red]Error: {rich_escape(str(e))}[/red]")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

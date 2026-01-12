@@ -589,3 +589,267 @@ def get_platform_info() -> dict[str, str]:
         "release": platform.release(),
         "machine": platform.machine(),
     }
+
+
+# Protected fields that should never be modified
+PROTECTED_FIELDS = frozenset({"env", "attribution"})
+
+
+def merge_settings(
+    user_settings: dict[str, Any],
+    repo_settings: dict[str, Any],
+) -> tuple[dict[str, Any], list[str], list[str], list[str]]:
+    """Merge user and repository settings intelligently.
+
+    PROTECTED FIELDS (never touched):
+    - `env` - all API keys and tokens
+    - `attribution` - commit/PR fields
+    - Any field starting with "custom_" prefix
+
+    NEW FIELD ADDITION:
+    - If field exists in repo but not user, add it
+    - If field exists in both, merge intelligently:
+      - For hooks: deep merge (add new hooks, keep existing)
+      - For mcpServers: merge servers, preserve env/* in each
+      - For other objects: user values win
+
+    Args:
+        user_settings: User's current settings.json
+        repo_settings: Settings from repository's .claude/settings.json
+
+    Returns:
+        tuple: (merged_settings, fields_added, fields_preserved, warnings)
+    """
+    merged: dict[str, Any] = {}
+    fields_added: list[str] = []
+    fields_preserved: list[str] = []
+    warnings: list[str] = []
+
+    # Collect all unique keys from both settings
+    all_keys = set(user_settings.keys()) | set(repo_settings.keys())
+
+    for key in all_keys:
+        user_val = user_settings.get(key)
+        repo_val = repo_settings.get(key)
+
+        # Check if protected (env, attribution, or custom_*)
+        is_protected = key in PROTECTED_FIELDS or key.startswith("custom_")
+        if is_protected:
+            if user_val is not None:
+                merged[key] = user_val
+                fields_preserved.append(key)
+            elif repo_val is not None:
+                merged[key] = repo_val
+                warnings.append(f"Protected field '{key}' was in repo but not in user settings - using repo value")
+                fields_added.append(key)
+            continue
+
+        # Both have the field
+        if user_val is not None and repo_val is not None:
+            merged[key] = _merge_values(user_val, repo_val, key, fields_preserved, fields_added, warnings)
+            if key not in fields_added:
+                fields_preserved.append(key)
+
+        # Only user has it
+        elif user_val is not None:
+            merged[key] = user_val
+            fields_preserved.append(key)
+
+        # Only repo has it
+        elif repo_val is not None:
+            merged[key] = repo_val
+            fields_added.append(key)
+
+    return merged, fields_added, fields_preserved, warnings
+
+
+def _merge_values(
+    user_val: Any,
+    repo_val: Any,
+    key: str,
+    fields_preserved: list[str],
+    fields_added: list[str],
+    warnings: list[str],
+) -> Any:
+    """Merge two values based on their types.
+
+    Args:
+        user_val: User's value
+        repo_val: Repository's value
+        key: Field name for context
+        fields_preserved: List to append preserved field names
+        fields_added: List to append added field names
+        warnings: List to append warnings
+
+    Returns:
+        Merged value
+    """
+    # Both are dicts - special handling for hooks and mcpServers
+    if isinstance(user_val, dict) and isinstance(repo_val, dict):
+        if key == "hooks":
+            return _merge_hooks(user_val, repo_val, fields_preserved, fields_added, warnings)
+        elif key == "mcpServers":
+            return _merge_mcps(user_val, repo_val, fields_preserved, fields_added, warnings)
+        else:
+            # For other objects: user values win
+            return user_val
+
+    # Both are lists - concatenate
+    elif isinstance(user_val, list) and isinstance(repo_val, list):
+        return user_val + repo_val
+
+    # User value takes precedence for primitives
+    elif user_val is not None:
+        return user_val
+    else:
+        return repo_val
+
+
+def _merge_hooks(
+    user_hooks: dict[str, Any],
+    repo_hooks: dict[str, Any],
+    fields_preserved: list[str],
+    fields_added: list[str],
+    warnings: list[str],
+) -> dict[str, Any]:
+    """Deep merge hooks - add new hook types, keep existing hook arrays.
+
+    Args:
+        user_hooks: User's hooks configuration
+        repo_hooks: Repository's hooks configuration
+        fields_preserved: List to append preserved field names
+        fields_added: List to append added field names
+        warnings: List to append warnings
+
+    Returns:
+        Merged hooks configuration
+    """
+    merged: dict[str, Any] = {}
+    all_hook_types = set(user_hooks.keys()) | set(repo_hooks.keys())
+
+    for hook_type in all_hook_types:
+        user_hook = user_hooks.get(hook_type)
+        repo_hook = repo_hooks.get(hook_type)
+
+        if user_hook is not None and repo_hook is not None:
+            # Both have this hook type - merge arrays, keeping order: user first
+            if isinstance(user_hook, list) and isinstance(repo_hook, list):
+                # Merge by combining unique entries based on command
+                merged_commands = _unique_hooks_by_command(user_hook + repo_hook)
+                merged[hook_type] = merged_commands
+                fields_preserved.append(f"hooks.{hook_type}")
+            else:
+                # Different types - user wins
+                merged[hook_type] = user_hook
+                fields_preserved.append(f"hooks.{hook_type}")
+
+        elif user_hook is not None:
+            # Only user has this hook type
+            merged[hook_type] = user_hook
+            fields_preserved.append(f"hooks.{hook_type}")
+
+        elif repo_hook is not None:
+            # Only repo has this hook type
+            merged[hook_type] = repo_hook
+            fields_added.append(f"hooks.{hook_type}")
+
+    return merged
+
+
+def _merge_mcps(
+    user_mcps: dict[str, Any],
+    repo_mcps: dict[str, Any],
+    fields_preserved: list[str],
+    fields_added: list[str],
+    warnings: list[str],
+) -> dict[str, Any]:
+    """Merge mcpServers - merge server configs, preserve env/* in each.
+
+    Args:
+        user_mcps: User's MCP servers configuration
+        repo_mcps: Repository's MCP servers configuration
+        fields_preserved: List to append preserved field names
+        fields_added: List to append added field names
+        warnings: List to append warnings
+
+    Returns:
+        Merged MCP servers configuration
+    """
+    merged: dict[str, Any] = {}
+    all_servers = set(user_mcps.keys()) | set(repo_mcps.keys())
+
+    for server_name in all_servers:
+        user_mcp = user_mcps.get(server_name)
+        repo_mcp = repo_mcps.get(server_name)
+
+        if user_mcp is not None and repo_mcp is not None:
+            # Both have this server - merge intelligently
+            if isinstance(user_mcp, dict) and isinstance(repo_mcp, dict):
+                merged_server: dict[str, Any] = {}
+
+                # All keys from both configs
+                all_keys = set(user_mcp.keys()) | set(repo_mcp.keys())
+
+                for config_key in all_keys:
+                    user_val = user_mcp.get(config_key)
+                    repo_val = repo_mcp.get(config_key)
+
+                    if config_key == "env":
+                        # Preserve both env configs - they may have different vars
+                        if isinstance(user_val, dict) and isinstance(repo_val, dict):
+                            merged_env = dict(repo_val)  # Start with repo base
+                            merged_env.update(user_val)  # User values override
+                            merged_server["env"] = merged_env
+                        elif user_val is not None:
+                            merged_server["env"] = user_val
+                        else:
+                            merged_server["env"] = repo_val
+                    elif user_val is not None:
+                        # User values win for other keys
+                        merged_server[config_key] = user_val
+                    else:
+                        merged_server[config_key] = repo_val
+
+                merged[server_name] = merged_server
+                fields_preserved.append(f"mcpServers.{server_name}")
+            else:
+                # Different types - user wins
+                merged[server_name] = user_mcp
+                fields_preserved.append(f"mcpServers.{server_name}")
+
+        elif user_mcp is not None:
+            # Only user has this server
+            merged[server_name] = user_mcp
+            fields_preserved.append(f"mcpServers.{server_name}")
+
+        elif repo_mcp is not None:
+            # Only repo has this server
+            merged[server_name] = repo_mcp
+            fields_added.append(f"mcpServers.{server_name}")
+
+    return merged
+
+
+def _unique_hooks_by_command(hooks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove duplicate hooks based on command, preserving order.
+
+    Args:
+        hooks: List of hook configurations
+
+    Returns:
+        List with duplicate commands removed (first occurrence kept)
+    """
+    seen_commands: dict[str, int] = {}
+    result: list[dict[str, Any]] = []
+
+    for hook in hooks:
+        if isinstance(hook, dict):
+            command = hook.get("command", "")
+            if command and command not in seen_commands:
+                seen_commands[command] = len(result)
+                result.append(hook)
+        else:
+            # Non-dict entries (unlikely but safe)
+            result.append(hook)
+
+    return result
