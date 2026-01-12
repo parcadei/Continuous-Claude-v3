@@ -1,0 +1,583 @@
+# Continuous-Claude-v3 Prometheus Alert Rules
+# Severity Levels: P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+# Generated: 2026-01-11
+
+groups:
+  # =============================================================================
+  # A. AVAILABILITY ALERTS
+  # =============================================================================
+
+  - name: availability
+    rules:
+
+      # P0: Daemon Not Running
+      - alert: DaemonNotRunning
+        expr: absent(up{job="memory-daemon"} == 1)
+        for: 1m
+        labels:
+          severity: P0
+          category: availability
+        annotations:
+          summary: "Memory daemon is not running"
+          description: "The memory extraction daemon has stopped or crashed. Immediate restart required."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#daemon-not-running"
+          priority: "critical"
+
+      # P0: PostgreSQL Unreachable
+      - alert: PostgreSQLUnreachable
+        expr: pg_up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: P0
+          category: availability
+        annotations:
+          summary: "PostgreSQL is unreachable"
+          description: "Cannot connect to PostgreSQL database. Check container status and network."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#postgresql-unreachable"
+          priority: "critical"
+
+      # P1: PostgreSQL Container Down
+      - alert: PostgreSQLContainerDown
+        expr: container_last_seen{container="continuous-claude-postgres"} == 0
+        for: 2m
+        labels:
+          severity: P1
+          category: availability
+        annotations:
+          summary: "PostgreSQL container is down"
+          description: "Docker container for PostgreSQL has stopped. Check docker logs for errors."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#postgresql-container-down"
+          priority: "high"
+
+      # P1: Memory Daemon Health Check Failed
+      - alert: MemoryDaemonHealthCheckFailed
+        expr: memory_daemon_health_status != 1
+        for: 3m
+        labels:
+          severity: P1
+          category: availability
+        annotations:
+          summary: "Memory daemon health check failed"
+          description: "Memory daemon is running but health endpoint returns error."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#memory-daemon-health"
+          priority: "high"
+
+      # P2: MCP Client Disconnected
+      - alert: MCPClientDisconnected
+        expr: mcp_client_connected != 1
+        for: 5m
+        labels:
+          severity: P2
+          category: availability
+        annotations:
+          summary: "MCP client is disconnected"
+          description: "Model Context Protocol client has disconnected. Some features may be unavailable."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-disconnected"
+          priority: "medium"
+
+      # P3: Session Heartbeat Stale
+      - alert: SessionHeartbeatStale
+        expr: time() - session_last_heartbeat > 600
+        for: 10m
+        labels:
+          severity: P3
+          category: availability
+        annotations:
+          summary: "Session heartbeat is stale"
+          description: "No heartbeat received from session for over 10 minutes. Session may be idle."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#heartbeat-stale"
+          priority: "low"
+
+  # =============================================================================
+  # B. PERFORMANCE ALERTS
+  # =============================================================================
+
+  - name: performance
+    rules:
+
+      # P0: Query Latency Critical
+      - alert: QueryLatencyP95Critical
+        expr: pg_stat_statements_p95_ms > 5000
+        for: 5m
+        labels:
+          severity: P0
+          category: performance
+        annotations:
+          summary: "Database query latency p95 > 5s"
+          description: "95th percentile query latency is over 5 seconds. Immediate investigation required."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#query-latency"
+          priority: "critical"
+
+      # P1: Query Latency High
+      - alert: QueryLatencyP95High
+        expr: pg_stat_statements_p95_ms > 2000
+        for: 10m
+        labels:
+          severity: P1
+          category: performance
+        annotations:
+          summary: "Database query latency p95 > 2s"
+          description: "95th percentile query latency is over 2 seconds. Performance degradation detected."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#query-latency"
+          priority: "high"
+
+      # P1: Memory Usage High
+      - alert: MemoryUsageHigh
+        expr: (1 - (memory_available_bytes / memory_total_bytes)) > 0.80
+        for: 5m
+        labels:
+          severity: P1
+          category: performance
+        annotations:
+          summary: "Memory usage > 80%"
+          description: "System memory usage is above 80%. Consider scaling resources."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#memory-usage"
+          priority: "high"
+
+      # P0: Memory Usage Critical
+      - alert: MemoryUsageCritical
+        expr: (1 - (memory_available_bytes / memory_total_bytes)) > 0.95
+        for: 2m
+        labels:
+          severity: P0
+          category: performance
+        annotations:
+          summary: "Memory usage > 95% - OOM risk"
+          description: "Memory usage is critical. System may run out of memory soon."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#memory-critical"
+          priority: "critical"
+
+      # P1: CPU Usage Sustained High
+      - alert: CPUUsageSustainedHigh
+        expr: 100 - (avg by(instance) (rate(cpu_idle_seconds_total[5m])) * 100) > 90
+        for: 15m
+        labels:
+          severity: P1
+          category: performance
+        annotations:
+          summary: "CPU usage > 90% for 15 minutes"
+          description: "CPU usage has been sustained above 90% for 15 minutes."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#cpu-usage"
+          priority: "high"
+
+      # P2: Queue Backlog Growing
+      - alert: QueueBacklogGrowing
+        expr: increase(extraction_queue_length[10m]) > 100
+        labels:
+          severity: P2
+          category: performance
+        annotations:
+          summary: "Extraction queue backlog growing"
+          description: "Memory extraction queue backlog has increased significantly."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#queue-backlog"
+          priority: "medium"
+
+      # P2: Connection Pool Near Maximum
+      - alert: ConnectionPoolNearMax
+        expr: pg_pool_connections_active / pg_pool_connections_max > 0.8
+        for: 5m
+        labels:
+          severity: P2
+          category: performance
+        annotations:
+          summary: "Connection pool utilization > 80%"
+          description: "Database connection pool is approaching maximum capacity."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#connection-pool"
+          priority: "medium"
+
+      # P2: Embedding Generation Slow
+      - alert: EmbeddingGenerationSlow
+        expr: embedding_generation_duration_seconds_p95 > 5
+        for: 10m
+        labels:
+          severity: P2
+          category: performance
+        annotations:
+          summary: "Embedding generation p95 > 5s"
+          description: "95th percentile embedding generation time is over 5 seconds."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#embedding-latency"
+          priority: "medium"
+
+  # =============================================================================
+  # C. ERROR ALERTS
+  # =============================================================================
+
+  - name: errors
+    rules:
+
+      # P0: Error Rate Critical
+      - alert: ErrorRateCritical
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.10
+        for: 5m
+        labels:
+          severity: P0
+          category: errors
+        annotations:
+          summary: "Error rate > 10%"
+          description: "HTTP request error rate has exceeded 10%. Multiple 5xx errors detected."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#error-rate"
+          priority: "critical"
+
+      # P1: Error Rate High
+      - alert: ErrorRateHigh
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: P1
+          category: errors
+        annotations:
+          summary: "Error rate > 5%"
+          description: "HTTP request error rate has exceeded 5%."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#error-rate"
+          priority: "high"
+
+      # P0: Connection Pool Exhausted
+      - alert: ConnectionPoolExhausted
+        expr: pg_pool_connections_available == 0
+        for: 2m
+        labels:
+          severity: P0
+          category: errors
+        annotations:
+          summary: "Connection pool exhausted"
+          description: "No database connections available. Requests are being rejected."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#pool-exhausted"
+          priority: "critical"
+
+      # P1: Failed Extractions
+      - alert: FailedExtractions
+        expr: increase(extraction_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: P1
+          category: errors
+        annotations:
+          summary: "Multiple extraction failures"
+          description: "Memory extraction has failed multiple times in the last 5 minutes."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#extraction-failures"
+          priority: "high"
+
+      # P1: Embedding Failures
+      - alert: EmbeddingFailures
+        expr: increase(embedding_errors_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: P1
+          category: errors
+        annotations:
+          summary: "Embedding generation failures"
+          description: "Multiple embedding generation failures detected. Check API keys and connectivity."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#embedding-failures"
+          priority: "high"
+
+      # P2: PostgreSQL Replication Lag
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: P2
+          category: errors
+        annotations:
+          summary: "PostgreSQL replication lag > 30s"
+          description: "Database replication lag is above 30 seconds."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#replication-lag"
+          priority: "medium"
+
+      # P2: Deadlock Detected
+      - alert: DeadlockDetected
+        expr: increase(pg_stat_database_deadlocks[5m]) > 0
+        labels:
+          severity: P2
+          category: errors
+        annotations:
+          summary: "Database deadlock detected"
+          description: "A database deadlock was detected and resolved. Review query patterns."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#deadlock"
+          priority: "medium"
+
+      # P3: Validation Errors
+      - alert: ValidationErrors
+        expr: increase(validation_errors_total[1h]) > 100
+        for: 10m
+        labels:
+          severity: P3
+          category: errors
+        annotations:
+          summary: "High validation error rate"
+          description: "More than 100 validation errors in the last hour."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#validation-errors"
+          priority: "low"
+
+  # =============================================================================
+  # D. CAPACITY ALERTS
+  # =============================================================================
+
+  - name: capacity
+    rules:
+
+      # P0: Disk Space Critical
+      - alert: DiskSpaceCritical
+        expr: (1 - (disk_available_bytes / disk_total_bytes)) > 0.90
+        for: 5m
+        labels:
+          severity: P0
+          category: capacity
+        annotations:
+          summary: "Disk space < 10% remaining"
+          description: "Less than 10% disk space remaining. Immediate cleanup required."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#disk-space"
+          priority: "critical"
+
+      # P1: Disk Space Warning
+      - alert: DiskSpaceWarning
+        expr: (1 - (disk_available_bytes / disk_total_bytes)) > 0.85
+        for: 10m
+        labels:
+          severity: P1
+          category: capacity
+        annotations:
+          summary: "Disk space < 15% remaining"
+          description: "Less than 15% disk space remaining. Plan cleanup soon."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#disk-space"
+          priority: "high"
+
+      # P2: PostgreSQL Connections Near Max
+      - alert: PostgreSQLConnectionsNearMax
+        expr: pg_stat_activity_count / pg_max_connections > 0.8
+        for: 10m
+        labels:
+          severity: P2
+          category: capacity
+        annotations:
+          summary: "PostgreSQL connections > 80% of max"
+          description: "Database connections are approaching the configured maximum."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#pg-connections"
+          priority: "medium"
+
+      # P2: Cache Hit Rate Declining
+      - alert: CacheHitRateDeclining
+        expr: rate(cache_hits_total[1h]) / rate(cache_requests_total[1h]) < 0.5
+        for: 1h
+        labels:
+          severity: P2
+          category: capacity
+        annotations:
+          summary: "Cache hit rate < 50%"
+          description: "Cache hit rate has dropped below 50%. Cache may be ineffective."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#cache-hit-rate"
+          priority: "medium"
+
+      # P3: Table Size Growing
+      - alert: TableSizeGrowing
+        expr: increase(pg_total_relation_size_bytes{service="continuous_claude"}[24h]) > 10737418240
+        labels:
+          severity: P3
+          category: capacity
+        annotations:
+          summary: "Database table growing rapidly"
+          description: "Database table has grown by more than 10GB in 24 hours."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#table-growth"
+          priority: "low"
+
+      # P3: Session Count High
+      - alert: SessionCountHigh
+        expr: sessions_active_count > 100
+        for: 30m
+        labels:
+          severity: P3
+          category: capacity
+        annotations:
+          summary: "Active sessions > 100"
+          description: "Number of active sessions is unusually high."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#session-count"
+          priority: "low"
+
+      # P3: Open File Descriptors High
+      - alert: OpenFileDescriptorsHigh
+        expr: process_open_fds / process_max_fds > 0.8
+        for: 10m
+        labels:
+          severity: P3
+          category: capacity
+        annotations:
+          summary: "Open file descriptors > 80%"
+          description: "Process is approaching the limit for open file descriptors."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#file-descriptors"
+          priority: "low"
+
+  # =============================================================================
+  # E. BUSINESS METRICS ALERTS
+  # =============================================================================
+
+  - name: business
+    rules:
+
+      # P2: Learning Storage Failures
+      - alert: LearningStorageFailures
+        expr: increase(store_learning_errors_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: P2
+          category: business
+        annotations:
+          summary: "Learning storage failures"
+          description: "Failed to store new learnings to memory."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#learning-storage"
+          priority: "medium"
+
+      # P2: Recall Query Failures
+      - alert: RecallQueryFailures
+        expr: increase(recall_query_errors_total[1h]) > 5
+        for: 10m
+        labels:
+          severity: P2
+          category: business
+        annotations:
+          summary: "Recall query failures"
+          description: "Multiple recall queries have failed. Semantic search may be unavailable."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#recall-failures"
+          priority: "medium"
+
+      # P3: Low Memory Extraction Rate
+      - alert: LowExtractionRate
+        expr: rate(extraction_success_total[24h]) < 0.1
+        for: 6h
+        labels:
+          severity: P3
+          category: business
+        annotations:
+          summary: "Memory extraction rate very low"
+          description: "Fewer than 0.1 memories extracted per hour in the last 24 hours."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#extraction-rate"
+          priority: "low"
+
+  # =============================================================================
+  # F. MCP & TOOL FAILURES
+  # =============================================================================
+
+  - name: mcp_tools
+    rules:
+
+      # P1: MCP Tool Call Failing
+      - alert: MCPToolCallFailing
+        expr: increase(mcp_tool_calls_total{status="error"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: P1
+          category: errors
+        annotations:
+          summary: "MCP tool call failed"
+          description: "MCP tool '{{ $labels.tool_name }}' on '{{ $labels.server_name }}' failed. Check server logs."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-tool-failure"
+          priority: "high"
+
+      # P1: MCP Tool Latency High
+      - alert: MCPToolLatencyHigh
+        expr: histogram_quantile(0.95, rate(mcp_tool_latency_seconds_bucket[5m])) > 10
+        for: 10m
+        labels:
+          severity: P1
+          category: performance
+        annotations:
+          summary: "MCP tool latency p95 > 10s"
+          description: "Tool '{{ $labels.tool_name }}' on '{{ $labels.server_name }}' is slow. p95 latency is {{ $value | humanizeDuration }}."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-latency"
+          priority: "high"
+
+      # P2: MCP Tool Retries High
+      - alert: MCPToolRetriesHigh
+        expr: increase(mcp_retries_total[10m]) > 5
+        for: 10m
+        labels:
+          severity: P2
+          category: errors
+        annotations:
+          summary: "MCP tool retries > 5"
+          description: "Tool '{{ $labels.tool_name }}' on '{{ $labels.server_name }}' retried {{ $value }} times. Possible transient failures."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-retries"
+          priority: "medium"
+
+      # P2: MCP Cache Miss Rate High
+      - alert: MCPCacheMissRateHigh
+        expr: rate(mcp_cache_misses_total[1h]) / (rate(mcp_cache_hits_total[1h]) + rate(mcp_cache_misses_total[1h])) > 0.5
+        for: 1h
+        labels:
+          severity: P2
+          category: performance
+        annotations:
+          summary: "MCP cache miss rate > 50%"
+          description: "MCP tool cache on '{{ $labels.server_name }}' has high miss rate. Cache may be ineffective."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-cache"
+          priority: "medium"
+
+      # P0: All MCP Servers Disconnected
+      - alert: AllMCPServersDisconnected
+        expr: mcp_servers_connected == 0
+        for: 1m
+        labels:
+          severity: P0
+          category: availability
+        annotations:
+          summary: "All MCP servers disconnected"
+          description: "No MCP servers are connected. All tool functionality is unavailable."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-all-down"
+          priority: "critical"
+
+      # P2: MCP Connection State Flapping
+      - alert: MCPConnectionFlapping
+        expr: changes(mcp_connection_state[5m]) > 5
+        for: 5m
+        labels:
+          severity: P2
+          category: availability
+        annotations:
+          summary: "MCP connection flapping"
+          description: "MCP server '{{ $labels.server_name }}' connection state changed {{ $value }} times in 5 minutes."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#mcp-flapping"
+          priority: "medium"
+
+  # =============================================================================
+  # G. WEBHOOK & API FAILURES
+  # =============================================================================
+
+  - name: webhooks
+    rules:
+
+      # P1: Alert Webhook Delivery Failed
+      - alert: AlertWebhookDeliveryFailed
+        expr: increase(alert_webhook_delivery_failed[5m]) > 0
+        for: 2m
+        labels:
+          severity: P1
+          category: errors
+        annotations:
+          summary: "Alert webhook delivery failed"
+          description: "Failed to deliver alert to webhook. Check alert-webhook service logs."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#webhook-delivery"
+          priority: "high"
+
+      # P2: Webhook Response Time High
+      - alert: WebhookResponseTimeHigh
+        expr: histogram_quantile(0.95, rate(alert_webhook_response_time_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: P2
+          category: performance
+        annotations:
+          summary: "Webhook response time p95 > 5s"
+          description: "Alert webhook p95 response time is {{ $value | humanizeDuration }}. Target may be overloaded."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#webhook-latency"
+          priority: "medium"
+
+      # P2: External API Failure Rate High
+      - alert: ExternalAPIFailureRateHigh
+        expr: rate(external_api_requests_total{status=~"5.."}[5m]) / rate(external_api_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: P2
+          category: errors
+        annotations:
+          summary: "External API error rate > 10%"
+          description: "External API '{{ $labels.api_name }}' has {{ $value | humanizePercentage }} error rate."
+          runbook_url: "https://github.com/grantray/Continuous-Claude-v3/docs/runbooks.md#external-api"
+          priority: "medium"

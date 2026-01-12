@@ -1,0 +1,478 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "continuous-claude-stream",
+    "title": "Continuous-Claude-v3 Stream Monitoring",
+    "description": "Event processing monitoring: events, turns, stuck detection, and Redis streams",
+    "tags": ["continuous-claude", "stream", "events", "processing"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Stream Monitors",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "stream_active_monitors",
+            "legendFormat": "Active Monitors"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Events Processed (Last Hour)",
+        "type": "stat",
+        "gridPos": {"x": 4, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "increase(stream_events_processed_total[1h])",
+            "legendFormat": "Total Events"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1000},
+                {"color": "red", "value": 10000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Stuck Detections (Last Hour)",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "increase(stream_stuck_detections_total[1h])",
+            "legendFormat": "Stuck Detections"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 20}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Redis Publishes (1h)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "increase(stream_redis_publishes_total[1h])",
+            "legendFormat": "Published"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 2000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Events per Minute",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 3, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "rate(stream_events_processed_total[1m]) * 60",
+            "legendFormat": "{{agent_id}} {{event_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops/min",
+            "custom": {
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 500}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Events by Type",
+        "type": "timeseries",
+        "gridPos": {"x": 8, "y": 3, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "sum by (event_type) (rate(stream_events_processed_total[5m]))",
+            "legendFormat": "{{event_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops/s",
+            "custom": {
+              "fillOpacity": 10
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Event Type Distribution",
+        "type": "piechart",
+        "gridPos": {"x": 16, "y": 3, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "sum by (event_type) (increase(stream_events_processed_total[1h]))",
+            "legendFormat": "{{event_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Stream Lag",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 7, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(stream_lag_seconds_bucket[5m]))",
+            "legendFormat": "{{agent_id}} p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(stream_lag_seconds_bucket[5m]))",
+            "legendFormat": "{{agent_id}} p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(stream_lag_seconds_bucket[5m]))",
+            "legendFormat": "{{agent_id}} p99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "thresholdsStyle": {"mode": "line"}
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Stuck Detection Count",
+        "type": "timeseries",
+        "gridPos": {"x": 8, "y": 7, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "increase(stream_stuck_detections_total[5m])",
+            "legendFormat": "{{agent_id}} {{reason}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Stuck Detection by Reason",
+        "type": "barchart",
+        "gridPos": {"x": 16, "y": 7, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "sum by (reason) (increase(stream_stuck_detections_total[1h]))",
+            "legendFormat": "{{reason}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Turn Count by Agent",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 11, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "stream_turn_count",
+            "legendFormat": "{{agent_id}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "fillOpacity": 10
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "Queue Depth by Agent",
+        "type": "timeseries",
+        "gridPos": {"x": 8, "y": 11, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "stream_event_queue_depth",
+            "legendFormat": "{{agent_id}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 13,
+        "title": "Redis Publish Status",
+        "type": "timeseries",
+        "gridPos": {"x": 16, "y": 11, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "rate(stream_redis_publishes_total{status=\"success\"}[5m])",
+            "legendFormat": "{{agent_id}} success"
+          },
+          {
+            "expr": "rate(stream_redis_publishes_total{status=\"failed\"}[5m])",
+            "legendFormat": "{{agent_id}} failed"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops/s",
+            "custom": {
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 0.01}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 14,
+        "title": "Processing Latency by Event Type",
+        "type": "heatmap",
+        "gridPos": {"x": 0, "y": 15, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum by (event_type, le) (rate(stream_lag_seconds_bucket[5m])))",
+            "legendFormat": "{{event_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "cellPadding": 2
+            }
+          }
+        }
+      },
+      {
+        "id": 15,
+        "title": "Total Events Heatmap",
+        "type": "heatmap",
+        "gridPos": {"x": 12, "y": 15, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "sum by (event_type, le) (rate(stream_events_processed_total[5m]))",
+            "legendFormat": "{{event_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops/s",
+            "custom": {
+              "cellPadding": 2
+            }
+          }
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "current": {"selected": false, "text": "All", "value": "$__all"},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "definition": "label_values(stream_events_processed_total, agent_id)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Agent ID",
+          "multi": true,
+          "name": "agent_id",
+          "options": [],
+          "query": "label_values(stream_events_processed_total, agent_id)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "current": {"selected": false, "text": "All", "value": "$__all"},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "definition": "label_values(stream_events_processed_total, event_type)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Event Type",
+          "multi": true,
+          "name": "event_type",
+          "options": [],
+          "query": "label_values(stream_events_processed_total, event_type)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "current": {"selected": false, "text": "All", "value": "$__all"},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "definition": "label_values(stream_stuck_detections_total, reason)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Stuck Reason",
+          "multi": true,
+          "name": "stuck_reason",
+          "options": [],
+          "query": "label_values(stream_stuck_detections_total, reason)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    },
+    "links": [
+      {
+        "title": "Overview Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-overview/overview",
+        "icon": "home",
+        "targetBlank": false
+      },
+      {
+        "title": "Memory System Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-memory/memory-system",
+        "icon": "database",
+        "targetBlank": false
+      },
+      {
+        "title": "MCP Clients Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-mcp/mcp-clients",
+        "icon": "plug",
+        "targetBlank": false
+      }
+    ]
+  },
+  "overwrite": true,
+  "message": "Created Stream Monitoring dashboard"
+}

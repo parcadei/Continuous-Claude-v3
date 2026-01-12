@@ -1,0 +1,255 @@
+# Continuous-Claude-v3 Alertmanager Configuration
+# Alert routing, grouping, and notification channels
+# Generated: 2026-01-11
+
+global:
+  # Resolve timeout - how long to wait before sending resolved notifications
+  resolve_timeout: 5m
+
+  # SMTP configuration for email alerts
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@continuous-claude.local'
+  smtp_auth_username: 'alerts@continuous-claude.local'
+  smtp_auth_password: '${SMTP_APP_PASSWORD}'
+  smtp_require_tls: true
+
+  # PagerDuty integration
+  pagerduty_api_key: '${PAGERDUTY_API_KEY}'
+  pagerduty_api_url: 'https://events.pagerduty.com/v2/enqueue'
+
+  # Slack webhook
+  slack_api_url: 'https://slack.com/api/chat.postMessage'
+  slack_icon_url: 'https://github.com/grantray/Continuous-Claude-v3/favicon.ico'
+
+# Files for notification templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree - defines how alerts are grouped and routed
+route:
+  # Initial receiver
+  receiver: 'default-receiver'
+
+  # Group settings - group alerts by these labels
+  group_by: ['alertname', 'severity', 'category']
+
+  # Wait before sending first notification for a new group
+  group_wait: 30s
+
+  # Interval between notifications for ongoing groups
+  group_interval: 5m
+
+  # Repeat interval for resolved alerts
+  repeat_interval: 4h
+
+  # Nested routes for severity-based routing
+  routes:
+    # P0 Critical Alerts - Send immediately to all channels
+    - match:
+        severity: P0
+      receiver: 'p0-critical'
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1h
+      continue: true
+
+    # P1 High Alerts - Slack + PagerDuty
+    - match:
+        severity: P1
+      receiver: 'p1-high'
+      group_wait: 1m
+      repeat_interval: 2h
+      continue: true
+
+    # P2 Medium Alerts - Slack only
+    - match:
+        severity: P2
+      receiver: 'p2-medium'
+      group_wait: 3m
+      repeat_interval: 6h
+
+    # P3 Low Alerts - Dashboard only (no notification)
+    - match:
+        severity: P3
+      receiver: 'p3-low-dashboard'
+      group_wait: 10m
+      repeat_interval: 24h
+
+    # Category-based routing within severity
+    - match:
+        category: availability
+      receiver: 'availability-slack'
+      continue: true
+
+    - match:
+        category: performance
+      receiver: 'performance-slack'
+      continue: true
+
+    - match:
+        category: errors
+      receiver: 'errors-slack'
+      continue: true
+
+    - match:
+        category: capacity
+      receiver: 'capacity-slack'
+      continue: true
+
+# Inhibit rules - suppress alerts when higher priority alerts are active
+inhibit_rules:
+  # Suppress P2/P3 when P0 is firing
+  - source_match:
+      severity: 'P0'
+    target_match_re:
+      severity: 'P[123]'
+    equal: ['alertname', 'instance']
+
+  # Suppress lower severity of same alert type
+  - source_match:
+      severity: 'P1'
+    target_match_re:
+      severity: 'P[23]'
+    equal: ['alertname', 'instance']
+
+  # Suppress related alerts during PostgreSQL outage
+  - source_match:
+      alertname: 'PostgreSQLUnreachable'
+    target_match_re:
+      alertname: 'QueryLatency.*|ConnectionPool.*|.*Error.*'
+    equal: ['instance']
+
+  # Suppress related alerts during memory daemon outage
+  - source_match:
+      alertname: 'DaemonNotRunning'
+    target_match_re:
+      alertname: '.*Extraction.*|.*Memory.*'
+    equal: ['instance']
+
+# Receivers - define notification destinations
+receivers:
+  # Default receiver - all alerts go here initially
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'grantray+alerts@gmail.com'
+        send_resolved: true
+        html: '{{ template "email.default.html" . }}'
+    slack_configs:
+      - channel: '#continuous-claude-alerts'
+        send_resolved: true
+        icon_emoji: ':warning:'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        actions:
+          - type: 'button'
+            text: 'Runbook'
+            url: '{{ .Annotations.runbook_url }}'
+          - type: 'button'
+            text: 'Silence'
+            url: '{{ template "alertmanager_url" . }}/silences/new?matchers={{ .Labels.alertname }}'
+
+  # P0 Critical - All channels, immediate delivery
+  - name: 'p0-critical'
+    email_configs:
+      - to: 'grantray+alerts@gmail.com'
+        send_resolved: true
+        priority: 'high'
+        html: '{{ template "email.priority.html" . }}'
+    slack_configs:
+      - channel: '#continuous-claude-critical'
+        send_resolved: true
+        icon_emoji: ':rotating_light:'
+        title: '{{ template "slack.priority_title" . }}'
+        text: '{{ template "slack.priority_text" . }}'
+        actions:
+          - type: 'button'
+            text: 'View Dashboard'
+            url: 'https://grafana.continuous-claude.local/d/alert-dashboard'
+          - type: 'button'
+            text: 'Acknowledge'
+            url: '{{ template "alertmanager_url" . }}/alertingos#/status'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+      - severity: 'critical'
+      - component: 'continuous-claude'
+      - group: 'infrastructure'
+      - class: 'deploy'
+      - custom_details:
+          alert_name: '{{ .Labels.alertname }}'
+          severity: 'P0'
+          description: '{{ .Annotations.summary }}'
+
+  # P1 High - Slack + PagerDuty
+  - name: 'p1-high'
+    slack_configs:
+      - channel: '#continuous-claude-alerts'
+        send_resolved: true
+        icon_emoji: ':warning:'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+      - severity: 'error'
+      - component: 'continuous-claude'
+      - group: 'infrastructure'
+
+  # P2 Medium - Slack only
+  - name: 'p2-medium'
+    slack_configs:
+      - channel: '#continuous-claude-alerts'
+        send_resolved: true
+        icon_emoji: ':large_yellow_circle:'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+  # P3 Low - Dashboard notification only (no push)
+  - name: 'p3-low-dashboard'
+    webhook_configs:
+      - url: 'http://grafana:3000/api/annotations'
+        send_resolved: true
+        max_alerts: 10
+
+  # Category-specific channels
+  - name: 'availability-slack'
+    slack_configs:
+      - channel: '#continuous-claude-infra'
+        send_resolved: true
+        icon_emoji: ':no_entry: '{{ template "slack.title:'
+        title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+  - name: 'performance-slack'
+    slack_configs:
+      - channel: '#continuous-claude-infra'
+        send_resolved: true
+        icon_emoji: ':chart_with_upwards_trend:'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+  - name: 'errors-slack'
+    slack_configs:
+      - channel: '#continuous-claude-infra'
+        send_resolved: true
+        icon_emoji: ':x:'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+  - name: 'capacity-slack'
+    slack_configs:
+      - channel: '#continuous-claude-infra'
+        send_resolved: true
+        icon_emoji: ':package:'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+# Notification lifecycle hooks
+- name: 'notification-audit'
+  webhook_configs:
+    - url: 'http://audit-service:8080/alertmanager/webhook'
+      send_resolved: true
+
+# Alert status webhook for external systems
+- name: 'status-webhook'
+  webhook_configs:
+    - url: 'http://status-service:8080/webhook'
+      send_resolved: true

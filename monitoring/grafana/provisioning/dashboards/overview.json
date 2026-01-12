@@ -1,0 +1,587 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "continuous-claude-overview",
+    "title": "Continuous-Claude-v3 Overview",
+    "description": "System-wide health and status dashboard for Continuous-Claude-v3",
+    "tags": ["continuous-claude", "overview", "system"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Daemon Status",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "up{job=\"memory-daemon\"}",
+            "legendFormat": "Memory Daemon"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "mappings": [
+              {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+              {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "PostgreSQL Status",
+        "type": "stat",
+        "gridPos": {"x": 4, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "pg_up{job=\"postgres\"}",
+            "legendFormat": "PostgreSQL"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "mappings": [
+              {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+              {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Daemon Restarts (1h)",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "increase(memory_daemon_restarts_total[1h])",
+            "legendFormat": "{{reason}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active Sessions",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 4, "h": 3},
+        "targets": [
+          {
+            "expr": "sessions_active_count",
+            "legendFormat": "Active Sessions"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "PostgreSQL Connections",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 3, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count",
+            "legendFormat": "Active Connections"
+          },
+          {
+            "expr": "pg_max_connections",
+            "legendFormat": "Max Connections"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 1
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "PostgreSQL Query Latency",
+        "type": "timeseries",
+        "gridPos": {"x": 6, "y": 3, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(pg_stat_statements_seconds_sum[5m]) / rate(pg_stat_statements_seconds_count[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(pg_stat_statements_seconds_sum[5m]) / rate(pg_stat_statements_seconds_count[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(pg_stat_statements_seconds_sum[5m]) / rate(pg_stat_statements_seconds_count[5m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "thresholdsStyle": {"mode": "line"}
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 0.5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Redis Memory Usage",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 3, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "redis_memory_bytes / 1024 / 1024",
+            "legendFormat": "Used Memory (MB)"
+          },
+          {
+            "expr": "redis_memory_peak_bytes / 1024 / 1024",
+            "legendFormat": "Peak Memory (MB)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "MB",
+            "custom": {
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 256},
+                {"color": "red", "value": 512}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Redis Connected Clients",
+        "type": "timeseries",
+        "gridPos": {"x": 18, "y": 3, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "redis_connected_clients",
+            "legendFormat": "Connected Clients"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "CPU Usage",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 7, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "rate(process_cpu_percent[5m]) * 100",
+            "legendFormat": "CPU %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "custom": {
+              "fillOpacity": 20
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 70},
+                {"color": "red", "value": 90}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Memory Usage (RSS)",
+        "type": "timeseries",
+        "gridPos": {"x": 6, "y": 7, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "process_memory_bytes{type=\"rss\"} / 1024 / 1024",
+            "legendFormat": "RSS (MB)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "MB",
+            "custom": {
+              "fillOpacity": 20
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 512},
+                {"color": "red", "value": 1024}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Disk Usage",
+        "type": "gauge",
+        "gridPos": {"x": 12, "y": 7, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100",
+            "legendFormat": "Disk Usage %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "red", "value": 90}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "Firing Alerts (Last 1h)",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 7, "w": 3, "h": 4},
+        "targets": [
+          {
+            "expr": "count by (severity) (ALERTS{alertstate=\"firing\"})",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 13,
+        "title": "Firing Alerts (Last 24h)",
+        "type": "stat",
+        "gridPos": {"x": 21, "y": 7, "w": 3, "h": 4},
+        "targets": [
+          {
+            "expr": "count by (severity) (ALERTS{alertstate=\"firing\", created_at >= now()-86400})",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 20}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 14,
+        "title": "Active Stream Monitors",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 11, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "stream_active_monitors",
+            "legendFormat": "Active Monitors"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10},
+                {"color": "red", "value": 50}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 15,
+        "title": "MCP Servers Connected",
+        "type": "timeseries",
+        "gridPos": {"x": 6, "y": 11, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "mcp_servers_connected",
+            "legendFormat": "Servers Connected"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 16,
+        "title": "Process Uptime",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 11, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "process_uptime_seconds / 3600",
+            "legendFormat": "Uptime (hours)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "h",
+            "custom": {
+              "fillOpacity": 0,
+              "lineWidth": 2
+            }
+          }
+        }
+      },
+      {
+        "id": 17,
+        "title": "Extraction Queue Depth",
+        "type": "timeseries",
+        "gridPos": {"x": 18, "y": 11, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "memory_daemon_queue_depth",
+            "legendFormat": "Queue Depth"
+          },
+          {
+            "expr": "memory_daemon_active_extractions",
+            "legendFormat": "Active Extractions"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "current": {"selected": false, "text": "All", "value": "$__all"},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "definition": "label_values(up, job)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Job",
+          "multi": true,
+          "name": "job",
+          "options": [],
+          "query": "label_values(up, job)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "current": {"selected": false, "text": "All", "value": "$__all"},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "definition": "label_values(ALERTS, severity)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Severity",
+          "multi": true,
+          "name": "severity",
+          "options": [],
+          "query": "label_values(ALERTS, severity)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "current": {"selected": false, "text": "All", "value": "$__all"},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "definition": "label_values(pg_stat_activity, state)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "PostgreSQL State",
+          "multi": true,
+          "name": "pg_state",
+          "options": [],
+          "query": "label_values(pg_stat_activity, state)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    },
+    "links": [
+      {
+        "title": "Memory System Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-memory/memory-system",
+        "icon": "database",
+        "targetBlank": false
+      },
+      {
+        "title": "Stream Monitoring Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-stream/stream-monitoring",
+        "icon": "stream",
+        "targetBlank": false
+      },
+      {
+        "title": "MCP Clients Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-mcp/mcp-clients",
+        "icon": "plug",
+        "targetBlank": false
+      },
+      {
+        "title": "Performance Dashboard",
+        "type": "link",
+        "url": "/d/continuous-claude-performance/performance",
+        "icon": "chart-line",
+        "targetBlank": false
+      }
+    ]
+  },
+  "overwrite": true,
+  "message": "Updated Overview dashboard"
+}

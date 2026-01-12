@@ -1,0 +1,167 @@
+# Continuous-Claude-v3 Alertmanager Silences
+# Pre-defined silences for known maintenance windows and expected conditions
+# Generated: 2026-01-11
+
+# Note: These can be created via:
+# amtool silence add --start-time=<time> --duration=<duration> --comment="..." <matchers>
+
+# =============================================================================
+# MAINTENANCE WINDOWS
+# =============================================================================
+
+# Weekly database maintenance - Sunday 2AM-3AM UTC
+- comment: "Weekly PostgreSQL maintenance window"
+  startsAt: "2026-01-11T02:00:00Z"
+  endsAt: "2026-01-11T03:00:00Z"
+  createdBy: "system-scheduler"
+  matchers:
+    - name: "severity"
+      value: "P[123]"
+    - name: "category"
+      value: "availability|performance|errors"
+
+# Monthly full system maintenance - First Saturday 1AM-4AM UTC
+- comment: "Monthly system maintenance window"
+  startsAt: "2026-01-03T01:00:00Z"
+  endsAt: "2026-01-03T04:00:00Z"
+  createdBy: "system-scheduler"
+  matchers:
+    - name: "severity"
+      value: "P[123]"
+    - name: "category"
+      value: ".*"
+
+# =============================================================================
+# KNOWN ISSUES / EXPECTED CONDITIONS
+# =============================================================================
+
+# High memory during batch embedding jobs
+- comment: "Expected high memory during batch embedding jobs"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "ml-engineer"
+  matchers:
+    - name: "alertname"
+      value: "MemoryUsageHigh"
+    - name: "job"
+      value: "embedding-worker"
+
+# Connection pool activity during bulk data import
+- comment: "Expected pool activity during scheduled data imports"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "data-engineer"
+  matchers:
+    - name: "alertname"
+      value: "ConnectionPoolNearMax"
+    - name: "import_job"
+      value: "true"
+
+# =============================================================================
+# DEVELOPMENT ENVIRONMENT EXCLUSIONS
+# =============================================================================
+
+# Development environment has relaxed alerting
+- comment: "Development environment - reduced alerting"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "platform-team"
+  matchers:
+    - name: "environment"
+      value: "development"
+    - name: "severity"
+      value: "P[23]"
+
+# Staging environment - P2/P3 reduced
+- comment: "Staging environment - reduced P2/P3 alerting"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "platform-team"
+  matchers:
+    - name: "environment"
+      value: "staging"
+    - name: "severity"
+      value: "P[23]"
+
+# =============================================================================
+# SCHEDULED DEPLOYMENTS
+# =============================================================================
+
+# Placeholder for deployment windows - replace with actual times
+# Example:
+# - comment: "Deployment window for v2.5.0 release"
+#   startsAt: "2026-01-15T14:00:00Z"
+#   endsAt: "2026-01-15T15:00:00Z"
+#   createdBy: "release-manager"
+#   matchers:
+#     - name: "severity"
+#       value: "P[12]"
+
+# =============================================================================
+# KNOWN BUG WORKAROUNDS
+# =============================================================================
+
+# Temporary silences for known issues awaiting fix
+- comment: "Temporary silence for memory leak in v2.3.1 - fix scheduled for v2.4.0"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-02-15T00:00:00Z"
+  createdBy: "engineering-lead"
+  matchers:
+    - name: "alertname"
+      value: "MemoryUsageHigh"
+    - name: "version"
+      value: "2.3.1"
+
+# =============================================================================
+# THRESHOLD ADJUSTMENTS FOR SPECIFIC SERVICES
+# =============================================================================
+
+# API server can handle higher latency under load
+- comment: "API server latency threshold adjustment during peak hours"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "sre-team"
+  matchers:
+    - name: "alertname"
+      value: "QueryLatencyP95High"
+    - name: "service"
+      value: "api-server"
+    - name: "instance"
+      value: "api-server.*"
+
+# Worker processes have different resource profiles
+- comment: "Worker process resource threshold adjustment"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "sre-team"
+  matchers:
+    - name: "alertname"
+      value: "MemoryUsageHigh|CPUUsageSustainedHigh"
+    - name: "job"
+      value: "memory-worker"
+
+# =============================================================================
+# REGIONAL/ENVIRONMENT-SPECIFIC
+# =============================================================================
+
+# Multi-region deployments may have different thresholds
+- comment: "US-East region latency adjustments"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "platform-team"
+  matchers:
+    - name: "region"
+      value: "us-east-1"
+    - name: "alertname"
+      value: "QueryLatency.*"
+
+# Edge caching affects cache hit rates
+- comment: "Edge caching location - reduced cache hit rate expectations"
+  startsAt: "2026-01-01T00:00:00Z"
+  endsAt: "2026-12-31T23:59:59Z"
+  createdBy: "platform-team"
+  matchers:
+    - name: "location"
+      value: "edge"
+    - name: "alertname"
+      value: "CacheHitRateDeclining"

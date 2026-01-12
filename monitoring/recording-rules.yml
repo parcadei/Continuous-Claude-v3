@@ -1,0 +1,227 @@
+# Continuous-Claude-v3 Prometheus Recording Rules
+# Pre-computed metrics for faster queries and alerting
+# Generated: 2026-01-11
+
+groups:
+  # =============================================================================
+  # A. AVAILABILITY METRICS
+  # =============================================================================
+
+  - name: availability_recording
+    rules:
+
+      # Service availability percentage
+      - record: service:availability:ratio
+        expr: |
+          sum by (service) (up == 1) / count by (service) (up)
+
+      # Daemon uptime in seconds
+      - record: daemon:uptime:seconds
+        expr: |
+          time() - process_start_time_seconds{job="memory-daemon"}
+
+      # Session active count
+      - record: sessions:active:count
+        expr: |
+          sum by (project) (sessions_active)
+
+      # PostgreSQL connection health
+      - record: postgres:connections:healthy
+        expr: |
+          pg_up > 0
+
+  # =============================================================================
+  # B. PERFORMANCE METRICS
+  # =============================================================================
+
+  - name: performance_recording
+    rules:
+
+      # Query latency percentiles
+      - record: pg:query_latency:percentiles
+        expr: |
+          histogram_quantile(0.50, sum by (le, query) (rate(pg_stat_statements_seconds_bucket[5m])))
+          histogram_quantile(0.90, sum by (le, query) (rate(pg_stat_statements_seconds_bucket[5m])))
+          histogram_quantile(0.95, sum by (le, query) (rate(pg_stat_statements_seconds_bucket[5m])))
+          histogram_quantile(0.99, sum by (le, query) (rate(pg_stat_statements_seconds_bucket[5m])))
+
+      # Average query latency
+      - record: pg:query_latency:avg_seconds
+        expr: |
+          sum by (instance) (rate(pg_stat_statements_seconds_sum[5m]))
+          /
+          sum by (instance) (rate(pg_stat_statements_seconds_count[5m]))
+
+      # Connection pool utilization
+      - record: pg:pool:utilization:ratio
+        expr: |
+          pg_pool_connections_active / pg_pool_connections_max
+
+      # Memory usage percentage
+      - record: system:memory:usage:ratio
+        expr: |
+          1 - (memory_available_bytes / memory_total_bytes)
+
+      # CPU usage percentage
+      - record: system:cpu:usage:ratio
+        expr: |
+          1 - (avg by (instance) (rate(cpu_idle_seconds_total[5m])))
+
+      # Embedding generation latency
+      - record: embedding:latency:percentiles_seconds
+        expr: |
+          histogram_quantile(0.50, rate(embedding_generation_duration_seconds_bucket[5m]))
+          histogram_quantile(0.95, rate(embedding_generation_duration_seconds_bucket[5m]))
+          histogram_quantile(0.99, rate(embedding_generation_duration_seconds_bucket[5m]))
+
+      # Extraction queue backlog rate
+      - record: extraction:queue:backlog:rate
+        expr: |
+          delta(extraction_queue_length[5m])
+
+      # Request rate by endpoint
+      - record: http:request:rate:by_endpoint
+        expr: |
+          sum by (endpoint, method) (rate(http_requests_total[5m]))
+
+      # Request duration by endpoint
+      - record: http:request:duration:by_endpoint
+        expr: |
+          histogram_quantile(0.95, sum by (le, endpoint, method) (rate(http_request_duration_seconds_bucket[5m])))
+
+  # =============================================================================
+  # C. ERROR METRICS
+  # =============================================================================
+
+  - name: errors_recording
+    rules:
+
+      # Error rate percentage
+      - record: http:error:rate:ratio
+        expr: |
+          sum by (instance) (rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum by (instance) (rate(http_requests_total[5m]))
+          * 100
+
+      # Error count by type
+      - record: error:count:by_type
+        expr: |
+          sum by (error_type) (increase( errors_total[5m]))
+
+      # Extraction failure rate
+      - record: extraction:failure:rate
+        expr: |
+          sum by (reason) (rate(extraction_failures_total[5m]))
+
+      # Embedding error rate
+      - record: embedding:error:rate
+        expr: |
+          sum by (provider) (rate(embedding_errors_total[5m]))
+
+      # Database error rate
+      - record: postgres:error:rate
+        expr: |
+          sum by (error_type) (rate(pg_stat_database_xact_rollback[5m]))
+          /
+          sum by () (rate(pg_stat_database_xact_commit[5m] + pg_stat_database_xact_rollback[5m]))
+
+      # Deadlock rate
+      - record: postgres:deadlock:rate
+        expr: |
+          increase(pg_stat_database_deadlocks[5m])
+
+  # =============================================================================
+  # D. CAPACITY METRICS
+  # =============================================================================
+
+  - name: capacity_recording
+    rules:
+
+      # Disk usage percentage
+      - record: disk:usage:ratio
+        expr: |
+          1 - (disk_available_bytes / disk_total_bytes)
+
+      # PostgreSQL connection count
+      - record: postgres:connections:count
+        expr: |
+          pg_stat_activity_count
+
+      # Table sizes
+      - record: postgres:table:size:bytes
+        expr: |
+          pg_total_relation_size_bytes
+
+      # Cache hit rate
+      - record: cache:hit:rate
+        expr: |
+          rate(cache_hits_total[5m])
+          /
+          rate(cache_requests_total[5m])
+
+      # Cache hit ratio
+      - record: cache:hit:ratio
+        expr: |
+          sum by (cache_name) (rate(cache_hits_total[5m]))
+          /
+          sum by (cache_name) (rate(cache_requests_total[5m]))
+
+      # Session growth rate
+      - record: sessions:growth:rate
+        expr: |
+          delta(sessions_active_count[1h])
+
+      # Open file descriptor ratio
+      - record: process:open_fds:ratio
+        expr: |
+          process_open_fds / process_max_fds
+
+  # =============================================================================
+  # E. BUSINESS METRICS
+  # =============================================================================
+
+  - name: business_recording
+    rules:
+
+      # Memory extraction rate
+      - record: extraction:rate:per_hour
+        expr: |
+          sum by () (increase(extraction_success_total[1h]))
+
+      # Learning storage rate
+      - record: learning:storage:rate:per_hour
+        expr: |
+          sum by () (increase(store_learning_total[1h]))
+
+      # Recall query rate
+      - record: recall:query:rate:per_minute
+        expr: |
+          sum by () (rate(recall_query_total[1m]))
+
+      # Average recall query latency
+      - record: recall:latency:avg_seconds
+        expr: |
+          sum by () (rate(recall_query_duration_seconds_sum[5m]))
+          /
+          sum by () (rate(recall_query_duration_seconds_count[5m]))
+
+      # Embedding cache size
+      - record: embedding:cache:size
+        expr: |
+          embedding_cache_size
+
+      # Embedding provider usage
+      - record: embedding:provider:usage
+        expr: |
+          sum by (provider) (rate(embedding_requests_total[5m]))
+
+      # Session extraction ratio (extracted vs total)
+      - record: sessions:extraction:ratio
+        expr: |
+          sessions_extracted_count / sessions_total_count
+
+      # Memory coverage (learnings per session)
+      - record: memory:coverage:per_session
+        expr: |
+          total_learnings_count / unique_sessions_count

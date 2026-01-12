@@ -1,0 +1,58 @@
+# Blackbox Exporter Configuration
+modules:
+  # HTTP endpoint monitoring
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200, 201, 202, 203, 204, 205, 206, 207, 208, 226]
+      method: GET
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: true
+
+  # HTTPS with certificate validation
+  http_2xx_https:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200, 201, 202, 203, 204, 205, 206, 207, 208, 226]
+      method: GET
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: true
+      tls_config:
+        insecure_skip_verify: false
+        ca_file: "/etc/ssl/certs/ca-certificates.crt"
+
+  # TCP connection monitoring
+  tcp_connect:
+    prober: tcp
+    timeout: 3s
+    tcp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: true
+
+  # PostgreSQL connection check
+  postgres_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: "ip4"
+      query_response:
+        - expect: "^([\\d-]+).*(\\d+)"  # PostgreSQL version string
+
+  # DNS resolution check
+  dns_tcp:
+    prober: dns
+    dns:
+      transport_protocol: "tcp"
+      preferred_ip_protocol: "ip4"
+      query_type: "A"
+      valid_rcodes:
+        - NOERROR
+
+  # ICMP ping
+  icmp:
+    prober: icmp
+    timeout: 3s
+    icmp:
+      preferred_ip_protocol: "ip4"

@@ -1,0 +1,91 @@
+# Continuous-Claude-v3 Prometheus Configuration
+# With alerting, recording rules, and service discovery
+# Generated: 2026-01-11
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'development'
+    project: 'continuous-claude-v3'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+      timeout: 10s
+      api_version: v2
+
+# Rule files to load
+rule_files:
+  - '/etc/prometheus/alert-rules.yml'
+  - '/etc/prometheus/recording-rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+
+  # Continuous-Claude Memory Daemon
+  - job_name: 'memory-daemon'
+    static_configs:
+      - targets: ['localhost:8001']
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\\d+'
+        replacement: '${1}'
+
+  # PostgreSQL with pg_exporter
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['localhost:9187']
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: container
+        replacement: 'continuous-claude-postgres'
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    metrics_path: /metrics
+
+  # Custom application metrics endpoint
+  - job_name: 'continuous-claude-app'
+    static_configs:
+      - targets: ['localhost:8080']
+    metrics_path: /metrics
+    metrics_path: /health/metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'continuous-claude'
+
+  # Docker containers (if using cAdvisor)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['localhost:8080']
+    metrics_path: /metrics
+    scheme: http
+
+# Remote write (for long-term storage)
+# remote_write:
+#   - url: 'https://prometheus-remote-write.example.com/api/v1/write'
+#     basic_auth:
+#       username: 'prometheus'
+#       password_file: '/etc/prometheus/remote_write_password'
+
+# Remote read (for query federation)
+# remote_read:
+#   - url: 'https://prometheus-remote-read.example.com/api/v1/read'
+#     basic_auth:
+#       username: 'prometheus'
+#       password_file: '/etc/prometheus/remote_read_password'

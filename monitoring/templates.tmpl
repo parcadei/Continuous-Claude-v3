@@ -1,0 +1,197 @@
+{{ define "__alertmanager_url" }}http://localhost:9093{{ end }}
+{{ define "__alertmanager_operator_url" }}http://localhost:9094{{ end }}
+
+{{- /* Email Templates */ -}}
+
+{{ define "email.subject" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }} ({{ .GroupLabels.severity }})
+{{- end }}
+
+{{ define "email.default.html" -}}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .alert { border: 1px solid #e0e0e0; border-radius: 8px; margin: 16px 0; overflow: hidden; }
+    .alert-header { padding: 12px 16px; font-weight: 600; }
+    .alert-firing { background: #fee2e2; color: #991b1b; }
+    .alert-resolved { background: #dcfce7; color: #166534; }
+    .alert-details { padding: 16px; background: #f9fafb; }
+    .label { font-weight: 500; color: #6b7280; }
+    .value { color: #111827; }
+    .btn { display: inline-block; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin-right: 8px; }
+    .btn-resolved { background: #16a34a; }
+  </style>
+</head>
+<body>
+  <h2>Continuous-Claude-v3 Alert Notification</h2>
+
+  <p><strong>Status:</strong>
+    {{ if eq .Status "firing" }}
+      <span style="color: #dc2626;">FIRING ({{ .Alerts.Firing | len }} alerts)</span>
+    {{ else }}
+      <span style="color: #16a34a;">RESOLVED</span>
+    {{ end }}
+  </p>
+
+  <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
+  <p><strong>Severity:</strong> {{ .GroupLabels.severity }} ({{ .GroupLabels.category }})</p>
+  <p><strong>Time:</strong> {{ .StartTime.Format "2006-01-02 15:04:05 MST" }}</p>
+
+  {{ if .Alerts.Firing }}
+    <h3>Firing Alerts</h3>
+    {{ range .Alerts.Firing }}
+      <div class="alert">
+        <div class="alert-header alert-firing">
+          {{ .Annotations.summary }}
+        </div>
+        <div class="alert-details">
+          <p><span class="label">Description:</span> <span class="value">{{ .Annotations.description }}</span></p>
+          <p><span class="label">Instance:</span> <span class="value">{{ .Labels.instance }}</span></p>
+          <p><span class="label">Started:</span> <span class="value">{{ .StartsAt.Format "2006-01-02 15:04:05" }}</span></p>
+          {{ if .Annotations.runbook_url }}
+            <p><a href="{{ .Annotations.runbook_url }}" class="btn">View Runbook</a></p>
+          {{ end }}
+        </div>
+      </div>
+    {{ end }}
+  {{ end }}
+
+  {{ if .Alerts.Resolved }}
+    <h3>Resolved Alerts</h3>
+    {{ range .Alerts.Resolved }}
+      <div class="alert">
+        <div class="alert-header alert-resolved">
+          {{ .Annotations.summary }} (RESOLVED)
+        </div>
+        <div class="alert-details">
+          <p><span class="label">Duration:</span> <span class="value">{{ .Duration.String }}</span></p>
+          <p><span class="label">Resolved:</span> <span class="value">{{ .EndsAt.Format "2006-01-02 15:04:05" }}</span></p>
+        </div>
+      </div>
+    {{ end }}
+  {{ end }}
+
+  <hr>
+  <p style="color: #6b7280; font-size: 12px;">
+    This alert was sent by Alertmanager. To manage alerts, visit the
+    <a href="{{ define "__alertmanager_url" }}{{ end }}">Alertmanager UI</a>.
+  </p>
+</body>
+</html>
+{{- end }}
+
+{{ define "email.priority.html" -}}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .alert { border: 2px solid #dc2626; border-radius: 8px; margin: 16px 0; overflow: hidden; }
+    .alert-header { padding: 16px; background: #fee2e2; color: #991b1b; font-weight: 700; font-size: 18px; }
+    .alert-details { padding: 16px; background: #fef2f2; }
+    .priority-p0 { border-color: #dc2626; }
+    .priority-p0 .alert-header { background: #fecaca; }
+    .btn { display: inline-block; padding: 10px 20px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1 style="color: #dc2626;">CRITICAL ALERT - Immediate Action Required</h1>
+
+  <div class="alert priority-p0">
+    <div class="alert-header">
+      P0: {{ .GroupLabels.alertname }}
+    </div>
+    <div class="alert-details">
+      <p><strong>{{ .Annotations.summary }}</strong></p>
+      <p>{{ .Annotations.description }}</p>
+      <p><strong>Severity:</strong> {{ .GroupLabels.severity }} ({{ .GroupLabels.category }})</p>
+      <p><strong>Time:</strong> {{ .StartTime.Format "2006-01-02 15:04:05 MST" }}</p>
+      {{ if .Annotations.runbook_url }}
+        <p><a href="{{ .Annotations.runbook_url }}" class="btn">IMMEDIATE ACTION - View Runbook</a></p>
+      {{ end }}
+    </div>
+  </div>
+
+  {{ if .Alerts.Firing }}
+    <h3>Affected Instances</h3>
+    <ul>
+      {{ range .Alerts.Firing }}
+        <li>{{ .Labels.instance }} - {{ .StartsAt.Format "15:04:05" }}</li>
+      {{ end }}
+    </ul>
+  {{ end }}
+</body>
+</html>
+{{- end }}
+
+{{- /* Slack Templates */ -}}
+
+{{ define "slack.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{- end }}
+
+{{ define "slack.text" -}}
+{{ range .Alerts.Firing }}
+*Alert:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+*Severity:* {{ .Labels.severity }}
+{{- if .Labels.instance }}*Instance:* `{{ .Labels.instance }}`{{- end }}
+{{- if .Annotations.runbook_url }}<{{ .Annotations.runbook_url }}|Runbook>{{- end }}
+{{ end }}
+{{- if .Alerts.Resolved }}
+{{ range .Alerts.Resolved }}
+:white_check_mark: *Resolved:* {{ .Annotations.summary }} (Duration: {{ .Duration.String }})
+{{ end }}
+{{- end }}
+{{- end }}
+
+{{ define "slack.priority_title" -}}
+:rotating_light: *CRITICAL ALERT* :rotating_light:
+{{ end }}
+
+{{ define "slack.priority_text" -}}
+*P0 - Immediate Response Required*
+{{ range .Alerts.Firing }}
+*Alert:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+{{- if .Labels.instance }}*Instance:* `{{ .Labels.instance }}`{{- end }}
+{{- if .Annotations.runbook_url }}<{{ .Annotations.runbook_url }}|View Runbook>{{- end }}
+{{ end }}
+{{- end }}
+
+{{ define "slack.metric_value" -}}
+{{ if .Value }}{{ .Value | printf "%.2f" }}{{ else }}N/A{{ end }}
+{{- end }}
+
+{{- /* PagerDuty Templates */ -}}
+
+{{ define "pagerduty.title" -}}
+[P0] {{ .GroupLabels.alertname }} - {{ .GroupLabels.category }}
+{{- end }}
+
+{{ define "pagerduty.severity" -}}
+{{ if eq .GroupLabels.severity "P0" }}critical{{ else if eq .GroupLabels.severity "P1" }}error{{ else if eq .GroupLabels.severity "P2" }}warning{{ else }}info{{ end }}
+{{- end }}
+
+{{- /* Prometheus Alertmanager Operator Templates */ -}}
+
+{{ define "operator.title" -}}
+[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}
+{{- end }}
+
+{{- /* Dashboard Annotation Templates */ -}}
+
+{{ define "grafana.annotation.title" -}}
+[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}
+{{- end }}
+
+{{ define "grafana.annotation.text" -}}
+{{ range .Alerts.Firing }}
+{{ .Annotations.summary }}
+{{ .Annotations.description }}
+{{- end }}
+{{- end }}

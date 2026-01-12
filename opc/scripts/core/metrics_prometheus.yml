@@ -1,0 +1,54 @@
+# Prometheus Configuration for Continuous-Claude-v3
+# Place this in your prometheus/ directory and run:
+#   prometheus --config.file=prometheus.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'continuous-claude-v3'
+    project: 'continuous-claude'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+
+# Rule files for alerting
+rule_files:
+  - 'alerts/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Self-scrape for process metrics
+  - job_name: 'continuous-claude-self'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scheme: http
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'localhost:9090'
+
+  # External PostgreSQL metrics (if postgres_exporter installed)
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['localhost:9187']
+    metrics_path: /metrics
+    scheme: http
+
+  # External Redis metrics (if redis_exporter installed)
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['localhost:9121']
+    metrics_path: /metrics
+    scheme: http
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    metrics_path: /metrics
+    scheme: http
