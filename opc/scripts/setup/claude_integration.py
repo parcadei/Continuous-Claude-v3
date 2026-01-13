@@ -380,6 +380,57 @@ def generate_migration_guidance(
     return "\n".join(lines)
 
 
+# Root scripts used by skills/hooks - shared between copy and symlink install
+ROOT_SCRIPTS = [
+    "ast_grep_find.py",          # /ast-grep-find skill
+    "braintrust_analyze.py",     # session-end-cleanup hook
+    "qlty_check.py",             # /qlty-check skill
+    "research_implement_pipeline.py",  # /mcp-chaining skill
+    "test_research_pipeline.py", # /mcp-chaining skill
+    "multi_tool_pipeline.py",    # /skill-developer example
+    "recall_temporal_facts.py",  # /system_overview skill
+]
+
+
+def _copy_scripts(opc_source: Path, target_dir: Path) -> int:
+    """Copy script directories and root scripts to target.
+
+    Shared helper used by both install_opc_integration and
+    install_opc_integration_symlink to avoid duplication.
+
+    Args:
+        opc_source: Source OPC .claude directory
+        target_dir: Target .claude directory
+
+    Returns:
+        Count of scripts copied
+    """
+    count = 0
+
+    # Copy script subdirectories (core, math, tldr)
+    for subdir in ["core", "math", "tldr"]:
+        src = opc_source.parent / "opc" / "scripts" / subdir
+        dst = target_dir / "scripts" / subdir
+        if src.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+            count += len(list(dst.rglob("*.py")))
+
+    # Copy individual root scripts
+    scripts_root = opc_source.parent / "opc" / "scripts"
+    target_scripts = target_dir / "scripts"
+    target_scripts.mkdir(parents=True, exist_ok=True)
+    for script_name in ROOT_SCRIPTS:
+        src = scripts_root / script_name
+        if src.exists():
+            shutil.copy2(src, target_scripts / script_name)
+            count += 1
+
+    return count
+
+
 def install_opc_integration(
     target_dir: Path,
     opc_source: Path,
@@ -485,56 +536,8 @@ def install_opc_integration(
         if opc_settings_path.exists():
             shutil.copy2(opc_settings_path, target_settings_path)
 
-        # Copy scripts/core/ for memory/artifact support
-        # This enables recall_learnings, store_learning, and artifact_* scripts
-        opc_scripts_core = opc_source.parent / "opc" / "scripts" / "core"
-        target_scripts_core = target_dir / "scripts" / "core"
-        if opc_scripts_core.exists():
-            target_scripts_core.parent.mkdir(parents=True, exist_ok=True)
-            if target_scripts_core.exists():
-                shutil.rmtree(target_scripts_core)
-            shutil.copytree(opc_scripts_core, target_scripts_core)
-            result["installed_scripts"] = len(list(target_scripts_core.rglob("*.py")))
-
-        # Copy scripts/math/ for math computation support
-        # This enables sympy_compute, pint_compute, math_router, etc.
-        opc_scripts_math = opc_source.parent / "opc" / "scripts" / "math"
-        target_scripts_math = target_dir / "scripts" / "math"
-        if opc_scripts_math.exists():
-            if target_scripts_math.exists():
-                shutil.rmtree(target_scripts_math)
-            shutil.copytree(opc_scripts_math, target_scripts_math)
-            result["installed_scripts"] += len(list(target_scripts_math.rglob("*.py")))
-
-        # Copy scripts/tldr/ for TLDR hook integration
-        # This enables symbol indexing for smart-search-router
-        opc_scripts_tldr = opc_source.parent / "opc" / "scripts" / "tldr"
-        target_scripts_tldr = target_dir / "scripts" / "tldr"
-        if opc_scripts_tldr.exists():
-            if target_scripts_tldr.exists():
-                shutil.rmtree(target_scripts_tldr)
-            shutil.copytree(opc_scripts_tldr, target_scripts_tldr)
-            result["installed_scripts"] += len(list(target_scripts_tldr.rglob("*.py")))
-
-        # Copy individual root scripts used by skills/hooks
-        # These are referenced by skills like /qlty-check, /ast-grep-find, /mcp-chaining
-        root_scripts = [
-            "ast_grep_find.py",          # /ast-grep-find skill
-            "braintrust_analyze.py",     # session-end-cleanup hook
-            "qlty_check.py",             # /qlty-check skill
-            "research_implement_pipeline.py",  # /mcp-chaining skill
-            "test_research_pipeline.py", # /mcp-chaining skill
-            "multi_tool_pipeline.py",    # /skill-developer example
-            "recall_temporal_facts.py",  # /system_overview skill
-        ]
-        opc_scripts_root = opc_source.parent / "opc" / "scripts"
-        target_scripts_root = target_dir / "scripts"
-        target_scripts_root.mkdir(parents=True, exist_ok=True)
-        for script_name in root_scripts:
-            src = opc_scripts_root / script_name
-            if src.exists():
-                shutil.copy2(src, target_scripts_root / script_name)
-                result["installed_scripts"] += 1
+        # Copy scripts (core, math, tldr directories + root scripts)
+        result["installed_scripts"] = _copy_scripts(opc_source, target_dir)
 
         # Merge user items if requested
         if merge_user_items and existing and conflicts:
@@ -664,47 +667,8 @@ def install_opc_integration_symlink(
                     shutil.rmtree(dst)
                 shutil.copytree(src, dst)
 
-        # Copy scripts (same as regular install)
-        opc_scripts_core = opc_source.parent / "opc" / "scripts" / "core"
-        target_scripts_core = target_dir / "scripts" / "core"
-        if opc_scripts_core.exists():
-            target_scripts_core.parent.mkdir(parents=True, exist_ok=True)
-            if target_scripts_core.exists():
-                shutil.rmtree(target_scripts_core)
-            shutil.copytree(opc_scripts_core, target_scripts_core)
-
-        opc_scripts_math = opc_source.parent / "opc" / "scripts" / "math"
-        target_scripts_math = target_dir / "scripts" / "math"
-        if opc_scripts_math.exists():
-            if target_scripts_math.exists():
-                shutil.rmtree(target_scripts_math)
-            shutil.copytree(opc_scripts_math, target_scripts_math)
-
-        opc_scripts_tldr = opc_source.parent / "opc" / "scripts" / "tldr"
-        target_scripts_tldr = target_dir / "scripts" / "tldr"
-        if opc_scripts_tldr.exists():
-            if target_scripts_tldr.exists():
-                shutil.rmtree(target_scripts_tldr)
-            shutil.copytree(opc_scripts_tldr, target_scripts_tldr)
-
-        # Copy individual root scripts used by skills/hooks
-        # These are referenced by skills like /qlty-check, /ast-grep-find, /mcp-chaining
-        root_scripts = [
-            "ast_grep_find.py",          # /ast-grep-find skill
-            "braintrust_analyze.py",     # session-end-cleanup hook
-            "qlty_check.py",             # /qlty-check skill
-            "research_implement_pipeline.py",  # /mcp-chaining skill
-            "test_research_pipeline.py", # /mcp-chaining skill
-            "multi_tool_pipeline.py",    # /skill-developer example
-            "recall_temporal_facts.py",  # /system_overview skill
-        ]
-        opc_scripts_root = opc_source.parent / "opc" / "scripts"
-        target_scripts_root = target_dir / "scripts"
-        target_scripts_root.mkdir(parents=True, exist_ok=True)
-        for script_name in root_scripts:
-            src = opc_scripts_root / script_name
-            if src.exists():
-                shutil.copy2(src, target_scripts_root / script_name)
+        # Copy scripts (core, math, tldr directories + root scripts)
+        _copy_scripts(opc_source, target_dir)
 
         result["success"] = True
 
