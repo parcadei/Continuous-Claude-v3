@@ -1,0 +1,32 @@
+name: Schema Validation
+
+on:
+  push:
+    paths: ['opc/init-db.sql', 'docker/init-schema.sql']
+  pull_request:
+    paths: ['opc/init-db.sql', 'docker/init-schema.sql']
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start PostgreSQL
+        run: |
+          cd opc && docker compose up -d postgres
+          sleep 5
+
+      - name: Install Python and uv
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install uv
+        run: pip install uv
+
+      - name: Run drift detection
+        run: |
+          cd opc && uv run python scripts/schema/drift_detector.py
