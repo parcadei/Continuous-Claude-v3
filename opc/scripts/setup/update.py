@@ -143,6 +143,52 @@ def git_pull(repo_dir: Path, verbose: bool = False) -> tuple[bool, str]:
         if verbose:
             console.print(f"  [dim]Current commit: {before}[/dim]")
 
+        # Check if branch has upstream tracking configured
+        upstream_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "@{u}"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+        )
+        has_tracking = upstream_result.returncode == 0
+
+        if not has_tracking:
+            # Try to set up tracking automatically
+            if verbose:
+                console.print("  [dim]No upstream tracking, attempting to set up...[/dim]")
+
+            # Get current branch name
+            branch_result = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+            )
+            if branch_result.returncode == 0:
+                branch_name = branch_result.stdout.strip()
+                # Try to set tracking to origin/<branch_name>
+                set_tracking = subprocess.run(
+                    ["git", "branch", "--set-upstream-to", f"origin/{branch_name}", branch_name],
+                    cwd=repo_dir,
+                    capture_output=True,
+                    text=True,
+                )
+                if set_tracking.returncode != 0:
+                    # If that fails, try main as the remote source (fallback)
+                    # This handles the case where the branch name matches but origin doesn't exist yet
+                    if verbose:
+                        console.print(f"  [dim]origin/{branch_name} not found, trying origin/main...[/dim]")
+                    set_tracking = subprocess.run(
+                        ["git", "branch", "--set-upstream-to", "origin/main"],
+                        cwd=repo_dir,
+                        capture_output=True,
+                        text=True,
+                    )
+                if set_tracking.returncode == 0:
+                    if verbose:
+                        console.print(f"  [dim]Set up tracking: origin/main[/dim]")
+                    has_tracking = True
+
         # Pull latest
         result = subprocess.run(
             ["git", "pull", "--ff-only"],
@@ -157,6 +203,8 @@ def git_pull(repo_dir: Path, verbose: bool = False) -> tuple[bool, str]:
                 return False, "Local changes conflict with remote. Commit or stash first."
             elif "couldn't find remote ref" in result.stderr.lower():
                 return False, "No remote branch configured"
+            elif "not tracking" in result.stderr.lower() or "no tracking information" in result.stderr.lower():
+                return False, "Branch has no upstream tracking. Run: git branch --set-upstream-to=origin/<branch> <branch>"
             return False, f"Git pull failed: {result.stderr[:200]}"
 
         # Get new commit
@@ -799,6 +847,110 @@ def apply_updates(
     return copied
 
 
+def ensure_tldr_symlink(verbose: bool = False) -> tuple[bool, str]:
+    """Ensure tldr-code is accessible system-wide via /usr/local/bin/tldr.
+
+    Creates a symlink from /usr/local/bin/tldr to ~/.venv/bin/tldr (or uv venv).
+    This makes tldr-code available in Claude Code's subprocess PATH.
+
+    Returns:
+        Tuple of (created, message)
+    """
+
+    # Find the tldr executable
+    # Check common locations for the uv venv
+    venv_bin_paths = [
+        Path.home() / ".venv" / "bin" / "tldr",
+        Path.home() / ".local" / "bin" / "tldr",
+    ]
+
+    tldr_path = None
+    for path in venv_bin_paths:
+        if path.exists() and path.stat().st_size > 100:  # Real binary, not man-page tldr
+            # Verify it's llm-tldr, not man-page tldr
+            try:
+                output = subprocess.run(
+                    [str(path), "--help"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if "Token-efficient code analysis" in output.stdout:
+                    tldr_path = path
+                    break
+            except Exception:
+                continue
+
+    if not tldr_path:
+        return False, "llm-tldr executable not found"
+
+    # Ensure /usr/local/bin exists and is writable
+    usr_local_bin = Path("/usr/local/bin")
+    symlink_path = usr_local_bin / "tldr"
+
+    # Check if symlink already exists and points to correct location
+    if symlink_path.is_symlink():
+        current_target = symlink_path.resolve()
+        if current_target == tldr_path:
+            if verbose:
+                console.print(f"  [dim]Symlink already correct: {symlink_path}[/dim]")
+            return True, "Symlink already exists and is correct"
+
+    try:
+        # Create parent dir if needed
+        usr_local_bin.mkdir(parents=True, exist_ok=True)
+
+        # Remove existing symlink/file if present
+        if symlink_path.exists() or symlink_path.is_symlink():
+            symlink_path.unlink()
+
+        # Create new symlink
+        symlink_path.symlink_to(tldr_path)
+
+        if verbose:
+            console.print(f"  [green]Created symlink: {symlink_path} -> {tldr_path}[/green]")
+
+        # Verify the symlink works by running tldr --help
+        verify_result = subprocess.run(
+            [str(symlink_path), "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if verify_result.returncode != 0:
+            return False, f"Symlink created but verification failed: {verify_result.stderr}"
+
+        return True, f"Symlink created: {symlink_path}"
+    except PermissionError:
+        # Try with sudo
+        try:
+            result = subprocess.run(
+                ["sudo", "ln", "-sf", str(tldr_path), str(symlink_path)],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                if verbose:
+                    console.print(f"  [green]Created symlink with sudo: {symlink_path}[/green]")
+                return True, f"Symlink created with sudo: {symlink_path}"
+            else:
+                if verbose:
+                    console.print(f"  [red]Failed to create symlink with sudo: {result.stderr}[/red]")
+                return False, f"Failed to create symlink with sudo: {result.stderr}"
+        except Exception as e:
+            if verbose:
+                console.print(f"  [red]Permission denied: {e}[/red]")
+            return (
+                False,
+                f"Permission denied. Run manually: sudo ln -sf {tldr_path} {symlink_path}",
+            )
+    except Exception as e:
+        if verbose:
+            console.print(f"  [red]Failed to create symlink: {e}[/red]")
+        return False, f"Failed to create symlink: {e}"
+
+
 def check_tldr_update(verbose: bool = False) -> tuple[bool, str]:
     """Check if TLDR needs update and update if needed.
 
@@ -824,12 +976,38 @@ def check_tldr_update(verbose: bool = False) -> tuple[bool, str]:
                 timeout=120,
             )
             if result.returncode == 0:
-                return True, "TLDR dev install updated"
+                # Ensure system-wide symlink
+                symlink_created, symlink_msg = ensure_tldr_symlink(verbose)
+                return True, f"TLDR dev install updated. {symlink_msg}"
             else:
                 return False, f"TLDR dev install failed: {result.stderr[:100]}"
         except Exception as e:
             return False, str(e)
     elif shutil.which("tldr"):
+        # Check if it's the right tldr (llm-tldr, not man-page tldr)
+        try:
+            result = subprocess.run(
+                ["tldr", "--help"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if "Token-efficient code analysis" not in result.stdout:
+                # Wrong tldr, install llm-tldr
+                result = subprocess.run(
+                    ["uv", "pip", "install", "--upgrade", "llm-tldr"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                if result.returncode == 0:
+                    symlink_created, symlink_msg = ensure_tldr_symlink(verbose)
+                    return True, f"TLDR installed. {symlink_msg}"
+                else:
+                    return False, f"TLDR install failed: {result.stderr[:100]}"
+        except Exception:
+            pass
+
         # PyPI install - update from PyPI
         try:
             result = subprocess.run(
@@ -839,15 +1017,31 @@ def check_tldr_update(verbose: bool = False) -> tuple[bool, str]:
                 timeout=120,
             )
             if result.returncode == 0:
-                if "already satisfied" in result.stdout.lower():
-                    return False, "TLDR already up to date"
-                return True, "TLDR updated from PyPI"
+                # Always ensure symlink exists after install/update
+                symlink_created, symlink_msg = ensure_tldr_symlink(verbose)
+                if symlink_created:
+                    return True, f"TLDR updated from PyPI. {symlink_msg}"
+                return False, f"TLDR installed but symlink failed: {symlink_msg}"
             else:
                 return False, f"TLDR update failed: {result.stderr[:100]}"
         except Exception as e:
             return False, str(e)
     else:
-        return False, "TLDR not installed"
+        # Install fresh
+        try:
+            result = subprocess.run(
+                ["uv", "pip", "install", "llm-tldr"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode == 0:
+                symlink_created, symlink_msg = ensure_tldr_symlink(verbose)
+                return True, f"TLDR installed. {symlink_msg}"
+            else:
+                return False, f"TLDR install failed: {result.stderr[:100]}"
+        except Exception as e:
+            return False, str(e)
 
 
 def print_summary(summary: UpdateSummary, verbose: bool = False) -> None:
@@ -930,6 +1124,7 @@ def run_update(
     reindex_tldr: bool = False,
     update_deps_only: bool = False,
     update_npm_only: bool = False,
+    embeddings_only: bool = False,
 ) -> UpdateSummary:
     """Run the incremental update.
 
@@ -945,6 +1140,7 @@ def run_update(
         reindex_tldr: Force rebuild TLDR index
         update_deps_only: Update Python dependencies only
         update_npm_only: Update NPM dependencies only
+        embeddings_only: Install embeddings dependencies only
 
     Returns:
         UpdateSummary with details of changes made
@@ -972,20 +1168,21 @@ def run_update(
         console.print(f"[dim]Project root: {project_root}[/dim]")
 
     # Handle single-mode options
-    if update_deps_only:
+    if update_deps_only and not embeddings_only:
         console.print("\n[bold]Updating Python dependencies only...[/bold]")
         success, msg = update_python_deps(opc_dir, verbose=verbose, force=True)
         summary.python_updated = success
         console.print(f"  [{'green' if success else 'dim'}]{msg}[/{'green' if success else 'dim'}]")
         return summary
 
-    if update_npm_only:
+    if update_npm_only and not embeddings_only:
         console.print("\n[bold]Updating NPM dependencies only...[/bold]")
         success, msg = update_npm_deps(claude_dir / "hooks", verbose=verbose, force=True)
         summary.npm_updated = success
         console.print(f"  [{'green' if success else 'dim'}]{msg}[/{'green' if success else 'dim'}]")
         return summary
 
+    # Embeddings can be installed standalone or alongside other updates
     if embeddings_only:
         console.print("\n[bold]Installing embeddings dependencies...[/bold]")
         try:
@@ -1016,7 +1213,11 @@ def run_update(
                 console.print(f"       {result.stderr[:200]}")
         except Exception as e:
             console.print(f"  [red]ERROR[/red] {e}")
-        return summary
+
+        # If standalone mode (no full update), return here
+        if not full_update and not update_deps_only:
+            return summary
+        # Otherwise continue with the rest of the update
 
     # Step 1: Git pull (unless skipped)
     console.print("\n[bold]Step 1/9: Checking git status...[/bold]")

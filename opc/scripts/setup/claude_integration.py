@@ -16,6 +16,7 @@ Works on: Windows, macOS, Linux
 import json
 import platform
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -570,6 +571,14 @@ def install_opc_integration(
                             result["merged_items"].append(f"mcp:{mcp_name}")
                     target_settings_path.write_text(json.dumps(settings, indent=2))
 
+        # Install tldr-code for token-efficient code analysis
+        try:
+            tldr_success, tldr_msg = install_tldr_code(verbose=False)
+            if tldr_msg:
+                print(f"TLDR-Code: {tldr_msg}")
+        except Exception:
+            pass  # Non-critical, continue even if tldr install fails
+
         result["success"] = True
 
     except Exception as e:
@@ -589,3 +598,127 @@ def get_platform_info() -> dict[str, str]:
         "release": platform.release(),
         "machine": platform.machine(),
     }
+
+
+def ensure_tldr_symlink(verbose: bool = False) -> tuple[bool, str]:
+    """Ensure tldr-code is accessible system-wide via /usr/local/bin/tldr.
+
+    Creates a symlink from /usr/local/bin/tldr to ~/.venv/bin/tldr (or uv venv).
+    This makes tldr-code available in Claude Code's subprocess PATH.
+
+    Returns:
+        Tuple of (success, message)
+    """
+    # Find the tldr executable
+    venv_bin_paths = [
+        Path.home() / ".venv" / "bin" / "tldr",
+        Path.home() / ".local" / "bin" / "tldr",
+    ]
+
+    tldr_path = None
+    for path in venv_bin_paths:
+        if path.exists() and path.stat().st_size > 100:  # Real binary, not man-page tldr
+            try:
+                output = subprocess.run(
+                    [str(path), "--help"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if "Token-efficient code analysis" in output.stdout:
+                    tldr_path = path
+                    break
+            except Exception:
+                continue
+
+    if not tldr_path:
+        if verbose:
+            print("[red]llm-tldr executable not found[/red]")
+        return False, "llm-tldr executable not found"
+
+    usr_local_bin = Path("/usr/local/bin")
+    symlink_path = usr_local_bin / "tldr"
+
+    if symlink_path.is_symlink():
+        current_target = symlink_path.resolve()
+        if current_target == tldr_path:
+            return True, "Symlink already exists and is correct"
+
+    try:
+        usr_local_bin.mkdir(parents=True, exist_ok=True)
+
+        if symlink_path.exists() or symlink_path.is_symlink():
+            symlink_path.unlink()
+
+        symlink_path.symlink_to(tldr_path)
+
+        # Verify the symlink works
+        verify_result = subprocess.run(
+            [str(symlink_path), "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if verify_result.returncode != 0:
+            return False, f"Symlink created but verification failed: {verify_result.stderr}"
+
+        if verbose:
+            print(f"[green]Created symlink: {symlink_path} -> {tldr_path}[/green]")
+
+        return True, f"Symlink created: {symlink_path}"
+    except PermissionError:
+        try:
+            result = subprocess.run(
+                ["sudo", "ln", "-sf", str(tldr_path), str(symlink_path)],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                if verbose:
+                    print(f"[green]Created symlink with sudo: {symlink_path}[/green]")
+                return True, f"Symlink created with sudo: {symlink_path}"
+            else:
+                if verbose:
+                    print(f"[red]Failed to create symlink with sudo: {result.stderr}[/red]")
+                return False, f"Failed to create symlink with sudo: {result.stderr}"
+        except Exception as e:
+            if verbose:
+                print(f"[red]Permission denied: {e}[/red]")
+            return (
+                False,
+                f"Permission denied. Run manually: sudo ln -sf {tldr_path} {symlink_path}",
+            )
+    except Exception as e:
+        if verbose:
+            print(f"[red]Failed to create symlink: {e}[/red]")
+        return False, f"Failed to create symlink: {e}"
+
+
+def install_tldr_code(verbose: bool = False) -> tuple[bool, str]:
+    """Install tldr-code and ensure system-wide symlink.
+
+    Returns:
+        Tuple of (success, message)
+    """
+    # First ensure llm-tldr is installed
+    try:
+        result = subprocess.run(
+            ["uv", "pip", "install", "llm-tldr"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            return False, f"llm-tldr install failed: {result.stderr[:100]}"
+    except Exception as e:
+        return False, f"llm-tldr install error: {e}"
+
+    # Then ensure symlink exists
+    symlink_created, symlink_msg = ensure_tldr_symlink(verbose)
+    if symlink_created:
+        return True, f"TLDR-Code installed. {symlink_msg}"
+    elif "already exists" in symlink_msg:
+        return True, "TLDR-Code already available"
+    else:
+        return False, symlink_msg
