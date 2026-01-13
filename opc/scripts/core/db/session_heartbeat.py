@@ -20,8 +20,7 @@ class SessionHeartbeat:
 
     async def _get_client(self):
         if self._redis is None:
-            client = await get_redis()
-            self._redis = client.client
+            self._redis = await get_redis()
         return self._redis
 
     def _key(self, session_id: str) -> str:
