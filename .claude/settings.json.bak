@@ -1,8 +1,4 @@
 {
-  "statusLine": {
-    "type": "command",
-    "command": "python3 $CLAUDE_PROJECT_DIR/.claude/scripts/status.py"
-  },
   "hooks": {
     "PreToolUse": [
       {
@@ -14,7 +10,7 @@
         ]
       },
       {
-        "matcher": "Read|Edit|Write",
+        "matcher": {"tools": ["Read", "Edit", "Write"]},
         "hooks": [
           {
             "type": "command",
@@ -24,7 +20,7 @@
         ]
       },
       {
-        "matcher": "Read",
+        "matcher": {"tools": ["Read"]},
         "hooks": [
           {
             "type": "command",
@@ -34,7 +30,7 @@
         ]
       },
       {
-        "matcher": "Grep",
+        "matcher": {"tools": ["Grep"]},
         "hooks": [
           {
             "type": "command",
@@ -44,7 +40,7 @@
         ]
       },
       {
-        "matcher": "Task",
+        "matcher": {"tools": ["Task"]},
         "hooks": [
           {
             "type": "command",
@@ -59,7 +55,7 @@
         ]
       },
       {
-        "matcher": "Edit",
+        "matcher": {"tools": ["Edit"]},
         "hooks": [
           {
             "type": "command",
@@ -109,7 +105,7 @@
         ]
       },
       {
-        "matcher": "resume|compact|clear",
+        "matcher": {"tools": ["resume", "compact", "clear"]},
         "hooks": [
           {
             "type": "command",
@@ -118,7 +114,7 @@
         ]
       },
       {
-        "matcher": "startup|resume",
+        "matcher": {"tools": ["startup", "resume"]},
         "hooks": [
           {
             "type": "command",
@@ -164,7 +160,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": {"tools": ["Edit", "Write"]},
         "hooks": [
           {
             "type": "command",
@@ -189,7 +185,7 @@
         ]
       },
       {
-        "matcher": "Write",
+        "matcher": {"tools": ["Write"]},
         "hooks": [
           {
             "type": "command",
@@ -198,7 +194,7 @@
         ]
       },
       {
-        "matcher": "Edit|MultiEdit|Write|Bash",
+        "matcher": {"tools": ["Edit", "MultiEdit", "Write", "Bash"]},
         "hooks": [
           {
             "type": "command",
@@ -208,7 +204,7 @@
         ]
       },
       {
-        "matcher": "*",
+        "matcher": {"tools": ["*"]},
         "hooks": [
           {
             "type": "command",
@@ -217,7 +213,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write",
+        "matcher": {"tools": ["Edit", "Write"]},
         "hooks": [
           {
             "type": "command",
@@ -227,7 +223,7 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": {"tools": ["Bash"]},
         "hooks": [
           {
             "type": "command",
