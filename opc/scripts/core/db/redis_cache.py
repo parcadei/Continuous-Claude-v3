@@ -17,10 +17,13 @@ Usage:
 
 import hashlib
 import json
+import logging
 import os
 from typing import Any
 
 import redis.asyncio as redis
+
+logger = logging.getLogger(__name__)
 
 # Global Redis client instance
 _client: redis.Redis | None = None
@@ -134,8 +137,8 @@ class RedisCache:
             if result:
                 return json.loads(result)
             return None
-        except Exception:
-            # Log error in production, fail silently for graceful degradation
+        except Exception as e:
+            logger.error(f"Failed to get embedding from cache: {e}")
             return None
 
     async def set_embedding(self, text: str, embedding: list[float]) -> None:
@@ -153,9 +156,8 @@ class RedisCache:
                 f"{EMBEDDING_PREFIX}{key}",
                 json.dumps(embedding),
             )
-        except Exception:
-            # Fail silently for graceful degradation
-            pass
+        except Exception as e:
+            logger.error(f"Failed to store embedding in cache: {e}")
 
     async def delete_embedding(self, text: str) -> bool:
         """Remove embedding from cache.
@@ -171,7 +173,8 @@ class RedisCache:
             key = self._hash_key(text)
             result = await client.delete(f"{EMBEDDING_PREFIX}{key}")
             return result > 0
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to delete embedding from cache: {e}")
             return False
 
     async def clear_all(self) -> int:
@@ -190,7 +193,8 @@ class RedisCache:
             if keys:
                 return await client.delete(*keys)
             return 0
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to clear embedding cache: {e}")
             return 0
 
     async def health_check(self) -> tuple[bool, str | None]:

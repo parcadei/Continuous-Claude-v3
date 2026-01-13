@@ -167,7 +167,7 @@ ACTION: Use Skill tool BEFORE responding
 
 ```bash
 # Clone
-git clone https://github.com/parcadei/Continuous-Claude-v3.git
+git clone https://github.com/grantray/Continuous-Claude-v3.git
 cd Continuous-Claude-v3/opc
 
 # Run setup wizard (12 steps)
@@ -685,7 +685,7 @@ TLDR is automatically integrated via hooks:
 - **smart-search-router**: Routes Grep to `tldr search`
 - **post-tool-use-tracker**: Updates indexes when files change
 
-[See TLDR documentation →](opc/packages/tldr-code/)
+[See TLDR documentation →](https://github.com/a-h/llm-tldr)
 
 ---
 
@@ -941,8 +941,8 @@ Blocks on HIGH severity until user accepts/mitigates risks.
 
 ```bash
 # Clone
-git clone https://github.com/parcadei/continuous-claude.git
-cd continuous-claude/opc
+git clone https://github.com/grantray/Continuous-Claude-v3.git
+cd Continuous-Claude-v3/opc
 
 # Run the setup wizard
 uv run python -m scripts.setup.wizard
@@ -1051,13 +1051,12 @@ continuous-claude/
 │   ├── scripts/          # Python utilities
 │   └── settings.json     # Hook configuration
 ├── opc/
-│   ├── packages/
-│   │   └── tldr-code/    # 5-layer code analysis
 │   ├── scripts/
 │   │   ├── setup/        # Wizard, Docker, integration
 │   │   └── core/         # recall_learnings, store_learning
-│   └── docker/
-│       └── init-schema.sql  # 4-table PostgreSQL schema
+│   ├── src/              # Runtime harness, MCP client
+│   ├── docker/           # Docker configs
+│   └── init-db.sql       # 4-table PostgreSQL schema
 ├── thoughts/
 │   ├── ledgers/          # Continuity ledgers (CONTINUITY_*.md)
 │   └── shared/
@@ -1104,7 +1103,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=parcadei/Continuous-Claude-v2&type=timeline)](https://star-history.com/#parcadei/Continuous-Claude-v2&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=grantray/Continuous-Claude-v3&type=timeline)](https://star-history.com/#grantray/Continuous-Claude-v3&Date)
 
 ---
 

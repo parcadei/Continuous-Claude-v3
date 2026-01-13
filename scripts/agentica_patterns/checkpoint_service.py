@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, AsyncIterator
 from uuid import uuid4
@@ -19,7 +19,7 @@ class Checkpoint:
     session_id: str
     state: Dict[str, Any]
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     checksum: str = ""
 
 @dataclass
@@ -139,7 +139,7 @@ class CheckpointService:
 
     async def gc(self, max_age_hours: int = 24) -> int:
         """Garbage collect old checkpoints."""
-        cutoff = datetime.utcnow().timestamp() - (max_age_hours * 3600)
+        cutoff = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
         deleted = 0
         for path in self.checkpoint_dir.glob("*.json"):
             if path.stat().st_mtime < cutoff:

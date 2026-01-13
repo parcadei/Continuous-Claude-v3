@@ -35,7 +35,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 # Docker setup is in the docker/ directory at repo root (parent of opc/)
 DOCKER_DIR = PROJECT_ROOT.parent / "docker"
 DOCKER_COMPOSE_FILE = DOCKER_DIR / "docker-compose.yml"
-MIGRATIONS_DIR = PROJECT_ROOT / "scripts" / "migrations"
+MIGRATIONS_DIR = PROJECT_ROOT / "scripts/migrations"
 
 # Container runtime - "docker" or "podman" (set by wizard after detection)
 _CONTAINER_RUNTIME = "docker"
@@ -107,7 +107,7 @@ async def wait_for_services(
     Returns:
         dict with service health status and all_healthy flag
     """
-    services = services or ["postgres"]
+    services = services or ["postgres", "redis"]
     compose_path = compose_file or DOCKER_COMPOSE_FILE
     result = {s: False for s in services}
     result["all_healthy"] = False
@@ -181,9 +181,9 @@ async def run_migrations(
                 "postgres",
                 "psql",
                 "-U",
-                "claude",
+                "opc",
                 "-d",
-                "continuous_claude",
+                "opc",
                 "-f",
                 "/docker-entrypoint-initdb.d/init-schema.sql",
                 stdout=asyncio.subprocess.PIPE,
@@ -203,9 +203,9 @@ async def run_migrations(
                     "postgres",
                     "psql",
                     "-U",
-                    "claude",
+                    "opc",
                     "-d",
-                    "continuous_claude",
+                    "opc",
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -229,9 +229,9 @@ async def run_migrations(
                     "postgres",
                     "psql",
                     "-U",
-                    "claude",
+                    "opc",
                     "-d",
-                    "continuous_claude",
+                    "opc",
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -306,12 +306,6 @@ async def verify_stack_health(compose_file: Path | None = None) -> dict[str, Any
                 else:
                     result["redis"] = "unhealthy"
                     result["all_healthy"] = False
-
-            if "sandbox" in line.lower():
-                if "up" in line.lower():
-                    result["sandbox"] = "running"
-                else:
-                    result["sandbox"] = "stopped"
 
         return result
 
