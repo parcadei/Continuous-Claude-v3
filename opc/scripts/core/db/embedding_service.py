@@ -36,7 +36,7 @@ import httpx
 
 # Redis cache import (graceful degradation if unavailable)
 try:
-    from scripts.core.db.redis_cache import cache
+    from scripts.core.db.redis_client import cache
     REDIS_CACHE_AVAILABLE = True
 except ImportError:
     REDIS_CACHE_AVAILABLE = False

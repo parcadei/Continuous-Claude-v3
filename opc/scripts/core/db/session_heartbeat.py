@@ -5,7 +5,6 @@ import asyncio
 import json
 from datetime import datetime
 from typing import Optional, Dict
-from .redis_client import get_redis
 
 HEARTBEAT_TTL = 90  # 90 seconds (3x poll interval)
 
@@ -20,6 +19,7 @@ class SessionHeartbeat:
 
     async def _get_client(self):
         if self._redis is None:
+            from scripts.core.db.redis_client import get_redis
             self._redis = await get_redis()
         return self._redis
 

@@ -104,7 +104,7 @@ var MemoryClient = class {
 import json
 import sys
 try:
-    from scripts.agentica.memory_factory import get_default_backend
+    from scripts.core.db.memory_factory import get_default_backend
     backend = get_default_backend()
     print(json.dumps({"available": True, "backend": backend}))
 except Exception as e:
@@ -142,7 +142,7 @@ async def search():
     agent_id = sys.argv[4] if len(sys.argv) > 4 else None
 
     try:
-        from scripts.agentica.memory_factory import create_default_memory_service
+        from scripts.core.db.memory_factory import create_default_memory_service
         memory = create_default_memory_service(session_id)
 
         await memory.connect()
@@ -192,7 +192,7 @@ async def store():
     agent_id = sys.argv[4] if len(sys.argv) > 4 else None
 
     try:
-        from scripts.agentica.memory_factory import create_default_memory_service
+        from scripts.core.db.memory_factory import create_default_memory_service
         memory = create_default_memory_service(session_id)
 
         await memory.connect()
@@ -400,7 +400,9 @@ function topologicalSort(skillName, rules) {
     if (inProgress.has(name)) {
       throw new CircularDependencyError([...path, name]);
     }
-    if (visited.has(name)) return;
+    if (visited.has(name)) {
+      return;
+    }
     inProgress.add(name);
     const rule = rules.skills?.[name];
     const deps = [
@@ -434,7 +436,9 @@ function detectCircularDependency(skillName, rules, visited = /* @__PURE__ */ ne
   ];
   for (const dep of deps) {
     const cycle = detectCircularDependency(dep, rules, visited, stack, [...path]);
-    if (cycle) return cycle;
+    if (cycle) {
+      return cycle;
+    }
   }
   stack.delete(skillName);
   return null;
@@ -474,7 +478,9 @@ function resolveCoActivation(skillName, rules) {
 function getLoadingMode(skillName, rules) {
   const rule = rules.skills?.[skillName];
   const loading = rule?.loading;
-  if (!loading) return "lazy";
+  if (!loading) {
+    return "lazy";
+  }
   if (loading === "lazy" || loading === "eager" || loading === "eager-prerequisites") {
     return loading;
   }
@@ -551,8 +557,12 @@ function sortMatches(a, b) {
   if (a.priorityValue !== b.priorityValue) {
     return b.priorityValue - a.priorityValue;
   }
-  if (a.source === "keyword" && b.source === "intent") return -1;
-  if (a.source === "intent" && b.source === "keyword") return 1;
+  if (a.source === "keyword" && b.source === "intent") {
+    return -1;
+  }
+  if (a.source === "intent" && b.source === "keyword") {
+    return 1;
+  }
   return 0;
 }
 function buildLookupResult(match) {
@@ -592,9 +602,7 @@ function lookupSkillInMemory(prompt) {
     return { found: false, confidence: 0 };
   }
   const results = searchMemory(prompt, 3);
-  const validResults = results.filter(
-    (r) => r.similarity >= MEMORY_SIMILARITY_THRESHOLD
-  );
+  const validResults = results.filter((r) => r.similarity >= MEMORY_SIMILARITY_THRESHOLD);
   if (validResults.length === 0) {
     return { found: false, confidence: 0 };
   }

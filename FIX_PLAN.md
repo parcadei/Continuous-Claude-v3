@@ -3,6 +3,7 @@
 **Created:** 2026-01-11
 **Based On:** README_VS_REALITY_AUDIT.md
 **Agents Used:** 15 (3 batches of 5, 2 passes)
+**Last Updated:** 2026-01-13
 
 ---
 
@@ -10,59 +11,36 @@
 
 This plan addresses all discrepancies found between README claims and codebase reality.
 
-| Priority | Issues | Effort |
+| Priority | Issues | Status |
 |----------|--------|--------|
-| **Critical** | 4 | 8-10 weeks |
-| **High** | 6 | 2-3 weeks |
-| **Medium** | 4 | 1-2 weeks |
-| **Low** | 5 | 1 day |
+| **Critical** | 4 | 3 resolved, 1 in progress |
+| **High** | 6 | 4 resolved, 1 in progress, 1 deferred |
+| **Medium** | 4 | 4 resolved |
+| **Low** | 5 | 3 resolved, 2 verified |
 
 ---
 
 ## Critical Issues (Must Fix)
 
-### Issue #1: TLDR 5-Layer Code Analysis - DOES NOT EXIST
+### Issue #1: TLDR 5-Layer Code Analysis - IMPLEMENTED
 
-**Status:** Documentation exists, implementation doesn't
+**Status:** RESOLVED (Phase 2)
 **Affected Lines:** 24, 228-230, 621-688, 688, 1055
 
-**Recommended Solution:** Build custom implementation using existing tools
+**What Was Done:**
+- Installed `llm-tldr` package via uv
+- Created symlink at `/usr/local/bin/tldr`
+- Verified all 22 CLI commands work
+- Added `tldr diagnostics` and `tldr change-impact` commands
 
-**Implementation Plan:**
-
-| Week | Phase | Deliverables |
-|------|-------|--------------|
-| 1-2 | L1 (AST) + L2 (Call Graph) | AST parser, call graph, basic CLI |
-| 3 | L3 (CFG) + Complexity | Control flow, radon integration |
-| 4 | Semantic Search | sentence-transformers, FAISS index |
-| 5 | Testing + Integration | Hook integration, docs |
-
-**Required Dependencies:**
+**Verification:**
 ```bash
-uv pip install tree-sitter tree-sitter-languages networkx faiss-cpu
+tldr structure . --lang python    # Works
+tldr impact function_name .       # Works
+tldr dead src/                    # Works
 ```
 
-**Directory Structure to Create:**
-```
-opc/packages/tldr-code/
-├── tldr/
-│   ├── cli.py              # 22 CLI commands
-│   ├── core/
-│   │   ├── ast_parser.py   # L1
-│   │   ├── call_graph.py   # L2
-│   │   ├── cfg.py          # L3
-│   │   ├── dfg.py          # L4
-│   │   └── pdg.py          # L5
-│   ├── semantic/
-│   │   ├── embeddings.py
-│   │   └── search.py
-│   └── cache/
-├── tests/
-├── pyproject.toml
-└── README.md
-```
-
-**Immediate Action:** Update README line 688 to remove non-existent path reference
+**Note:** The `llm-tldr` package provides this functionality externally.
 
 ---
 
@@ -106,50 +84,19 @@ build tdd "add caching layer"
 
 ### Issue #3: Docker Credentials MISMATCH
 
-**Status:** docker-compose.yml has different credentials than running container
+**Status:** RESOLVED (Phase 1)
 **Affected Files:** `opc/docker-compose.yml`, `opc/.env`
 
-**Current State:**
-| Setting | docker-compose.yml | Running Container | .env |
-|---------|-------------------|-------------------|------|
-| User | `opc` | `claude` | `claude` |
-| Password | `opc_dev_password` | `claude_dev` | `claude_dev` |
-| Database | `opc` | `continuous_claude` | `continuous_claude` |
-| Container | `opc-postgres` | `continuous-claude-postgres` | - |
+**What Was Done:**
+- Updated `docker-compose.yml` to match running container credentials
+- Verified PostgreSQL is accessible with consistent credentials
+- Container name: `continuous-claude-postgres`
+- User: `claude`, Password: `claude_dev`, Database: `continuous_claude`
 
-**Fix Commands:**
-
+**Verification:**
 ```bash
-# 1. Backup current database
-docker exec continuous-claude-postgres pg_dump -U claude continuous_claude > ~/backup.sql
-
-# 2. Stop and remove current container (volume preserved)
-docker stop continuous-claude-postgres && docker rm continuous-claude-postgres
-
-# 3. Update docker-compose.yml with correct values
-# See "Files to Update" below
-
-# 4. Start via docker-compose
-cd /Users/grantray/Github/Continuous-Claude-v3/opc && docker-compose up -d postgres
-
-# 5. Verify
-docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c "SELECT COUNT(*) FROM sessions;"
+docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c "SELECT 1;"
 ```
-
-**Files to Update:**
-
-`opc/docker-compose.yml` lines 8, 10-12, 19:
-```yaml
-container_name: continuous-claude-postgres
-environment:
-  POSTGRES_USER: claude
-  POSTGRES_PASSWORD: claude_dev
-  POSTGRES_DB: continuous_claude
-healthcheck:
-  test: ["CMD-SHELL", "pg_isready -U claude -d continuous_claude"]
-```
-
-**Effort:** 30 minutes
 
 ---
 
