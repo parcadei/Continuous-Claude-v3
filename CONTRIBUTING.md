@@ -175,8 +175,6 @@ Hooks intercept Claude Code at lifecycle points. Located in `.claude/hooks/`.
 | `PostToolUse` | After tool execution |
 | `UserPromptSubmit` | User sends a message |
 | `PreCompact` | Before context compaction |
-| `SubagentStart` | Subagent spawned |
-| `SubagentStop` | Subagent completes |
 | `Stop` | LLM generation stops |
 
 ### Shell Hook Template

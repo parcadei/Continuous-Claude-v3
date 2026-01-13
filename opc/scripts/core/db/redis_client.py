@@ -14,6 +14,15 @@ from typing import AsyncGenerator
 
 import redis.asyncio as redis
 
+# TTL constants for Redis keys
+# These values balance freshness with memory efficiency
+
+DEFAULT_TTL: int = 3600  # General cache entries: 1 hour
+SESSION_TTL: int = 300   # Session data: 5 minutes
+HEARTBEAT_TTL: int = 90  # Heartbeat signals: 90 seconds (should be > poll interval)
+MESSAGE_TTL: int = 60    # Message queue entries: 1 minute
+LOCK_TTL: int = 30       # Distributed locks: 30 seconds (should be < operation time)
+
 # Global client instance
 _client: redis.Redis | None = None
 _client_lock: any = None

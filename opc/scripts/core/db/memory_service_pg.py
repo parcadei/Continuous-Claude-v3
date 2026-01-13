@@ -884,26 +884,65 @@ class MemoryServicePG:
     ) -> list[dict[str, Any]]:
         """Search archival memory using Maximal Marginal Relevance (MMR).
 
-        MMR ensures diverse results by balancing relevance and diversity:
-        MMR score = lambda * relevance - (1 - lambda) * diversity
+        The MMR algorithm selects results that are both relevant AND diverse.
+        This prevents returning redundant/similar results that cluster together
+        in the embedding space.
+
+        Algorithm (Greedy Iterative Selection):
+        1. Fetch candidates using hybrid FTS + vector search (k candidates)
+        2. For each iteration:
+           a. Calculate MMR score for all unselected candidates
+           b. Select candidate with highest MMR score
+           c. Update diversity scores based on newly selected item
+           d. Repeat until 'limit' items selected or candidates exhausted
+
+        MMR Score Formula:
+            MMR = lambda_param * relevance - (1 - lambda_param) * diversity
 
         Where:
-        - relevance: cosine similarity to query
-        - diversity: max similarity to already-selected results
+            - relevance: Cosine similarity to query embedding (0-1)
+            - diversity: Maximum cosine similarity to already-selected items (0-1)
 
         Args:
-            query: Text query for FTS
-            query_embedding: Query embedding for vector search
-            limit: Max results to return
-            lambda_param: Balance between relevance and diversity (0.0-1.0)
-                - 1.0 = pure relevance (like RRF)
-                - 0.0 = pure diversity
-                - 0.5 = balanced (recommended)
-            similarity_threshold: Minimum MMR score to include result
-            k: RRF constant for initial candidate retrieval
+            query: Text query for full-text search (FTS)
+            query_embedding: Query embedding vector for similarity search
+            limit: Maximum number of results to return (default: 5)
+            lambda_param: Trade-off parameter controlling relevance vs diversity:
+                - 1.0 = pure relevance ranking (similar to RRF)
+                - 0.5 = balanced trade-off (recommended starting point)
+                - 0.0 = pure diversity ranking
+            similarity_threshold: Minimum MMR score threshold (0.0-1.0).
+                Items with MMR below this are excluded from results.
+            k: Number of initial candidates to retrieve before MMR filtering.
+                Should be larger than 'limit' to allow diversity selection.
+                Typical values: 2-3x the desired limit (default: 60)
 
         Returns:
-            List of matching facts with mmr_score, relevance, and diversity
+            List of matching facts, each containing:
+            - id: Memory UUID
+            - content: Stored text content
+            - metadata: Associated metadata dictionary
+            - created_at: Timestamp of storage
+            - mmr_score: Final MMR score used for ranking
+            - relevance: Cosine similarity to query
+            - diversity: Diversity penalty from selected items
+
+        Example:
+            >>> results = await memory.search_learnings_mmr(
+            ...     query="error handling patterns",
+            ...     query_embedding=await memory.embed("error handling"),
+            ...     limit=5,
+            ...     lambda_param=0.5,
+            ...     similarity_threshold=0.1
+            ... )
+            >>> for r in results:
+            ...     print(f"{r['content']}: MMR={r['mmr_score']:.3f}")
+
+        Note:
+            Higher lambda values favor topically similar results.
+            Lower lambda values favor semantically diverse results.
+            For exploratory queries, use lower lambda (0.3-0.4).
+            For precise lookups, use higher lambda (0.6-0.8).
         """
         padded_query = self._pad_embedding(query_embedding)
 

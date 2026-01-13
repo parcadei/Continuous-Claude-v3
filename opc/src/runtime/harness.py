@@ -26,18 +26,20 @@ logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s", st
 logger = logging.getLogger("mcp_execution.harness")
 
 
-def _parse_arguments() -> Path:
+def _parse_arguments() -> tuple[Path, list[str]]:
     """
     Parse command-line arguments.
 
     Returns:
-        Path to script
+        Tuple of (Path to script, remaining CLI arguments)
     """
     if len(sys.argv) < 2:
         logger.error("Usage: python -m runtime.harness <script_path>")
         sys.exit(1)
 
-    return Path(sys.argv[1]).resolve()
+    script_path = Path(sys.argv[1]).resolve()
+    script_args = sys.argv[2:] if len(sys.argv) > 2 else []
+    return script_path, script_args
 
 
 class _AsyncgenErrorFilter(logging.Filter):
@@ -130,17 +132,24 @@ def _cancel_all_tasks(loop):
             pass  # Suppress task exceptions during cleanup
 
 
-def _execute_direct(script_path: Path) -> int:
+def _execute_direct(script_path: Path, script_args: list[str]) -> int:
     """
     Execute script in direct mode (current process, no sandbox).
 
     Args:
         script_path: Path to Python script
+        script_args: CLI arguments to pass to the script
 
     Returns:
         Exit code
     """
     logger.info("=== Direct Mode ===")
+
+    # Save original sys.argv for restoration after script execution
+    original_argv = sys.argv
+
+    # Set up sys.argv for the script (script path at index 0, then script args)
+    sys.argv = [str(script_path)] + script_args
 
     # Add project root and src/ to Python path for imports
     src_path = Path(__file__).parent.parent
@@ -200,11 +209,20 @@ def _execute_direct(script_path: Path) -> int:
         logger.info("Execution interrupted by user")
         exit_code = 130
 
+    except SystemExit as e:
+        # Signal handler calls sys.exit(130) - propagate the exit code
+        logger.info(f"System exit with code: {e.code}")
+        exit_code = e.code if e.code is not None else 1
+        raise  # Re-raise so finally still runs
+
     except Exception as e:
         logger.error(f"Script execution failed: {e}", exc_info=True)
         exit_code = 1
 
     finally:
+        # Restore original sys.argv
+        sys.argv = original_argv
+
         # Cleanup
         logger.debug("Cleaning up MCP connections...")
         try:
@@ -233,7 +251,7 @@ def main() -> NoReturn:
         logger.info("Loaded .env file")
 
     # 1. Parse CLI arguments
-    script_path = _parse_arguments()
+    script_path, script_args = _parse_arguments()
 
     # 2. Validate script exists
     if not script_path.exists():
@@ -247,7 +265,7 @@ def main() -> NoReturn:
     logger.info(f"Script: {script_path}")
 
     # 3. Execute script
-    exit_code = _execute_direct(script_path)
+    exit_code = _execute_direct(script_path, script_args)
 
     sys.exit(exit_code)
 

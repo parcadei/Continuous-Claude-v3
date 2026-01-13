@@ -156,13 +156,6 @@ def _unwrap_mcp_response(result: Any) -> Any:
     return unwrapped
 
 
-# Dispatch table for result unwrapping strategies
-RESULT_UNWRAP_STRATEGIES = [
-    ("value", lambda r: r.value),
-    ("content", lambda r: r.content),
-]
-
-
 # ===========================================================================
 # Config Loading Helpers - Reduces complexity in initialize
 # ===========================================================================

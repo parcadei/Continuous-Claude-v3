@@ -12,13 +12,13 @@ cd opc && uv run python -m scripts.setup.wizard
 cd opc && docker compose up -d
 
 # Run a script with MCP tools available
-uv run python -m runtime.harness /path/to/script.py
+cd opc && uv run python -m runtime.harness /path/to/script.py
 
 # Search past learnings
-uv run python scripts/core/recall_learnings.py --query "hooks patterns"
+cd opc && uv run python scripts/core/recall_learnings.py --query "hooks patterns"
 
 # Store a new learning
-uv run python scripts/core/store_learning.py --session-id "session123" \
+cd opc && uv run python scripts/core/store_learning.py --session-id "session123" \
     --type WORKING_SOLUTION --content "Hook pattern works well" \
     --context "hook development" --tags "hooks,patterns" --confidence high
 ```
@@ -79,7 +79,7 @@ uv run python scripts/core/store_learning.py --session-id "session123" \
 
 ## MCP Execution Flow
 
-1. **Entry**: `python -m runtime.harness <script.py>`
+1. **Entry**: `cd opc && python -m runtime.harness <script.py>`
 2. **Init**: Load `.env`, parse args, validate script exists
 3. **MCP Connect**: Initialize `McpClientManager`, connect to servers from config
 4. **Execute**: `runpy.run_path()` injects MCP tools into script's namespace
@@ -145,7 +145,7 @@ CREATE TABLE blackboard (
 
 ```bash
 # Store with type, context, tags
-uv run python scripts/core/store_learning.py \
+cd opc && uv run python scripts/core/store_learning.py \
     --session-id "session123" \
     --type WORKING_SOLUTION \
     --content "Hook pattern X works for Y" \
@@ -158,13 +158,13 @@ uv run python scripts/core/store_learning.py \
 
 ```bash
 # Semantic search (hybrid RRF + optional reranking)
-uv run python scripts/core/recall_learnings.py --query "authentication patterns"
+cd opc && uv run python scripts/core/recall_learnings.py --query "authentication patterns"
 
 # Text-only (fast, no embeddings)
-uv run python scripts/core/recall_learnings.py --query "hooks" --text-only
+cd opc && uv run python scripts/core/recall_learnings.py --query "hooks" --text-only
 
 # Vector-only with recency boost
-uv run python scripts/core/recall_learnings.py --query "hooks" --vector-only --recency 0.3
+cd opc && uv run python scripts/core/recall_learnings.py --query "hooks" --vector-only --recency 0.3
 ```
 
 ## Docker Services
@@ -183,7 +183,7 @@ cd opc && docker compose up -d
 
 ```bash
 # Database
-DATABASE_URL=postgresql://opc:opc_dev_password@localhost:5432/continuous_claude
+DATABASE_URL=postgresql://opc:opc_dev_password@localhost:5432/opc
 
 # Embeddings (optional)
 VOYAGE_API_KEY=...
@@ -199,13 +199,13 @@ AGENTICA_MEMORY_BACKEND=postgres  # or sqlite
 cd opc && uv sync
 
 # Run a script with MCP tools
-uv run python -m runtime.harness /path/to/script.py
+cd opc && uv run python -m runtime.harness /path/to/script.py
 
 # Search memories
-PYTHONPATH=. uv run python scripts/core/recall_learnings.py -q "pattern"
+cd opc && PYTHONPATH=. uv run python scripts/core/recall_learnings.py -q "pattern"
 
 # Store a learning
-PYTHONPATH=. uv run python scripts/core/store_learning.py --session-id "test" --type CODEBASE_PATTERN --content "..." --context "..."
+cd opc && PYTHONPATH=. uv run python scripts/core/store_learning.py --session-id "test" --type CODEBASE_PATTERN --content "..." --context "..."
 
 # Run tests
 cd opc && uv run pytest
@@ -223,25 +223,25 @@ Tests are in `tests/` with integration and unit tests:
 
 ```bash
 # Run all tests
-uv run pytest
+cd opc && uv run pytest
 
 # Run specific test file
-uv run pytest tests/test_database.py
+cd opc && uv run pytest tests/test_database.py
 
 # Run a single test
-uv run pytest tests/test_database.py::TestDatabase::test_connection
+cd opc && uv run pytest tests/test_database.py::TestDatabase::test_connection
 
 # Run with verbose output
-uv run pytest -v
+cd opc && uv run pytest -v
 ```
 
 ## Key Configuration Files
 
 | File | Purpose |
 |------|---------|
-| `pyproject.toml` | Python dependencies, scripts, and tools (mypy, ruff, pytest) |
-| `init-db.sql` | PostgreSQL schema for sessions, file_claims, archival_memory, handoffs |
-| `docker-compose.yml` | PostgreSQL (5432), PgBouncer (6432), Redis (6379) |
+| `opc/pyproject.toml` | Python dependencies, scripts, and tools (mypy, ruff, pytest) |
+| `opc/init-db.sql` | PostgreSQL schema for sessions, file_claims, archival_memory, handoffs |
+| `opc/docker-compose.yml` | PostgreSQL (5432), PgBouncer (6432), Redis (6379) |
 
 ## Settings Safety Rule
 
@@ -263,7 +263,7 @@ The `settings.json` file contains sensitive configuration:
 
 ### How Updates Work
 
-When running the updater (`uv run python -m scripts.setup.update`):
+When running the updater (`cd opc && uv run python -m scripts.setup.update`):
 
 1. Reads `settings.json.bak` (template - hooks only, no secrets)
 2. Merges it into the user's existing `~/.claude/settings.json`
@@ -314,10 +314,10 @@ opc/
 
 - **mcp**: Model Context Protocol SDK
 - **pydantic**: Configuration validation
-- **pgvector**: Vector similarity search
+- **pgvector**: Vector similarity search (optional, for production semantic search)
 - **redis**: Hot cache, pub/sub
 - **aiofiles**: Async file I/O
-- **rich**: Terminal output formatting
+- **rich**: Terminal output formatting (optional, for enhanced CLI output)
 
 ## TLDR-Code: Token-Efficient Code Analysis
 
@@ -327,7 +327,7 @@ The project includes **tldr-code** (llm-tldr) for token-efficient code analysis 
 
 TLDR-Code is automatically installed when running:
 ```bash
-uv run python -m scripts.setup.update  # Full update
+cd opc && uv run python -m scripts.setup.update  # Full update
 ```
 
 This installs llm-tldr and attempts to create a symlink at `/usr/local/bin/tldr` pointing to `~/.venv/bin/tldr`, making it available in Claude Code's subprocess PATH.

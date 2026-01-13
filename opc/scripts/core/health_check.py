@@ -123,7 +123,15 @@ class HealthReport:
     uptime_seconds: float = 0.0
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        """Convert to dictionary with enum values as strings."""
+        result = asdict(self)
+        # Convert enums to their string values for JSON serialization
+        result["overall_status"] = self.overall_status.value
+        result["level"] = self.level.value
+        for check in result["checks"]:
+            check["status"] = check["status"].value if hasattr(check["status"], "value") else check["status"]
+            check["level"] = check["level"].value if hasattr(check["level"], "value") else check["level"]
+        return result
 
     def to_json(self, indent: int = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent)

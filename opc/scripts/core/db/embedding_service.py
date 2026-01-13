@@ -325,7 +325,6 @@ class VoyageEmbeddingProvider(EmbeddingProvider):
                     await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
             except Exception as e:
                 last_error = e
-                f"{type(e).__name__}: {str(e)}"
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
 

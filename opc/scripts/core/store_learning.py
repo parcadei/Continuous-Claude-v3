@@ -124,6 +124,13 @@ async def store_learning_v2(
     if not content or not content.strip():
         return {"success": False, "error": "No content provided"}
 
+    # Validate learning_type if provided
+    if learning_type and learning_type not in LEARNING_TYPES:
+        return {
+            "success": False,
+            "error": f"Invalid learning_type '{learning_type}'. Must be one of: {', '.join(LEARNING_TYPES)}",
+        }
+
     # Score the learning using the confidence scorer
     metadata_for_scorer = {"type": learning_type} if learning_type else {}
     score = scorer.score(content, metadata_for_scorer)

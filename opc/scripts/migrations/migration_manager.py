@@ -11,8 +11,10 @@ USAGE:
 """
 
 import asyncio
+import hashlib
 import re
 from dataclasses import dataclass
+from functools import total_ordering
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +41,119 @@ class MigrationResult:
             "failed": self.failed,
             "error": self.error,
         }
+
+
+@total_ordering
+class Migration:
+    """Represents a database migration file.
+
+    Attributes:
+        id: The migration number (extracted from filename prefix)
+        filename: The full filename (e.g., "001_add_findings_table.sql")
+        description: Human-readable description (extracted from filename)
+        checksum: SHA256 checksum of the file contents for validation
+    """
+
+    # Pattern to match migration filenames like "001_add_findings_table.sql"
+    FILENAME_PATTERN = re.compile(r"^(\d+)_(.+)\.sql$")
+
+    def __init__(self, id: int, filename: str, description: str, checksum: str | None = None):
+        """Initialize a Migration instance.
+
+        Args:
+            id: The migration number
+            filename: The full filename
+            description: Human-readable description
+            checksum: Optional SHA256 checksum for validation
+        """
+        self.id = id
+        self.filename = filename
+        self.description = description
+        self._checksum = checksum
+
+    @classmethod
+    def from_filename(cls, filename: str) -> "Migration":
+        """Create a Migration from a filename.
+
+        Args:
+            filename: The migration filename (e.g., "001_add_findings_table.sql")
+
+        Returns:
+            A new Migration instance
+
+        Raises:
+            ValueError: If the filename doesn't match the expected pattern
+        """
+        match = cls.FILENAME_PATTERN.match(filename)
+        if not match:
+            raise ValueError(f"Invalid migration filename: {filename}")
+
+        migration_id = int(match.group(1))
+        description = match.group(2).replace("_", " ").strip()
+
+        return cls(id=migration_id, filename=filename, description=description)
+
+    @classmethod
+    def from_path(cls, path: Path) -> "Migration":
+        """Create a Migration from a file path.
+
+        Args:
+            path: Path to the migration file
+
+        Returns:
+            A new Migration instance with checksum computed from file contents
+        """
+        migration = cls.from_filename(path.name)
+        migration._checksum = migration._compute_checksum(path)
+        return migration
+
+    def _compute_checksum(self, path: Path) -> str:
+        """Compute SHA256 checksum of the migration file.
+
+        Args:
+            path: Path to the migration file
+
+        Returns:
+            Hex-encoded SHA256 checksum
+        """
+        content = path.read_bytes()
+        return hashlib.sha256(content).hexdigest()
+
+    @property
+    def checksum(self) -> str | None:
+        """Get the checksum if available."""
+        return self._checksum
+
+    def validate_checksum(self, expected_checksum: str) -> bool:
+        """Validate the migration against an expected checksum.
+
+        Args:
+            expected_checksum: The expected SHA256 checksum
+
+        Returns:
+            True if the checksum matches
+        """
+        return self._checksum == expected_checksum if self._checksum else False
+
+    def __lt__(self, other: "Migration") -> bool:
+        """Compare migrations by their ID for ordering."""
+        if not isinstance(other, Migration):
+            return NotImplemented
+        return self.id < other.id
+
+    def __eq__(self, other: object) -> bool:
+        """Check equality based on migration ID."""
+        if not isinstance(other, Migration):
+            return NotImplemented
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        """Hash based on migration ID for use in sets/dicts."""
+        return hash(self.id)
+
+    def __repr__(self) -> str:
+        """String representation of the migration."""
+        return f"Migration(id={self.id}, filename={self.filename!r}, description={self.description!r})"
 
 
 class MigrationManager:

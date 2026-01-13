@@ -68,7 +68,7 @@ opc/packages/tldr-code/
 
 ### Issue #2: `/build` Skill - MISSING
 
-**Status:** Referenced in README but doesn't exist
+**Status:** RESOLVED
 **Affected Lines:** 127, 416, 433-444, 909-923
 
 **Implementation Plan:**
@@ -204,7 +204,7 @@ docker exec opc-redis redis-cli ping
 
 ### Issue #6: Math Path Mismatch
 
-**Status:** SKILL.md references `scripts/math/` but exists as `mathlib/`
+**Status:** RESOLVED
 **Affected File:** `.claude/skills/math-unified/SKILL.md`
 
 **Files to Fix:**
@@ -310,7 +310,7 @@ cp /Users/grantray/Github/Continuous-Claude-v3/opc/scripts/loogle_server.py /Use
 
 ### Issue #10: Thoughts Directory - Missing
 
-**Status:** Referenced in continuity system but doesn't exist
+**Status:** RESOLVED
 
 **Options:**
 1. Create directory: `mkdir -p thoughts/ledgers thoughts/shared/handoffs thoughts/shared/plans`
@@ -376,7 +376,7 @@ cp /Users/grantray/Github/Continuous-Claude-v3/opc/scripts/loogle_server.py /Use
 
 ### Issue #15: init-db.sql Location
 
-**Status:** README claims `opc/docker/init-schema.sql`, actual is `opc/init-db.sql`
+**Status:** RESOLVED
 
 **Fix:** Update README line 1059-1060
 

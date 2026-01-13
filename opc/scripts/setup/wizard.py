@@ -978,7 +978,7 @@ async def run_update_mode(
 
         # Step 1.5: Docker PostgreSQL health check (full update mode)
         if full_update:
-            console.print("\n[bold]Step 1.5/9: Checking Docker PostgreSQL...[/bold]")
+            console.print("\n[bold]Step 1.5/13: Checking Docker PostgreSQL...[/bold]")
             success, msg = check_docker_postgres(force_restart=False, verbose=verbose)
             if success:
                 console.print(f"  [green]OK[/green] {msg}")
@@ -986,7 +986,7 @@ async def run_update_mode(
                 console.print(f"  [yellow]WARN[/yellow] {msg}")
 
         # Step 2: Run database migrations
-        console.print("\n[bold]Step 2/9: Running database migrations...[/bold]")
+        console.print("\n[bold]Step 2/13: Running database migrations...[/bold]")
         try:
             from scripts.migrations.migration_manager import MigrationManager
 
@@ -1011,7 +1011,7 @@ async def run_update_mode(
 
         # Step 3: Update Python dependencies (uv sync) - full update mode
         if full_update:
-            console.print("\n[bold]Step 3/9: Updating Python dependencies...[/bold]")
+            console.print("\n[bold]Step 3/13: Updating Python dependencies...[/bold]")
             success, msg = update_python_deps(opc_root, verbose=verbose)
             if success:
                 console.print(f"  [green]OK[/green] {msg}")
@@ -1080,7 +1080,7 @@ async def run_update_mode(
 
         # Step 9: Update NPM dependencies (npm update) - full update mode
         if full_update:
-            console.print("\n[bold]Step 9/9: Updating NPM dependencies...[/bold]")
+            console.print("\n[bold]Step 9/13: Updating NPM dependencies...[/bold]")
             success, msg = update_npm_deps(claude_dir / "hooks", verbose=verbose)
             if success:
                 console.print(f"  [green]OK[/green] {msg}")
@@ -1088,7 +1088,7 @@ async def run_update_mode(
                 console.print(f"  [dim]{msg}[/dim]")
 
         # Step 10: Apply file updates (settings, scripts)
-        console.print("\n[bold]Step 10/9: Applying file updates...[/bold]")
+        console.print("\n[bold]Step 10/13: Applying file updates...[/bold]")
 
         # Sync settings.json - merge hooks from template (preserves user settings)
         opc_settings = opc_source / "settings.json"
@@ -1141,7 +1141,7 @@ async def run_update_mode(
 
         # Step 11: TLDR update + index rebuild - full update mode
         if full_update:
-            console.print("\n[bold]Step 11/9: Checking TLDR updates...[/bold]")
+            console.print("\n[bold]Step 11/13: Checking TLDR updates...[/bold]")
             try:
                 from scripts.setup.update import check_tldr_update, rebuild_tldr_index
 
@@ -1161,7 +1161,7 @@ async def run_update_mode(
                 console.print(f"  [yellow]WARN[/yellow] TLDR update failed: {e}")
 
             # Invalidate cache
-            console.print("\n[bold]Step 12/9: Invalidating cache...[/bold]")
+            console.print("\n[bold]Step 12/13: Invalidating cache...[/bold]")
             success, msg = invalidate_cache(pattern="tldr", verbose=verbose)
             if success:
                 console.print(f"  [green]OK[/green] {msg}")
@@ -1169,7 +1169,7 @@ async def run_update_mode(
                 console.print(f"  [dim]{msg}[/dim]")
 
         # Step 13: Rebuild TypeScript hooks if needed
-        console.print("\n[bold]Step 13/9: Rebuilding TypeScript hooks...[/bold]")
+        console.print("\n[bold]Step 13/13: Rebuilding TypeScript hooks...[/bold]")
         if check_typescript_files_changed(claude_dir / "hooks"):
             console.print("  TypeScript hooks detected...")
             if dry_run:
