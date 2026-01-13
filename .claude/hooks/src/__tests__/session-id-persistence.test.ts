@@ -209,10 +209,12 @@ describe('getProject', () => {
 describe('cross-process consistency', () => {
   let tempDir: string;
   let originalHome: string | undefined;
+  let originalCoordId: string | undefined;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'session-id-test-'));
     originalHome = process.env.HOME;
+    originalCoordId = process.env.COORDINATION_SESSION_ID;
     process.env.HOME = tempDir;
     delete process.env.COORDINATION_SESSION_ID;
   });
@@ -222,6 +224,11 @@ describe('cross-process consistency', () => {
       process.env.HOME = originalHome;
     } else {
       delete process.env.HOME;
+    }
+    if (originalCoordId) {
+      process.env.COORDINATION_SESSION_ID = originalCoordId;
+    } else {
+      delete process.env.COORDINATION_SESSION_ID;
     }
     fs.rmSync(tempDir, { recursive: true, force: true });
   });

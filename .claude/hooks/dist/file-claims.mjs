@@ -161,7 +161,7 @@ asyncio.run(main())
 }
 
 // src/shared/session-id.ts
-import { existsSync as existsSync2, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join as join2 } from "path";
 var SESSION_ID_FILENAME = ".coordination-session-id";
 function getSessionIdFile(options = {}) {
@@ -182,11 +182,8 @@ function generateSessionId() {
   return `s-${Date.now().toString(36)}`;
 }
 function readSessionId() {
-  const sessionFile = getSessionIdFile();
-  if (!existsSync2(sessionFile)) {
-    return null;
-  }
   try {
+    const sessionFile = getSessionIdFile();
     const id = readFileSync(sessionFile, "utf-8").trim();
     return id || null;
   } catch {

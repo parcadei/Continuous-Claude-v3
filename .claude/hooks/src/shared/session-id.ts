@@ -10,7 +10,7 @@
  * - file-claims.ts (reads ID for file conflict detection)
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 /** Default filename for session ID persistence */
@@ -72,15 +72,12 @@ export function writeSessionId(sessionId: string): boolean {
  * @returns The session ID if found, null otherwise
  */
 export function readSessionId(): string | null {
-  const sessionFile = getSessionIdFile();
-  if (!existsSync(sessionFile)) {
-    return null;
-  }
-
   try {
+    const sessionFile = getSessionIdFile();
     const id = readFileSync(sessionFile, 'utf-8').trim();
     return id || null;
   } catch {
+    // File doesn't exist or read error - return null
     return null;
   }
 }
