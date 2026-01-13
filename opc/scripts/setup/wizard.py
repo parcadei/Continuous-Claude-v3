@@ -1790,7 +1790,7 @@ async def run_setup_wizard() -> None:
                     console.print(f"       {verify_result.stderr[:200]}")
 
                 # Verify reranker model
-                console.print("  Loading BAAI/bge-reranker-base model...")
+                console.print("  Loading Qwen/Qwen3-Reranker-0.6B model...")
                 rerank_result = subprocess.run(
                     [
                         "uv",
@@ -1798,7 +1798,7 @@ async def run_setup_wizard() -> None:
                         "python",
                         "-c",
                         "from sentence_transformers import CrossEncoder; "
-                        "m = CrossEncoder('BAAI/bge-reranker-base'); "
+                        "m = CrossEncoder('Qwen/Qwen3-Reranker-0.6B'); "
                         "print('OK')",
                     ],
                     capture_output=True,

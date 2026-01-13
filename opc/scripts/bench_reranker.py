@@ -1,4 +1,4 @@
-"""Benchmark script for BAAI/bge-reranker-base cross-encoder.
+"""Benchmark script for Qwen/Qwen3-Reranker-0.6B cross-encoder.
 
 Measures:
 - Cold start time
@@ -79,7 +79,7 @@ async def benchmark_cold_start() -> dict[str, Any]:
 
     # Measure model load time
     load_start = time.perf_counter()
-    model = CrossEncoder("BAAI/bge-reranker-base", device=None, trust_remote_code=True)
+    model = CrossEncoder("Qwen/Qwen3-Reranker-0.6B", device=None, trust_remote_code=True)
     load_time = (time.perf_counter() - load_start) * 1000
 
     print(f"Model load time: {load_time:.2f} ms")
@@ -137,7 +137,7 @@ async def run_benchmarks() -> dict[str, Any]:
     print("=" * 60)
 
     reranker = RerankerProvider(
-        model="BAAI/bge-reranker-base",
+        model="Qwen/Qwen3-Reranker-0.6B",
         device=None,  # Auto-detect (mps on M4 Max)
         batch_size=32,
     )
@@ -269,11 +269,11 @@ def create_markdown_report(results: dict[str, Any]) -> None:
     tp = results["throughput"]
     rw = results["recall_workflow"]
 
-    report = f"""# Performance Analysis: BAAI/bge-reranker-base
+    report = f"""# Performance Analysis: Qwen/Qwen3-Reranker-0.6B
 Generated: {time_module.strftime('%Y-%m-%d %H:%M:%S')}
 
 ## Executive Summary
-- **Model:** BAAI/bge-reranker-base
+- **Model:** Qwen/Qwen3-Reranker-0.6B
 - **Type:** Cross-encoder reranker
 - **Device:** MPS (Apple Silicon) / CPU fallback
 
@@ -339,7 +339,7 @@ Generated: {time_module.strftime('%Y-%m-%d %H:%M:%S')}
 ## Benchmark Environment
 - Device: Apple Silicon (M4 Max)
 - Framework: sentence-transformers with MPS/CPU
-- Model: BAAI/bge-reranker-base
+- Model: Qwen/Qwen3-Reranker-0.6B
 """.format(cs['memory_after_load_mb'], results['batch_sizes'].get('batch_100_medium_query', {}).get('memory_peak_mb', 0))
 
     output_md = "/Users/grantray/Github/Continuous-Claude-v3/.claude/cache/agents/profiler/reranker-benchmark.md"
@@ -352,7 +352,7 @@ Generated: {time_module.strftime('%Y-%m-%d %H:%M:%S')}
 async def main():
     """Run benchmarks and print summary."""
     print("\n" + "=" * 60)
-    print("BAAI/bge-reranker-base BENCHMARK")
+    print("Qwen/Qwen3-Reranker-0.6B BENCHMARK")
     print("=" * 60)
 
     results = await run_benchmarks()

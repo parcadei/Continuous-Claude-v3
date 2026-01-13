@@ -419,6 +419,7 @@ class RerankerProvider:
     Used after vector search to improve result quality.
 
     Supported models:
+    - Qwen/Qwen3-Reranker-0.6B: Best match with Qwen3 embeddings (RECOMMENDED)
     - BAAI/bge-reranker-base: Good cross-encoder reranker
     - BAAI/bge-reranker-large: Higher quality, more memory
     - Thenlper/gte-reranker-base: GTE-based reranker
@@ -430,6 +431,7 @@ class RerankerProvider:
     """
 
     MODELS = {
+        "Qwen/Qwen3-Reranker-0.6B": 1024,  # RECOMMENDED - matches Qwen3 embeddings
         "BAAI/bge-reranker-base": 768,
         "BAAI/bge-reranker-large": 1024,
         "Thenlper/gte-reranker-base": 768,
@@ -437,7 +439,7 @@ class RerankerProvider:
 
     def __init__(
         self,
-        model: str = "BAAI/bge-reranker-base",
+        model: str = "Qwen/Qwen3-Reranker-0.6B",
         device: str | None = None,
         batch_size: int = 32,
     ):

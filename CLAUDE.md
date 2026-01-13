@@ -115,7 +115,7 @@ CREATE TABLE archival_memory (
     id UUID PRIMARY KEY,
     session_id TEXT NOT NULL,
     content TEXT NOT NULL,
-    embedding vector(1024),  -- BGE embeddings
+    embedding vector(1024),  -- Qwen3-Embedding-0.6B (1024 dim)
     metadata JSONB,
     created_at TIMESTAMPTZ
 );

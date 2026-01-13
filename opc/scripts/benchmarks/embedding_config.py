@@ -171,10 +171,10 @@ def run_benchmarks(device: str) -> dict:
         "throughput": throughput,
     }
 
-    # Benchmark BGE Reranker
-    print("\nTesting: BAAI/bge-reranker-base")
+    # Benchmark Qwen3 Reranker
+    print("\nTesting: Qwen/Qwen3-Reranker-0.6B")
     start = time.perf_counter()
-    reranker = CrossEncoder("BAAI/bge-reranker-base", device=device)
+    reranker = CrossEncoder("Qwen/Qwen3-Reranker-0.6B", device=device)
     load_time = (time.perf_counter() - start) * 1000
     print(f"  Cold load: {load_time:.0f}ms")
 
@@ -187,8 +187,8 @@ def run_benchmarks(device: str) -> dict:
 
     print(f"  Rerank (50 docs): {rerank_time:.1f}ms")
     print(f"  Throughput: {throughput:.0f} docs/sec")
-    results["bge_rerank"] = {
-        "model": "BAAI/bge-reranker-base",
+    results["qwen3_rerank"] = {
+        "model": "Qwen/Qwen3-Reranker-0.6B",
         "load_ms": load_time,
         "rerank_ms": rerank_time,
         "throughput": throughput,
