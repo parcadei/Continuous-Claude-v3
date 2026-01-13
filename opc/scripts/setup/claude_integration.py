@@ -14,6 +14,7 @@ Works on: Windows, macOS, Linux
 """
 
 import json
+import os
 import platform
 import shutil
 from dataclasses import dataclass, field
@@ -597,8 +598,6 @@ def install_opc_integration_symlink(
     Returns:
         dict with keys: success, symlinked_dirs, error
     """
-    import os
-
     result = {
         "success": False,
         "symlinked_dirs": [],
@@ -613,9 +612,8 @@ def install_opc_integration_symlink(
         # Ensure target exists
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create backup directory
-        backup_dir = target_dir / "backups" / datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_dir.mkdir(parents=True, exist_ok=True)
+        # Only create backup directory when actually needed
+        backup_dir = None
 
         for dir_name in symlink_dirs:
             source_path = opc_source / dir_name
@@ -626,6 +624,9 @@ def install_opc_integration_symlink(
 
             # Backup existing directory if it exists and is not a symlink
             if target_path.exists() and not target_path.is_symlink():
+                if backup_dir is None:
+                    backup_dir = target_dir / "backups" / datetime.now().strftime("%Y%m%d-%H%M%S")
+                    backup_dir.mkdir(parents=True, exist_ok=True)
                 backup_path = backup_dir / dir_name
                 shutil.copytree(target_path, backup_path)
                 result["backed_up_dirs"].append(dir_name)
@@ -634,9 +635,18 @@ def install_opc_integration_symlink(
                 # Remove existing symlink
                 target_path.unlink()
 
-            # Create symlink
-            os.symlink(source_path, target_path)
-            result["symlinked_dirs"].append(dir_name)
+            # Create symlink with Windows-specific error handling
+            try:
+                os.symlink(source_path, target_path)
+                result["symlinked_dirs"].append(dir_name)
+            except OSError as e:
+                if platform.system() == "Windows":
+                    result["error"] = (
+                        f"Symlink creation failed for '{dir_name}'. On Windows, enable Developer Mode "
+                        "(Settings → Privacy & security → For developers) or run as Administrator: {e}"
+                    )
+                    return result
+                raise
 
         # Copy (not symlink) settings.json - user may want to customize
         opc_settings_path = opc_source / "settings.json"
@@ -676,6 +686,25 @@ def install_opc_integration_symlink(
             if target_scripts_tldr.exists():
                 shutil.rmtree(target_scripts_tldr)
             shutil.copytree(opc_scripts_tldr, target_scripts_tldr)
+
+        # Copy individual root scripts used by skills/hooks
+        # These are referenced by skills like /qlty-check, /ast-grep-find, /mcp-chaining
+        root_scripts = [
+            "ast_grep_find.py",          # /ast-grep-find skill
+            "braintrust_analyze.py",     # session-end-cleanup hook
+            "qlty_check.py",             # /qlty-check skill
+            "research_implement_pipeline.py",  # /mcp-chaining skill
+            "test_research_pipeline.py", # /mcp-chaining skill
+            "multi_tool_pipeline.py",    # /skill-developer example
+            "recall_temporal_facts.py",  # /system_overview skill
+        ]
+        opc_scripts_root = opc_source.parent / "opc" / "scripts"
+        target_scripts_root = target_dir / "scripts"
+        target_scripts_root.mkdir(parents=True, exist_ok=True)
+        for script_name in root_scripts:
+            src = opc_scripts_root / script_name
+            if src.exists():
+                shutil.copy2(src, target_scripts_root / script_name)
 
         result["success"] = True
 

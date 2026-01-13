@@ -989,7 +989,7 @@ The wizard offers two installation modes:
 
 Files are copied from `continuous-claude/.claude/` to `~/.claude/`. Changes you make in `~/.claude/` are **local only** and will be overwritten on next update.
 
-```
+```text
 continuous-claude/.claude/  ──COPY──>  ~/.claude/
      (source)                          (user config)
 ```
@@ -1001,7 +1001,7 @@ continuous-claude/.claude/  ──COPY──>  ~/.claude/
 
 Creates symlinks so `~/.claude/` points directly to repo files. Changes in either location affect the same files.
 
-```
+```text
 ~/.claude/rules  ──SYMLINK──>  continuous-claude/.claude/rules
 ~/.claude/skills ──SYMLINK──>  continuous-claude/.claude/skills
 ~/.claude/hooks  ──SYMLINK──>  continuous-claude/.claude/hooks
