@@ -14,12 +14,22 @@ import { join } from 'path';
 import { checkFileClaim, claimFile } from './shared/db-utils-pg.js';
 import type { PreToolUseInput, HookOutput } from './shared/types.js';
 
-// Path to persist session ID for cross-hook sharing
+/**
+ * Returns the path to the session ID persistence file.
+ * Does not create the directory (session-register.ts handles creation).
+ *
+ * @returns Path to ~/.claude/.coordination-session-id
+ */
 function getSessionIdFile(): string {
   return join(process.env.HOME || '/tmp', '.claude', '.coordination-session-id');
 }
 
-// Get session ID from file (written by session-register hook), env, or generate
+/**
+ * Retrieves the session ID for coordination, checking multiple sources.
+ * Priority: env var > file > BRAINTRUST_SPAN_ID > generated.
+ *
+ * @returns Session identifier string (e.g., "s-m1abc23")
+ */
 function getSessionId(): string {
   // First try environment (same process)
   if (process.env.COORDINATION_SESSION_ID) {
@@ -40,11 +50,19 @@ function getSessionId(): string {
          `s-${Date.now().toString(36)}`;
 }
 
-// Get project from environment
+/**
+ * Returns the current project directory path.
+ *
+ * @returns CLAUDE_PROJECT_DIR env var or current working directory
+ */
 function getProject(): string {
   return process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
 
+/**
+ * Main entry point for the PreToolUse:Edit hook.
+ * Checks for file conflicts and claims files for the current session.
+ */
 export function main(): void {
   // Read hook input from stdin
   let input: PreToolUseInput;

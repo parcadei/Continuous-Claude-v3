@@ -14,7 +14,12 @@ import { join } from 'path';
 import { registerSession, getActiveSessions } from './shared/db-utils-pg.js';
 import type { SessionStartInput, HookOutput } from './shared/types.js';
 
-// Path to persist session ID for cross-hook sharing
+/**
+ * Returns the path to the session ID persistence file.
+ * Creates the ~/.claude directory if it doesn't exist.
+ *
+ * @returns Path to ~/.claude/.coordination-session-id
+ */
 function getSessionIdFile(): string {
   const claudeDir = join(process.env.HOME || '/tmp', '.claude');
   try {
@@ -23,23 +28,33 @@ function getSessionIdFile(): string {
   return join(claudeDir, '.coordination-session-id');
 }
 
-// Generate a short session ID from environment or random
+/**
+ * Generates or retrieves a short session ID for coordination.
+ * Priority: BRAINTRUST_SPAN_ID (first 8 chars) > timestamp-based ID.
+ *
+ * @returns 8-character session identifier (e.g., "s-m1abc23")
+ */
 function getSessionId(): string {
-  // Use Braintrust span ID if available, otherwise generate
   const spanId = process.env.BRAINTRUST_SPAN_ID;
   if (spanId) {
     return spanId.slice(0, 8);
   }
-
-  // Fallback to timestamp-based ID
   return `s-${Date.now().toString(36)}`;
 }
 
-// Get project from environment
+/**
+ * Returns the current project directory path.
+ *
+ * @returns CLAUDE_PROJECT_DIR env var or current working directory
+ */
 function getProject(): string {
   return process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
 
+/**
+ * Main entry point for the SessionStart hook.
+ * Registers the session, persists the ID to file, and injects awareness message.
+ */
 export function main(): void {
   // Read hook input from stdin
   let input: SessionStartInput;
