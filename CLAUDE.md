@@ -243,6 +243,47 @@ uv run pytest -v
 | `init-db.sql` | PostgreSQL schema for sessions, file_claims, archival_memory, handoffs |
 | `docker-compose.yml` | PostgreSQL (5432), PgBouncer (6432), Redis (6379) |
 
+## Settings Safety Rule
+
+**CRITICAL:** Never commit `~/.claude/settings.json` to git.
+
+### Why This Matters
+
+The `settings.json` file contains sensitive configuration:
+- API keys and tokens for MCP servers
+- Authentication credentials
+- Environment-specific settings
+
+### Template vs User Settings
+
+| File | Contains | Safe to Commit? |
+|------|----------|-----------------|
+| `~/.claude/settings.json` | User's actual API keys, tokens, secrets | **NEVER** |
+| `settings.json.bak` (repo root) | Template with placeholder values only | **YES** |
+
+### How Updates Work
+
+When running the updater (`uv run python -m scripts.setup.update`):
+
+1. Reads `settings.json.bak` from the repository (template - no secrets)
+2. Merges it into the user's existing `~/.claude/settings.json`
+3. Preserves user-specific fields:
+   - `env` - user's environment variables
+   - `attribution` - user's attribution settings
+   - Any user-added MCP servers or customizations
+
+This ensures users get configuration updates without losing their secrets or environment settings.
+
+### Git Ignore Protection
+
+The project's `.gitignore` should already include:
+```
+~/.claude/settings.json
+.claude/settings.json
+```
+
+If you see settings.json in git status, remove it and verify `.gitignore` coverage.
+
 ## File Organization
 
 ```

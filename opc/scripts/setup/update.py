@@ -739,79 +739,68 @@ def build_typescript_hooks(hooks_dir: Path, verbose: bool = False) -> tuple[bool
 
 
 def merge_settings_smart(
-    opc_settings: Path,
-    user_settings: Path,
-    output_path: Path,
+    settings_path: Path,
+    template_path: Path,
     verbose: bool = False,
 ) -> tuple[bool, str]:
     """Smart merge of settings.json files.
 
-    CRITICAL: This function NEVER writes to the user's ~/.claude/settings.json.
-    It only writes to the repo's settings.json.bak for reference.
-
-    The user's actual settings are NEVER modified by the updater.
+    Updates user's ~/.claude/settings.json with merged hooks from template.
+    Keeps ALL non-hook settings unchanged.
+    Only updates/adds hooks from the template.
 
     Args:
-        opc_settings: Path to OPC settings.json (in repo)
-        user_settings: Path to user's settings.local.json
-        output_path: Path to write reference backup (NOT user's settings.json!)
+        settings_path: Path to user's ~/.claude/settings.json
+        template_path: Path to settings.json.bak (the template)
         verbose: Show detailed output
 
     Returns:
         Tuple of (success, message)
     """
     try:
-        # Load OPC settings (the source of new defaults)
-        if not opc_settings.exists():
-            return False, "OPC settings.json not found"
-
-        opc_config = json.loads(opc_settings.read_text())
-
-        # Load user settings from settings.local.json (NOT ~/.claude/settings.json)
+        # Load user's current settings
         user_config = {}
-        if user_settings.exists():
+        if settings_path.exists():
             try:
-                user_config = json.loads(user_settings.read_text())
+                user_config = json.loads(settings_path.read_text())
                 if verbose:
-                    console.print(f"  [dim]Loaded {len(user_config)} settings from local.json[/dim]")
-            except (json.JSONDecodeError, OSError):
-                pass
-
-        # Build merged config - OPC defaults first
-        merged = opc_config.copy()
-
-        # CRITICAL: NEVER remove user settings
-        # Only ADD new MCP servers, keep all user servers
-        if "mcpServers" in user_config:
-            if verbose:
-                console.print(f"  [dim]Found {len(user_config['mcpServers'])} user MCP servers (preserved)[/dim]")
-            if "mcpServers" not in merged:
-                merged["mcpServers"] = {}
-            # Only ADD new servers that don't exist
-            for server_name, server_config in user_config["mcpServers"].items():
-                if server_name not in merged["mcpServers"]:
-                    merged["mcpServers"][server_name] = server_config
-
-        # Preserve user's hooks (only add new ones)
-        if "hooks" in user_config:
-            if verbose:
-                console.print(f"  [dim]Preserving user hooks config[/dim]")
-            if "hooks" not in merged:
-                merged["hooks"] = {}
-            merged["hooks"].update(user_config["hooks"])
-
-        # Preserve all other user settings (api keys, etc.)
-        for key in user_config:
-            if key not in ("mcpServers", "hooks"):
+                    console.print(f"  [dim]Loaded settings from {settings_path}[/dim]")
+            except (json.JSONDecodeError, OSError) as e:
                 if verbose:
-                    console.print(f"  [dim]Preserving user setting: {key}[/dim]")
-                merged[key] = user_config[key]
+                    console.print(f"  [dim]Could not load user settings: {e}[/dim]")
 
-        # Write ONLY to the reference file (repo's .bak), NEVER to user's settings.json
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(merged, indent=2))
+        # Preserve user's hooks
+        user_hooks = user_config.get("hooks", {})
 
-        return True, "Settings merged to reference file (user settings unchanged)"
+        # Load template (settings.json.bak)
+        if not template_path.exists():
+            return False, "Template settings.json.bak not found"
+
+        template_config = json.loads(template_path.read_text())
+        template_hooks = template_config.get("hooks", {})
+
+        # Build merged config: start with user config (preserves ALL non-hook settings)
+        merged = user_config.copy()
+
+        # Merge hooks: user's hooks first, then add new ones from template
+        # This preserves user hooks and adds any new template hooks they don't have
+        merged_hooks = template_hooks.copy()
+        merged_hooks.update(user_hooks)
+        merged["hooks"] = merged_hooks
+
+        # Write to user's settings.json
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings_path.write_text(json.dumps(merged, indent=2))
+        if verbose:
+            console.print(f"  [dim]Wrote merged settings to {settings_path}[/dim]")
+
+        new_hooks = sum(len(v) for v in template_hooks.values()) - sum(len(v) for v in user_hooks.values())
+        if new_hooks > 0:
+            return True, f"Added {new_hooks} new hook(s) from template"
+        elif user_hooks:
+            return True, "User hooks preserved (no new hooks from template)"
+        else:
+            return True, "Settings updated (no hooks in template)"
 
     except Exception as e:
         return False, f"Settings merge failed: {e}"
@@ -1469,14 +1458,12 @@ def run_update(
     # Step 6: Settings merge
     console.print("\n[bold]Step 6/9: Merging settings...[/bold]")
 
-    opc_settings = integration_source / "settings.json"
-    user_settings = claude_dir / "settings.local.json"
-    # Write to repo's .bak file, NEVER to user's ~/.claude/settings.json
-    output_settings = integration_source / "settings.json.bak"
+    settings_path = claude_dir / "settings.json"
+    template_path = integration_source / "settings.json.bak"
 
-    if opc_settings.exists():
+    if template_path.exists():
         success, msg = merge_settings_smart(
-            opc_settings, user_settings, output_settings, verbose=verbose
+            settings_path, template_path, verbose=verbose
         )
         if success:
             summary.settings_merged = True
