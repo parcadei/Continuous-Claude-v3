@@ -9,9 +9,19 @@
  * Part of the coordination layer architecture (Phase 1).
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { registerSession, getActiveSessions } from './shared/db-utils-pg.js';
 import type { SessionStartInput, HookOutput } from './shared/types.js';
+
+// Path to persist session ID for cross-hook sharing
+function getSessionIdFile(): string {
+  const claudeDir = join(process.env.HOME || '/tmp', '.claude');
+  try {
+    mkdirSync(claudeDir, { recursive: true });
+  } catch { /* ignore */ }
+  return join(claudeDir, '.coordination-session-id');
+}
 
 // Generate a short session ID from environment or random
 function getSessionId(): string {
@@ -46,8 +56,11 @@ export function main(): void {
   const project = getProject();
   const projectName = project.split('/').pop() || 'unknown';
 
-  // Store session ID in environment for other hooks
+  // Store session ID in environment and file for other hooks
   process.env.COORDINATION_SESSION_ID = sessionId;
+  try {
+    writeFileSync(getSessionIdFile(), sessionId, 'utf-8');
+  } catch { /* ignore write errors */ }
 
   // Register session in PostgreSQL
   const registerResult = registerSession(sessionId, project, '');

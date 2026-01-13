@@ -9,14 +9,34 @@
  * Part of the coordination layer architecture (Phase 1).
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import { checkFileClaim, claimFile } from './shared/db-utils-pg.js';
 import type { PreToolUseInput, HookOutput } from './shared/types.js';
 
-// Get session ID from environment (set by session-register hook)
+// Path to persist session ID for cross-hook sharing
+function getSessionIdFile(): string {
+  return join(process.env.HOME || '/tmp', '.claude', '.coordination-session-id');
+}
+
+// Get session ID from file (written by session-register hook), env, or generate
 function getSessionId(): string {
-  return process.env.COORDINATION_SESSION_ID ||
-         process.env.BRAINTRUST_SPAN_ID?.slice(0, 8) ||
+  // First try environment (same process)
+  if (process.env.COORDINATION_SESSION_ID) {
+    return process.env.COORDINATION_SESSION_ID;
+  }
+
+  // Try reading from file (cross-process persistence)
+  const sessionFile = getSessionIdFile();
+  if (existsSync(sessionFile)) {
+    try {
+      const id = readFileSync(sessionFile, 'utf-8').trim();
+      if (id) return id;
+    } catch { /* ignore read errors */ }
+  }
+
+  // Fallback to Braintrust span ID or generate new
+  return process.env.BRAINTRUST_SPAN_ID?.slice(0, 8) ||
          `s-${Date.now().toString(36)}`;
 }
 
