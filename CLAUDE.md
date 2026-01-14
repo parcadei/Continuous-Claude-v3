@@ -183,7 +183,7 @@ cd opc && docker compose up -d
 
 ```bash
 # Database
-DATABASE_URL=postgresql://opc:opc_dev_password@localhost:5432/opc
+DATABASE_URL=postgresql://claude:claude_dev@localhost:5432/continuous_claude
 
 # Embeddings (optional)
 VOYAGE_API_KEY=...

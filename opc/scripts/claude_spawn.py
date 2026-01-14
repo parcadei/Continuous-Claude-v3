@@ -196,7 +196,7 @@ class _ProcessMonitor:
             import asyncpg
 
             conn = await asyncpg.connect(
-                "postgresql://opc:opc_dev_password@localhost:5432/opc"
+                os.environ.get("DATABASE_URL", "postgresql://claude:claude_dev@localhost:5432/continuous_claude")
             )
             await conn.execute(
                 """

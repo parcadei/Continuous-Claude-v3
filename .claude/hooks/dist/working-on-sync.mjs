@@ -5,7 +5,7 @@ import { readFileSync } from "fs";
 import { spawnSync } from "child_process";
 import { join } from "path";
 function getPgConnectionString() {
-  return process.env.OPC_POSTGRES_URL || "postgresql://opc:opc_dev_password@localhost:5432/opc";
+  return process.env.OPC_POSTGRES_URL || "process.env.DATABASE_URL || "postgresql://claude:claude_dev@localhost:5432/continuous_claude"";
 }
 function runPgQuery(pythonCode, args = []) {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();

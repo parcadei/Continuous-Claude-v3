@@ -71,7 +71,7 @@ postgres = [
 ]
 math = [
     "sympy>=1.14.0",
-    "z3-solver>=4.15.4.0",
+    "z3-solver>=4.13.3.0",
 ]
 
 [project.scripts]
@@ -158,7 +158,7 @@ dev = [
 [tool.mutmut]
 paths_to_mutate = ["scripts/agentica_patterns/coordination_pg.py"]
 tests_dir = ["tests/unit/test_coordination_pg.py", "tests/unit/test_coordination_pg_integration.py", "tests/unit/conftest.py"]
-runner = "OPC_POSTGRES_URL=postgresql://opc:opc_dev_password@localhost:5432/opc python -m pytest tests/unit/test_coordination_pg.py tests/unit/test_coordination_pg_integration.py -x -q --tb=no"
+runner = "python -m pytest tests/unit/test_coordination_pg.py tests/unit/test_coordination_pg_integration.py -x -q --tb=no"
 debug = true
 
 # Performance optimizations
