@@ -193,7 +193,32 @@ uv run python -m scripts.setup.wizard
 
 By default, CC-v3 expects PostgreSQL running locally via Docker. For remote database setups:
 
-1. **Set environment variable** in `~/.claude/settings.json`:
+#### 1. Database Preparation
+
+First, prepare your remote PostgreSQL instance with pgvector and the schema:
+
+```bash
+# Connect to your remote PostgreSQL instance
+psql -h hostname -U user -d continuous_claude
+
+# Enable pgvector extension (requires superuser or rds_superuser)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+# Apply the schema (from your local clone)
+psql -h hostname -U user -d continuous_claude -f docker/init-schema.sql
+```
+
+> **Tip:** On managed PostgreSQL, pgvector may need to be enabled first:
+> - **AWS RDS**: Add `vector` to `shared_preload_libraries` in your DB Parameter Group, then restart
+> - **Supabase**: Enable via Database Extensions page in dashboard
+> - **Azure Database**: Use the Extensions pane to enable pgvector
+> - **Self-hosted**: Ensure pgvector is installed and your user has `CREATE EXTENSION` privileges
+
+#### 2. Connection Configuration
+
+Configure CC-v3 to connect to your remote database:
+
+**Option A:** Set in `~/.claude/settings.json`:
 
 ```json
 {
@@ -203,29 +228,12 @@ By default, CC-v3 expects PostgreSQL running locally via Docker. For remote data
 }
 ```
 
-2. **Or export in shell** before running Claude:
+**Option B:** Export in shell before running Claude:
 
 ```bash
 export OPC_POSTGRES_URL="postgresql://user:password@hostname:5432/continuous_claude"
 claude
 ```
-
-#### Remote Database Setup
-
-The remote database must have pgvector extension and the schema applied:
-
-```bash
-# 1. Connect to your remote PostgreSQL instance
-psql -h hostname -U user -d continuous_claude
-
-# 2. Enable pgvector extension (requires superuser or rds_superuser)
-CREATE EXTENSION IF NOT EXISTS vector;
-
-# 3. Apply the schema (from your local clone)
-psql -h hostname -U user -d continuous_claude -f docker/init-schema.sql
-```
-
-> **Tip:** On managed PostgreSQL (AWS RDS, Supabase, etc.), pgvector may need to be enabled via the provider's dashboard first.
 
 See `.env.example` for all available environment variables.
 
