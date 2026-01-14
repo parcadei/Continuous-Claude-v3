@@ -516,6 +516,17 @@ def install_opc_integration(
             shutil.copytree(opc_scripts_tldr, target_scripts_tldr)
             result["installed_scripts"] += len(list(target_scripts_tldr.rglob("*.py")))
 
+        # Copy scripts/mcp/ for external research/API tools
+        # This enables perplexity_search, firecrawl_scrape, github_search, nia_docs, morph_* scripts
+        # Used by skills like /perplexity-search, /research-external, /firecrawl-scrape
+        opc_scripts_mcp = opc_source.parent / "opc" / "scripts" / "mcp"
+        target_scripts_mcp = target_dir / "scripts" / "mcp"
+        if opc_scripts_mcp.exists():
+            if target_scripts_mcp.exists():
+                shutil.rmtree(target_scripts_mcp)
+            shutil.copytree(opc_scripts_mcp, target_scripts_mcp)
+            result["installed_scripts"] += len(list(target_scripts_mcp.rglob("*.py")))
+
         # Copy individual root scripts used by skills/hooks
         # These are referenced by skills like /qlty-check, /ast-grep-find, /mcp-chaining
         root_scripts = [
