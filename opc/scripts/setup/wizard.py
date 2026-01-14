@@ -377,6 +377,32 @@ async def prompt_database_config() -> dict[str, Any]:
     }
 
 
+async def prompt_embedding_config() -> dict[str, str]:
+    """Prompt user for embedding provider configuration.
+
+    Returns:
+        dict with keys: provider, host (if ollama), model (if ollama)
+    """
+    console.print("  [dim]Embeddings power semantic search for learnings recall.[/dim]")
+    console.print("  Options:")
+    console.print("    1. local - sentence-transformers (downloads ~1.3GB model)")
+    console.print("    2. ollama - Use Ollama server (fast, recommended if you have Ollama)")
+    console.print("    3. openai - OpenAI API (requires API key)")
+    console.print("    4. voyage - Voyage AI API (requires API key)")
+
+    provider = Prompt.ask("Embedding provider", choices=["local", "ollama", "openai", "voyage"], default="local")
+
+    config = {"provider": provider}
+
+    if provider == "ollama":
+        host = Prompt.ask("Ollama host URL", default="http://localhost:11434")
+        model = Prompt.ask("Ollama embedding model", default="nomic-embed-text")
+        config["host"] = host
+        config["model"] = model
+
+    return config
+
+
 async def prompt_api_keys() -> dict[str, str]:
     """Prompt user for optional API keys.
 
@@ -449,6 +475,19 @@ def generate_env_file(config: dict[str, Any], env_path: Path) -> None:
             lines.append("DATABASE_URL=")
         lines.append("")
 
+    # Embedding configuration
+    embeddings = config.get("embeddings", {})
+    if embeddings:
+        provider = embeddings.get("provider", "local")
+        lines.append("# Embedding provider (local, ollama, openai, voyage)")
+        lines.append(f"EMBEDDING_PROVIDER={provider}")
+        if provider == "ollama":
+            ollama_host = embeddings.get("host", "http://localhost:11434")
+            ollama_model = embeddings.get("model", "nomic-embed-text")
+            lines.append(f"OLLAMA_HOST={ollama_host}")
+            lines.append(f"OLLAMA_EMBED_MODEL={ollama_model}")
+        lines.append("")
+
     # API keys (only write non-empty keys)
     api_keys = config.get("api_keys", {})
     if api_keys:
@@ -484,7 +523,7 @@ async def run_setup_wizard() -> None:
     )
 
     # Step 0: Backup global ~/.claude (safety first)
-    console.print("\n[bold]Step 0/12: Backing up global Claude configuration...[/bold]")
+    console.print("\n[bold]Step 0/13: Backing up global Claude configuration...[/bold]")
     from scripts.setup.claude_integration import (
         backup_global_claude_dir,
         get_global_claude_dir,
@@ -501,7 +540,7 @@ async def run_setup_wizard() -> None:
         console.print("  [dim]No existing ~/.claude found (clean install)[/dim]")
 
     # Step 1: Check prerequisites (with installation offers)
-    console.print("\n[bold]Step 1/12: Checking system requirements...[/bold]")
+    console.print("\n[bold]Step 1/13: Checking system requirements...[/bold]")
     prereqs = await check_prerequisites_with_install_offers()
 
     if prereqs["docker"]:
@@ -526,7 +565,7 @@ async def run_setup_wizard() -> None:
         sys.exit(1)
 
     # Step 2: Database config
-    console.print("\n[bold]Step 2/12: Database Configuration[/bold]")
+    console.print("\n[bold]Step 2/13: Database Configuration[/bold]")
     console.print("  Choose your database backend:")
     console.print("    [bold]docker[/bold]    - PostgreSQL in Docker (recommended)")
     console.print("    [bold]embedded[/bold]  - Embedded PostgreSQL (no Docker needed)")
@@ -565,23 +604,30 @@ async def run_setup_wizard() -> None:
             }
         db_config["mode"] = "docker"
 
-    # Step 3: API keys
-    console.print("\n[bold]Step 3/12: API Keys (Optional)[/bold]")
+    # Step 3: Embedding configuration
+    console.print("\n[bold]Step 3/13: Embedding Configuration[/bold]")
+    if Confirm.ask("Configure embedding provider?", default=True):
+        embeddings = await prompt_embedding_config()
+    else:
+        embeddings = {"provider": "local"}
+
+    # Step 4: API keys
+    console.print("\n[bold]Step 4/13: API Keys (Optional)[/bold]")
     if Confirm.ask("Configure API keys?", default=False):
         api_keys = await prompt_api_keys()
     else:
         api_keys = {"perplexity": "", "nia": "", "braintrust": ""}
 
-    # Step 4: Generate .env
-    console.print("\n[bold]Step 4/12: Generating configuration...[/bold]")
-    config = {"database": db_config, "api_keys": api_keys}
+    # Step 5: Generate .env
+    console.print("\n[bold]Step 5/13: Generating configuration...[/bold]")
+    config = {"database": db_config, "embeddings": embeddings, "api_keys": api_keys}
     env_path = Path.cwd() / ".env"
     generate_env_file(config, env_path)
     console.print(f"  [green]OK[/green] Generated {env_path}")
 
     # Step 5: Container stack (Sandbox Infrastructure)
     runtime = prereqs.get("container_runtime", "docker")
-    console.print(f"\n[bold]Step 5/12: Container Stack (Sandbox Infrastructure)[/bold]")
+    console.print(f"\n[bold]Step 6/13: Container Stack (Sandbox Infrastructure)[/bold]")
     console.print("  The sandbox requires PostgreSQL and Redis for:")
     console.print("  - Agent coordination and scheduling")
     console.print("  - Build cache and LSP index storage")
@@ -609,7 +655,7 @@ async def run_setup_wizard() -> None:
             console.print(f"  You can start manually with: {runtime} compose up -d")
 
     # Step 6: Migrations
-    console.print("\n[bold]Step 6/12: Database Setup[/bold]")
+    console.print("\n[bold]Step 7/13: Database Setup[/bold]")
     if Confirm.ask("Run database migrations?", default=True):
         from scripts.setup.docker_setup import run_migrations, set_container_runtime
 
@@ -622,7 +668,7 @@ async def run_setup_wizard() -> None:
             console.print(f"  [red]ERROR[/red] {result.get('error', 'Unknown error')}")
 
     # Step 7: Claude Code Integration
-    console.print("\n[bold]Step 7/12: Claude Code Integration[/bold]")
+    console.print("\n[bold]Step 8/13: Claude Code Integration[/bold]")
     from scripts.setup.claude_integration import (
         analyze_conflicts,
         backup_claude_dir,
@@ -733,7 +779,7 @@ async def run_setup_wizard() -> None:
                 console.print(f"  [red]ERROR[/red] {result.get('error', 'Unknown error')}")
 
     # Step 8: Math Features (Optional)
-    console.print("\n[bold]Step 8/12: Math Features (Optional)[/bold]")
+    console.print("\n[bold]Step 9/13: Math Features (Optional)[/bold]")
     console.print("  Math features include:")
     console.print("    - SymPy: symbolic algebra, calculus, equation solving")
     console.print("    - Z3: SMT solver for constraint satisfaction & proofs")
@@ -792,7 +838,7 @@ async def run_setup_wizard() -> None:
         console.print("  [dim]Install later with: uv sync --extra math[/dim]")
 
     # Step 9: TLDR Code Analysis Tool
-    console.print("\n[bold]Step 9/12: TLDR Code Analysis Tool[/bold]")
+    console.print("\n[bold]Step 10/13: TLDR Code Analysis Tool[/bold]")
     console.print("  TLDR provides token-efficient code analysis for LLMs:")
     console.print("    - 95% token savings vs reading raw files")
     console.print("    - 155x faster queries with daemon mode")
@@ -943,7 +989,7 @@ async def run_setup_wizard() -> None:
         console.print("  [dim]Install later with: uv tool install llm-tldr[/dim]")
 
     # Step 10: Diagnostics Tools (Shift-Left Feedback)
-    console.print("\n[bold]Step 10/12: Diagnostics Tools (Shift-Left Feedback)[/bold]")
+    console.print("\n[bold]Step 11/13: Diagnostics Tools (Shift-Left Feedback)[/bold]")
     console.print("  Claude gets immediate type/lint feedback after editing files.")
     console.print("  This catches errors before tests run (shift-left).")
     console.print("")
@@ -981,7 +1027,7 @@ async def run_setup_wizard() -> None:
     console.print("  [dim]TypeScript, Go, Rust coming soon.[/dim]")
 
     # Step 11: Loogle (Lean 4 type search for /prove skill)
-    console.print("\n[bold]Step 11/12: Loogle (Lean 4 Type Search)[/bold]")
+    console.print("\n[bold]Step 12/13: Loogle (Lean 4 Type Search)[/bold]")
     console.print("  Loogle enables type-aware search of Mathlib theorems:")
     console.print("    - Used by /prove skill for theorem proving")
     console.print("    - Search by type signature (e.g., 'Nontrivial _ ↔ _')")

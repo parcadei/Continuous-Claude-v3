@@ -415,6 +415,69 @@ class LocalEmbeddingProvider(EmbeddingProvider):
 SentenceTransformer = None
 
 
+class OllamaEmbeddingProvider(EmbeddingProvider):
+    """Ollama embedding provider using local or remote Ollama server.
+
+    Uses Ollama's embedding API to generate embeddings.
+    Supports nomic-embed-text and other embedding models.
+
+    Environment variables:
+    - OLLAMA_HOST: Ollama server URL (default: http://localhost:11434)
+    - OLLAMA_EMBED_MODEL: Model name (default: nomic-embed-text)
+    """
+
+    DEFAULT_MODEL = "nomic-embed-text"
+    DEFAULT_HOST = "http://localhost:11434"
+
+    MODELS = {
+        "nomic-embed-text": 768,
+        "nomic-embed-text-v1.5": 768,
+        "nomic-embed-text-v2-moe": 768,
+        "mxbai-embed-large": 1024,
+        "all-minilm": 384,
+        "snowflake-arctic-embed": 1024,
+    }
+
+    def __init__(
+        self,
+        model: str | None = None,
+        host: str | None = None,
+    ):
+        """Initialize Ollama embedding provider.
+
+        Args:
+            model: Model name (default from OLLAMA_EMBED_MODEL env or nomic-embed-text)
+            host: Ollama server URL (default from OLLAMA_HOST env or localhost:11434)
+        """
+        import os
+        import httpx
+
+        self.model = model or os.getenv("OLLAMA_EMBED_MODEL", self.DEFAULT_MODEL)
+        self.host = host or os.getenv("OLLAMA_HOST", self.DEFAULT_HOST)
+        self._client = httpx.AsyncClient(timeout=30.0, verify=False)
+        self._dimension = self.MODELS.get(self.model, 768)
+
+    async def embed(self, text: str) -> list[float]:
+        """Generate embedding for a single text."""
+        url = f"{self.host.rstrip('/')}/api/embeddings"
+        response = await self._client.post(url, json={"model": self.model, "prompt": text})
+        response.raise_for_status()
+        return response.json()["embedding"]
+
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Generate embeddings for multiple texts (sequential for Ollama)."""
+        results = []
+        for text in texts:
+            emb = await self.embed(text)
+            results.append(emb)
+        return results
+
+    @property
+    def dimension(self) -> int:
+        """Return model dimension."""
+        return self._dimension
+
+
 class MockEmbeddingProvider(EmbeddingProvider):
     """Mock embedding provider for testing.
 
@@ -475,96 +538,6 @@ class MockEmbeddingProvider(EmbeddingProvider):
     @property
     def dimension(self) -> int:
         """Return configured dimension."""
-        return self._dimension
-
-
-class OllamaEmbeddingProvider(EmbeddingProvider):
-    """Ollama embedding provider using remote GPU server.
-
-    Calls Ollama API for embedding generation. Supports models like:
-    - nomic-embed-text (768 dim)
-    - mxbai-embed-large (1024 dim)
-    - all-minilm (384 dim)
-
-    Default model: nomic-embed-text (widely available, good quality)
-
-    Requires Ollama server running at OLLAMA_HOST or http://localhost:11434
-    """
-
-    MODELS = {
-        "nomic-embed-text": 768,
-        "mxbai-embed-large": 1024,
-        "all-minilm": 384,
-        "bge-large": 1024,
-        "bge-m3": 1024,
-    }
-    DEFAULT_MODEL = "nomic-embed-text"
-
-    def __init__(
-        self,
-        model: str = DEFAULT_MODEL,
-        host: str | None = None,
-        timeout: float = 30.0,
-        verify_ssl: bool = True,
-    ):
-        """Initialize Ollama embedding provider.
-
-        Args:
-            model: Ollama embedding model name
-            host: Ollama server URL (default: OLLAMA_HOST env or http://localhost:11434)
-            timeout: Request timeout in seconds
-            verify_ssl: Whether to verify SSL certificates (disable only for local dev)
-        """
-        self._model = model
-        self._host = host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-        self._timeout = timeout
-        self._verify_ssl = verify_ssl
-        self._dimension = self.MODELS.get(model, 768)  # Default to 768 if unknown
-        self._client = httpx.AsyncClient(verify=self._verify_ssl, timeout=self._timeout)
-
-    async def aclose(self) -> None:
-        """Close the HTTP client."""
-        await self._client.aclose()
-
-    async def embed(self, text: str) -> list[float]:
-        """Generate embedding via Ollama API.
-
-        Args:
-            text: Text to embed
-
-        Returns:
-            Embedding vector
-        """
-        url = f"{self._host}/api/embeddings"
-        payload = {"model": self._model, "prompt": text}
-
-        try:
-            response = await self._client.post(url, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            embedding = data.get("embedding")
-            if embedding is None:
-                raise EmbeddingError("Ollama response missing 'embedding' field")
-            return embedding
-        except httpx.HTTPError as e:
-            raise EmbeddingError(f"Ollama embedding failed: {e}")
-
-    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for multiple texts.
-
-        Ollama doesn't have native batch API, so we process sequentially.
-
-        Args:
-            texts: List of texts to embed
-
-        Returns:
-            List of embedding vectors
-        """
-        return [await self.embed(text) for text in texts]
-
-    @property
-    def dimension(self) -> int:
-        """Return model dimension."""
         return self._dimension
 
 
@@ -648,8 +621,8 @@ class EmbeddingService:
             device = kwargs.get("device", None)
             self._provider = LocalEmbeddingProvider(model=local_model, device=device)
         elif provider == "ollama":
-            ollama_model = model if model is not None else OllamaEmbeddingProvider.DEFAULT_MODEL
-            ollama_host = kwargs.get("host", None)
+            ollama_model = model if model is not None else None  # Use env default
+            ollama_host = kwargs.get("host", None)  # Use env default
             self._provider = OllamaEmbeddingProvider(model=ollama_model, host=ollama_host)
         else:
             raise ValueError(f"Unknown provider: {provider}")

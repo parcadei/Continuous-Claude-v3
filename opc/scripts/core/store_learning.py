@@ -40,12 +40,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import logging
 import os
 import sys
 from datetime import datetime, timezone
-
-logger = logging.getLogger(__name__)
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -123,22 +120,9 @@ async def store_learning_v2(
             session_id=session_id,
         )
 
-        # Generate embedding (Ollama GPU → Local fallback)
-        embedding_provider = os.environ.get("EMBEDDING_PROVIDER", "ollama")
-        try:
-            embedder = EmbeddingService(provider=embedding_provider)
-            embedding = await embedder.embed(content)
-        except Exception as e:
-            # Fallback to local if Ollama unavailable
-            if embedding_provider != "local":
-                logger.warning(
-                    f"Primary embedding provider '{embedding_provider}' failed: {e}. "
-                    "Falling back to local."
-                )
-                embedder = EmbeddingService(provider="local")
-                embedding = await embedder.embed(content)
-            else:
-                raise
+        # Generate embedding
+        embedder = EmbeddingService(provider=os.getenv("EMBEDDING_PROVIDER", "local"))
+        embedding = await embedder.embed(content)
 
         # Deduplication check: search for similar existing memories
         try:
@@ -265,7 +249,7 @@ async def store_learning(
         )
 
         # Generate embedding using local provider (no API key needed)
-        embedder = EmbeddingService(provider="local")
+        embedder = EmbeddingService(provider=os.getenv("EMBEDDING_PROVIDER", "local"))
         embedding = await embedder.embed(learning_content)
 
         # Store with embedding for semantic search
