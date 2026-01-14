@@ -38,7 +38,7 @@ async def main():
     }
 
     tool_name = tool_map[args.type]
-    params = {"query": args.query, "perPage": args.limit}
+    params = {"q": args.query, "perPage": args.limit}
 
     if args.owner:
         params["owner"] = args.owner
