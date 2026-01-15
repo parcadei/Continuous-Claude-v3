@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3658773415,
+    "node_id": "PRR_kwDOQtdKGM7aFHOn",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/setup/claude_integration.py`:\n- Around line 522-527: The copy of opc_scripts_mcp to target_scripts_mcp can\nfail if target_dir / \"scripts\" doesn't exist; before calling shutil.copytree for\nopc_scripts_mcp (variables opc_scripts_mcp and target_scripts_mcp), ensure the\nparent directory (target_scripts_mcp.parent or target_dir / \"scripts\") is\ncreated with mkdir(parents=True, exist_ok=True); keep the existing logic that\nremoves an existing target with shutil.rmtree if present, then create the parent\nand call shutil.copytree.\n\nIn `@opc/scripts/setup/update.py`:\n- Around line 247-250: The parent \"scripts\" tuple currently overlaps with the\n\"scripts/mcp\" tuple causing potential duplicate reports when compare_directories\nuses recursive rglob; either remove the redundant (\"scripts/mcp\", claude_dir /\n\"scripts\" / \"mcp\", {\".py\"}) tuple from the list if you don’t need separate\nreporting, or alter the parent entry to only scan top-level files (e.g., change\nthe parent scan to non-recursive glob or add an exclusion for \"scripts/mcp\") so\ncompare_directories won’t double-count files.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 8ffcefc4bb87aea96152ca551902988ef5203e2c and 4a86e63ed43469ead49387f57651dbb879ad5f6e.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (3)</summary>\n\n* `.claude/scripts/mcp`\n* `opc/scripts/setup/claude_integration.py`\n* `opc/scripts/setup/update.py`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n`519-528`: **LGTM! MCP script copying follows established patterns.**\n\nThe implementation correctly mirrors the existing patterns for `core`, `cc_math`, and `tldr` script directories. Path resolution, directory cleanup, and script counting are all consistent.\n\n</blockquote></details>\n<details>\n<summary>.claude/scripts/mcp (1)</summary><blockquote>\n\n`1-1`: **Symlink approach is correct.** The relative path properly resolves from `.claude/scripts/mcp` to `opc/scripts/mcp`, and the target directory with all expected script files exists. This avoids maintaining duplicate script files.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/95#pullrequestreview-3658773415",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/95",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/95#pullrequestreview-3658773415"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/95"
+      }
+    },
+    "submitted_at": "2026-01-14T04:14:33Z",
+    "commit_id": "4a86e63ed43469ead49387f57651dbb879ad5f6e"
+  }
+]

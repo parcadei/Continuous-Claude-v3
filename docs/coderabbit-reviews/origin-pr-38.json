@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3647138183,
+    "node_id": "PRR_kwDOQtdKGM7ZYumH",
+    "user": {
+      "login": "copilot-pull-request-reviewer[bot]",
+      "id": 175728472,
+      "node_id": "BOT_kgDOCnlnWA",
+      "avatar_url": "https://avatars.githubusercontent.com/in/946600?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D",
+      "html_url": "https://github.com/apps/copilot-pull-request-reviewer",
+      "followers_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/copilot-pull-request-reviewer%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "## Pull request overview\n\nThis pull request introduces a comprehensive hackathon integration for CCv3 (Continuous Context Engineering) that integrates four sponsor services: MongoDB Atlas (persistence + vector search), Fireworks AI (LLM inference), Jina AI (embeddings), and Galileo AI (evaluation). The implementation includes backend services, APIs, dashboards, CLI tools, and demo applications.\n\n**Changes:**\n- Added sponsor integration layers for MongoDB Atlas, Fireworks AI, Jina AI, and Galileo AI\n- Implemented FastAPI-based API and dashboard for demo purposes\n- Created CLI tools for repository indexing and querying\n- Added comprehensive demo scripts showcasing all integrations\n\n### Reviewed changes\n\nCopilot reviewed 34 out of 34 changed files in this pull request and generated 19 comments.\n\n<details>\n<summary>Show a summary per file</summary>\n\n| File | Description |\r\n| ---- | ----------- |\r\n| vercel.json | Vercel deployment configuration |\r\n| opc/scripts/hackathon_dashboard.py | FastAPI dashboard for sponsor demo |\r\n| opc/scripts/hackathon/* | Hackathon demo scripts and test integrations |\r\n| opc/scripts/core/db/atlas_backend.py | MongoDB Atlas memory backend implementation |\r\n| opc/scripts/core/db/fireworks_provider.py | Fireworks AI LLM provider |\r\n| opc/scripts/core/db/jina_embeddings.py | Jina Embeddings v3 integration |\r\n| opc/scripts/core/db/galileo_eval.py | Galileo AI evaluation service |\r\n| opc/scripts/core/db/hackathon_config.py | Unified configuration manager |\r\n| opc/ccv3/* | Main CCv3 application modules |\r\n| pyproject.toml | Added hackathon dependencies |\r\n| docs/hackathon-integration.md | Integration documentation |\n</details>\n\n\n\n\n\n\n---\n\n💡 <a href=\"/parcadei/Continuous-Claude-v3/new/main/.github/instructions?filename=*.instructions.md\" class=\"Link--inTextBlock\" target=\"_blank\" rel=\"noopener noreferrer\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\" class=\"Link--inTextBlock\" target=\"_blank\" rel=\"noopener noreferrer\">Learn how to get started</a>.",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/38#pullrequestreview-3647138183",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/38",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/38#pullrequestreview-3647138183"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/38"
+      }
+    },
+    "submitted_at": "2026-01-10T18:54:45Z",
+    "commit_id": "6ddd83cf334f6d97da9cfe9c1e4e5aa329ee82a1"
+  },
+  {
+    "id": 3647937663,
+    "node_id": "PRR_kwDOQtdKGM7Zbxx_",
+    "user": {
+      "login": "manishin2050",
+      "id": 155342769,
+      "node_id": "U_kgDOCUJXsQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155342769?u=bf5336ab43017a5429eef6eee2d83497c4deba61&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/manishin2050",
+      "html_url": "https://github.com/manishin2050",
+      "followers_url": "https://api.github.com/users/manishin2050/followers",
+      "following_url": "https://api.github.com/users/manishin2050/following{/other_user}",
+      "gists_url": "https://api.github.com/users/manishin2050/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/manishin2050/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/manishin2050/subscriptions",
+      "organizations_url": "https://api.github.com/users/manishin2050/orgs",
+      "repos_url": "https://api.github.com/users/manishin2050/repos",
+      "events_url": "https://api.github.com/users/manishin2050/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/manishin2050/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "Nice job \r\n\r\nHave you tested..?",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/38#pullrequestreview-3647937663",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/38",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/38#pullrequestreview-3647937663"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/38"
+      }
+    },
+    "submitted_at": "2026-01-11T15:45:55Z",
+    "commit_id": "6ddd83cf334f6d97da9cfe9c1e4e5aa329ee82a1"
+  }
+]

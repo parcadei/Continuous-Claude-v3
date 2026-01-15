@@ -1,0 +1,122 @@
+[
+  {
+    "id": 3658983250,
+    "node_id": "PRR_kwDOQtdKGM7aF6dS",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 3**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/pyproject.toml`:\n- Around line 36-37: The pyproject lists heavy ML packages\n\"sentence-transformers\" and \"torch\" both in the main requires and again in the\n\"embeddings\" extra with mismatched versions; remove the duplication by choosing\none approach: either move \"sentence-transformers\" and \"torch\" out of the main\ndependencies and keep them only in the extras section \"embeddings\", or keep them\nin main and delete their entries from the \"embeddings\" extra (and reconcile\nversion constraints accordingly). Update the extras table so \"embeddings\" does\nnot re-specify those packages and ensure only one canonical version constraint\nexists for each of \"sentence-transformers\" and \"torch\".\n\nIn `@opc/scripts/core/store_learning.py`:\n- Around line 123-134: The current try/except around\nEmbeddingService(provider=embedding_provider) and embed(content) can produce\nmixed-dimension embeddings (Ollama's 768 vs local BGE's 1024) and also masks\nunrelated errors with a broad except Exception; update the logic in the\nembedding generation block to (1) validate the embedding vector length returned\nfrom embed(content) against an expected dimension tied to the chosen provider\n(e.g., expected_dims map keyed by provider or explicit model selection on\nEmbeddingService) and reject or convert mismatched vectors rather than silently\naccept them into variable embedding, (2) restrict the except to specific\nrecoverable errors (e.g., network/provider availability exception class from\nEmbeddingService or a custom ProviderUnavailableError) so\nImportError/TypeError/etc. bubble up, and (3) when falling back to\nprovider=\"local\" ensure you either enforce the same model/dimension on both\nproviders via EmbeddingService parameters or abort and log+raise a clear error\nif dimensions differ; use references to embedding_provider, EmbeddingService,\nembed(content), and embedding to implement these checks and improved error\nhandling.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (2)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (2)</summary><blockquote>\n\n`503-540`: **Performance: Creating new HTTP client per request is inefficient.**\n\nUnlike `OpenAIEmbeddingProvider` and `VoyageEmbeddingProvider` which maintain a persistent `httpx.AsyncClient`, this implementation creates a new client for every `embed()` call. This is especially costly for `embed_batch()` which calls `embed()` sequentially.\n\n\n\n<details>\n<summary>♻️ Proposed refactor: Use persistent client with proper lifecycle</summary>\n\n```diff\n     def __init__(\n         self,\n         model: str = DEFAULT_MODEL,\n         host: str | None = None,\n         timeout: float = 30.0,\n     ):\n         self._model = model\n         self._host = host or os.environ.get(\"OLLAMA_HOST\", \"http://localhost:11434\")\n         self._timeout = timeout\n         self._dimension = self.MODELS.get(model, 768)\n+        self._verify_ssl = os.environ.get(\"OLLAMA_VERIFY_SSL\", \"true\").lower() != \"false\"\n+        self._client = httpx.AsyncClient(verify=self._verify_ssl, timeout=self._timeout)\n+\n+    async def aclose(self) -> None:\n+        \"\"\"Close the persistent HTTP client.\"\"\"\n+        await self._client.aclose()\n+\n+    async def __aenter__(self) -> \"OllamaEmbeddingProvider\":\n+        return self\n+\n+    async def __aexit__(self, *args) -> None:\n+        await self.aclose()\n\n     async def embed(self, text: str) -> list[float]:\n         url = f\"{self._host}/api/embeddings\"\n         payload = {\"model\": self._model, \"prompt\": text}\n-        async with httpx.AsyncClient(verify=False, timeout=self._timeout) as client:\n-            try:\n-                response = await client.post(url, json=payload)\n-                ...\n+        try:\n+            response = await self._client.post(url, json=payload)\n+            response.raise_for_status()\n+            data = response.json()\n+            embedding = data.get(\"embedding\")\n+            if embedding is None:\n+                raise EmbeddingError(f\"Ollama response missing 'embedding' key\")\n+            return embedding\n+        except httpx.HTTPError as e:\n+            raise EmbeddingError(f\"Ollama embedding failed: {e}\")\n```\n</details>\n\n---\n\n`481-559`: **Missing retry logic breaks consistency with other providers.**\n\n`OpenAIEmbeddingProvider` and `VoyageEmbeddingProvider` implement retry logic with exponential backoff for transient failures. `OllamaEmbeddingProvider` lacks this, making it less resilient to temporary network issues or server restarts.\n\n\n\nConsider adding retry parameters (`max_retries`, `retry_delay`) to match the interface of other providers, or at minimum document why retries are not needed for the Ollama use case.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 8ffcefc4bb87aea96152ca551902988ef5203e2c and e4d51297901c08fe375285c46927fcf630ce91fc.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (4)</summary>\n\n* `.coderabbit.yaml`\n* `opc/pyproject.toml`\n* `opc/scripts/core/db/embedding_service.py`\n* `opc/scripts/core/store_learning.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>opc/scripts/core/store_learning.py (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (8)</summary>\n\n* `EmbeddingService` (561-746)\n* `embed` (53-55)\n* `embed` (118-131)\n* `embed` (266-269)\n* `embed` (385-393)\n* `embed` (440-462)\n* `embed` (521-540)\n* `embed` (647-668)\n\n</details>\n\n</blockquote></details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>.coderabbit.yaml (1)</summary><blockquote>\n\n`1-44`: **LGTM!**\n\nConfiguration is well-structured and all settings conform to the CodeRabbit schema. The path filters appropriately exclude generated artifacts (`*.min.js`, `*.lock`, `dist/**`).\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (1)</summary><blockquote>\n\n`640-643`: **LGTM!**\n\nThe `EmbeddingService` integration for the Ollama provider follows the established pattern and correctly passes through model and host configuration.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/97#pullrequestreview-3658983250",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/97",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/97#pullrequestreview-3658983250"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/97"
+      }
+    },
+    "submitted_at": "2026-01-14T05:51:17Z",
+    "commit_id": "e4d51297901c08fe375285c46927fcf630ce91fc"
+  },
+  {
+    "id": 3659169734,
+    "node_id": "PRR_kwDOQtdKGM7aGn_G",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/core/db/embedding_service.py`:\n- Around line 541-550: The code currently only catches httpx.HTTPError so JSON\ndecode failures from response.json() will escape; update the method that calls\nself._client.post / response.raise_for_status to also handle JSON decoding\nerrors by wrapping response.json() in a try/except catching json.JSONDecodeError\n(or ValueError for compatibility) and re-raising as EmbeddingError with a\nhelpful message; ensure you import json if needed and keep existing\nhttpx.HTTPError handling for network errors.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (3)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (3)</summary><blockquote>\n\n`503-523`: **Consider validating unknown models or logging a warning.**\n\nLine 522 silently defaults to 768 dimensions for unknown models. This could mask typos or unsupported model names, leading to dimension mismatches with stored embeddings.\n\nUnlike `VoyageEmbeddingProvider` which raises `ValueError` for unknown models (lines 238-241), this silently accepts any model name. If the intent is to support custom Ollama models, consider at minimum logging a warning when using the fallback dimension.\n\n<details>\n<summary>♻️ Suggested improvement</summary>\n\n```diff\n         self._model = model\n         self._host = host or os.environ.get(\"OLLAMA_HOST\", \"http://localhost:11434\")\n         self._timeout = timeout\n         self._verify_ssl = verify_ssl\n-        self._dimension = self.MODELS.get(model, 768)  # Default to 768 if unknown\n+        if model not in self.MODELS:\n+            import warnings\n+            warnings.warn(\n+                f\"Unknown Ollama model '{model}', defaulting to 768 dimensions. \"\n+                f\"Known models: {list(self.MODELS.keys())}\"\n+            )\n+        self._dimension = self.MODELS.get(model, 768)\n         self._client = httpx.AsyncClient(verify=self._verify_ssl, timeout=self._timeout)\n```\n</details>\n\n---\n\n`525-527`: **Missing async context manager methods.**\n\n`OllamaEmbeddingProvider` has `aclose()` but lacks `__aenter__` and `__aexit__` methods that `OpenAIEmbeddingProvider` (lines 110-116) and `VoyageEmbeddingProvider` (lines 258-264) implement. This prevents using `async with OllamaEmbeddingProvider(...) as provider:` pattern for automatic cleanup.\n\n<details>\n<summary>♻️ Add context manager support</summary>\n\n```diff\n     async def aclose(self) -> None:\n         \"\"\"Close the HTTP client.\"\"\"\n         await self._client.aclose()\n+\n+    async def __aenter__(self) -> OllamaEmbeddingProvider:\n+        \"\"\"Enter async context manager.\"\"\"\n+        return self\n+\n+    async def __aexit__(self, *args) -> None:\n+        \"\"\"Exit async context manager and close client.\"\"\"\n+        await self.aclose()\n```\n</details>\n\n---\n\n`650-653`: **`verify_ssl` and `timeout` parameters not exposed through EmbeddingService.**\n\nThe `OllamaEmbeddingProvider` accepts `verify_ssl` and `timeout` parameters, but `EmbeddingService` only passes `model` and `host`. Users configuring Ollama via `EmbeddingService(provider=\"ollama\")` cannot control SSL verification or timeout.\n\n<details>\n<summary>♻️ Pass through additional kwargs</summary>\n\n```diff\n         elif provider == \"ollama\":\n             ollama_model = model if model is not None else OllamaEmbeddingProvider.DEFAULT_MODEL\n             ollama_host = kwargs.get(\"host\", None)\n-            self._provider = OllamaEmbeddingProvider(model=ollama_model, host=ollama_host)\n+            self._provider = OllamaEmbeddingProvider(\n+                model=ollama_model,\n+                host=ollama_host,\n+                timeout=kwargs.get(\"timeout\", 30.0),\n+                verify_ssl=kwargs.get(\"verify_ssl\", True),\n+            )\n```\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between e4d51297901c08fe375285c46927fcf630ce91fc and f33db03e17a626c17f0899d8f1762af5d24d12d8.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `opc/scripts/core/db/embedding_service.py`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (2)</summary><blockquote>\n\n`481-501`: **LGTM!**\n\nThe class definition and model mappings are well-structured. The supported models and their dimensions align with the PR objectives.\n\n---\n\n`552-563`: **LGTM - sequential processing is appropriate for local Ollama.**\n\nThe sequential approach is a safe default for local Ollama deployments. If performance becomes an issue for large batches, consider optional concurrency with rate limiting, but the current implementation is correct.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/97#pullrequestreview-3659169734",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/97",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/97#pullrequestreview-3659169734"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/97"
+      }
+    },
+    "submitted_at": "2026-01-14T07:08:03Z",
+    "commit_id": "f33db03e17a626c17f0899d8f1762af5d24d12d8"
+  },
+  {
+    "id": 3660131322,
+    "node_id": "PRR_kwDOQtdKGM7aKSv6",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/core/db/embedding_service.py`:\n- Around line 441-458: OllamaEmbeddingProvider creates an httpx.AsyncClient in\n__init__ but never closes it, causing a resource leak; add an async aclose(self)\nmethod on OllamaEmbeddingProvider that awaits self._client.aclose() (and\noptionally sets self._client = None) so EmbeddingService.aclose() can detect and\nclose the HTTP client; place the new method on the OllamaEmbeddingProvider class\nand ensure it is awaitable by callers.\n\nIn `@opc/scripts/setup/wizard.py`:\n- Line 630: The string passed to console.print in wizard.py uses an unnecessary\nf-string prefix; remove the leading \"f\" from the literal in the console.print\ncall (the expression console.print(f\"\\n[bold]Step 6/13: Container Stack (Sandbox\nInfrastructure)[/bold]\") should be changed to a plain string) so there are no\nunused f-strings flagged by Ruff F541.\n```\n\n</details>\n\n<details>\n<summary>♻️ Duplicate comments (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (1)</summary><blockquote>\n\n`460-465`: **Missing error handling allows exceptions to escape unwrapped.**\n\nThe `embed` method has no try/except block. Network errors (`httpx.HTTPStatusError`), JSON decode errors (`json.JSONDecodeError`), and missing keys (`KeyError`) will propagate as raw exceptions rather than being wrapped in `EmbeddingError` like other providers do.\n\n\n\n<details>\n<summary>🐛 Proposed fix</summary>\n\n```diff\n     async def embed(self, text: str) -> list[float]:\n         \"\"\"Generate embedding for a single text.\"\"\"\n         url = f\"{self.host.rstrip('/')}/api/embeddings\"\n-        response = await self._client.post(url, json={\"model\": self.model, \"prompt\": text})\n-        response.raise_for_status()\n-        return response.json()[\"embedding\"]\n+        try:\n+            response = await self._client.post(url, json={\"model\": self.model, \"prompt\": text})\n+            response.raise_for_status()\n+            data = response.json()\n+            embedding = data.get(\"embedding\")\n+            if embedding is None:\n+                raise EmbeddingError(f\"Ollama response missing 'embedding' key: {data}\")\n+            return embedding\n+        except httpx.HTTPError as e:\n+            raise EmbeddingError(f\"Ollama embedding failed: {e}\")\n+        except (ValueError, KeyError) as e:\n+            raise EmbeddingError(f\"Ollama response parsing failed: {e}\")\n```\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 10e3eb3c8003faa324113132e3f5357ed8c9d472 and fba57b0030592709e7c45481131c4fe7f8db3523.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (3)</summary>\n\n* `opc/scripts/core/db/embedding_service.py`\n* `opc/scripts/core/store_learning.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>🚧 Files skipped from review as they are similar to previous changes (1)</summary>\n\n* opc/scripts/core/store_learning.py\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 Ruff (0.14.11)</summary>\n\n<details>\n<summary>opc/scripts/setup/wizard.py</summary>\n\n630-630: f-string without any placeholders\n\nRemove extraneous `f` prefix\n\n(F541)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (6)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (3)</summary><blockquote>\n\n`467-473`: **LGTM - Sequential batching is appropriate for Ollama.**\n\nThe sequential approach is correctly documented and reasonable since Ollama's API doesn't support native batching. Parallelization with `asyncio.gather` could be considered for remote Ollama servers, but sequential is safer for local deployments.\n\n---\n\n`475-478`: **LGTM!**\n\nThe dimension property correctly returns the model-specific dimension with a sensible 768-dim fallback for unknown models.\n\n---\n\n`623-626`: **LGTM!**\n\nThe Ollama provider integration follows the established pattern, correctly deferring to environment-based defaults when `model` or `host` are not explicitly provided.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (3)</summary><blockquote>\n\n`380-404`: **LGTM!**\n\nThe embedding configuration prompt is clear, provides good descriptions for each option, and correctly collects additional Ollama-specific settings only when needed.\n\n---\n\n`478-489`: **LGTM!**\n\nThe embedding configuration is correctly written to the .env file, with Ollama-specific variables only included when the Ollama provider is selected.\n\n---\n\n`607-623`: **LGTM!**\n\nThe embedding configuration step integrates cleanly into the wizard flow with a sensible default fallback to local embeddings when skipped.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/97#pullrequestreview-3660131322",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/97",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/97#pullrequestreview-3660131322"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/97"
+      }
+    },
+    "submitted_at": "2026-01-14T10:57:34Z",
+    "commit_id": "fba57b0030592709e7c45481131c4fe7f8db3523"
+  }
+]

@@ -29,10 +29,13 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import os
 from abc import ABC, abstractmethod
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingError(Exception):
@@ -317,7 +320,7 @@ class VoyageEmbeddingProvider(EmbeddingProvider):
                     await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
             except Exception as e:
                 last_error = e
-                f"{type(e).__name__}: {str(e)}"
+                # Error details captured in last_error for final error message
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
 
@@ -424,10 +427,13 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
     Environment variables:
     - OLLAMA_HOST: Ollama server URL (default: http://localhost:11434)
     - OLLAMA_EMBED_MODEL: Model name (default: nomic-embed-text)
+    - OLLAMA_VERIFY_SSL: SSL verification (default: true)
     """
 
     DEFAULT_MODEL = "nomic-embed-text"
     DEFAULT_HOST = "http://localhost:11434"
+    DEFAULT_MAX_RETRIES = 3
+    RETRY_DELAY = 0.5  # seconds
 
     MODELS = {
         "nomic-embed-text": 768,
@@ -442,27 +448,75 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         self,
         model: str | None = None,
         host: str | None = None,
+        verify_ssl: bool | None = None,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ):
         """Initialize Ollama embedding provider.
 
         Args:
             model: Model name (default from OLLAMA_EMBED_MODEL env or nomic-embed-text)
             host: Ollama server URL (default from OLLAMA_HOST env or localhost:11434)
+            verify_ssl: SSL certificate verification (default from OLLAMA_VERIFY_SSL env or True)
+            max_retries: Maximum retry attempts for transient errors (default 3)
         """
-        import os
-        import httpx
-
         self.model = model or os.getenv("OLLAMA_EMBED_MODEL", self.DEFAULT_MODEL)
         self.host = host or os.getenv("OLLAMA_HOST", self.DEFAULT_HOST)
-        self._client = httpx.AsyncClient(timeout=30.0, verify=False)
-        self._dimension = self.MODELS.get(self.model, 768)
+        self.max_retries = max_retries
+        # SSL verification: default True for security, can be disabled via env or param
+        if verify_ssl is None:
+            verify_ssl = os.getenv("OLLAMA_VERIFY_SSL", "true").lower() != "false"
+        self._client = httpx.AsyncClient(timeout=30.0, verify=verify_ssl)
+        # Set dimension with warning for unknown models
+        if self.model in self.MODELS:
+            self._dimension = self.MODELS[self.model]
+        else:
+            self._dimension = 768
+            logger.warning(
+                f"Unknown Ollama model '{self.model}', assuming dimension 768. "
+                f"Known models: {list(self.MODELS.keys())}"
+            )
 
     async def embed(self, text: str) -> list[float]:
-        """Generate embedding for a single text."""
+        """Generate embedding for a single text with retry logic.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector
+
+        Raises:
+            EmbeddingError: If API call fails after retries
+        """
         url = f"{self.host.rstrip('/')}/api/embeddings"
-        response = await self._client.post(url, json={"model": self.model, "prompt": text})
-        response.raise_for_status()
-        return response.json()["embedding"]
+        last_error: Exception | None = None
+
+        for attempt in range(self.max_retries):
+            try:
+                response = await self._client.post(
+                    url, json={"model": self.model, "prompt": text}
+                )
+                response.raise_for_status()
+                data = response.json()
+                if "embedding" not in data:
+                    raise EmbeddingError(f"Ollama response missing 'embedding' field: {data}")
+                return data["embedding"]
+
+            except httpx.RequestError as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
+            except (KeyError, TypeError, ValueError) as e:
+                # JSON parsing or data structure errors - don't retry
+                raise EmbeddingError(f"Invalid Ollama response: {e}") from e
+
+        raise EmbeddingError(
+            f"Ollama API call failed after {self.max_retries} attempts: {last_error}"
+        ) from last_error
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts (sequential for Ollama)."""
@@ -471,6 +525,18 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
             emb = await self.embed(text)
             results.append(emb)
         return results
+
+    async def aclose(self) -> None:
+        """Close the HTTP client."""
+        await self._client.aclose()
+
+    async def __aenter__(self) -> OllamaEmbeddingProvider:
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager."""
+        await self.aclose()
 
     @property
     def dimension(self) -> int:

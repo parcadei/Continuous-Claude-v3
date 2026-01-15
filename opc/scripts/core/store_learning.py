@@ -114,6 +114,8 @@ async def store_learning_v2(
     else:
         backend = get_default_backend()
 
+    memory = None
+    embedder = None
     try:
         memory = await create_memory_service(
             backend=backend,
@@ -131,7 +133,6 @@ async def store_learning_v2(
                 top_match = existing[0]
                 similarity = top_match.get("similarity", 0)
                 if similarity >= DEDUP_THRESHOLD:
-                    await memory.close()
                     return {
                         "success": True,
                         "skipped": True,
@@ -165,8 +166,6 @@ async def store_learning_v2(
             embedding=embedding,
         )
 
-        await memory.close()
-
         return {
             "success": True,
             "memory_id": memory_id,
@@ -177,6 +176,11 @@ async def store_learning_v2(
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+    finally:
+        if embedder:
+            await embedder.aclose()
+        if memory:
+            await memory.close()
 
 
 async def store_learning(
@@ -242,6 +246,8 @@ async def store_learning(
     else:
         backend = get_default_backend()
 
+    memory = None
+    embedder = None
     try:
         memory = await create_memory_service(
             backend=backend,
@@ -259,8 +265,6 @@ async def store_learning(
             embedding=embedding,
         )
 
-        await memory.close()
-
         return {
             "success": True,
             "memory_id": memory_id,
@@ -271,6 +275,11 @@ async def store_learning(
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+    finally:
+        if embedder:
+            await embedder.aclose()
+        if memory:
+            await memory.close()
 
 
 async def main():

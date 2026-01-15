@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3646667720,
+    "node_id": "PRR_kwDOQtdKGM7ZW7vI",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (2)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/docker_setup.py (1)</summary><blockquote>\n\n`96-127`: **Dead variable: `all_healthy` is set but never used in the loop.**\n\nThe `all_healthy` variable on line 97 is assigned but never referenced or updated. The actual health check on line 123 uses `all(result[s] for s in services)` instead.\n\n<details>\n<summary>🔧 Remove unused variable</summary>\n\n```diff\n     while (asyncio.get_event_loop().time() - start_time) < timeout:\n-        all_healthy = True\n-\n         for service in services:\n             try:\n```\n</details>\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n`169-184`: **Good addition of retry mechanism for Docker daemon startup.**\n\nThe retry logic is well-structured with clear user prompts showing attempt count. Consider adding a message when all retries are exhausted to inform the user.\n\n\n<details>\n<summary>🔧 Optional: Add message when all retries exhausted</summary>\n\n```diff\n                 else:\n                     console.print(\"  [yellow]Docker daemon still not running.[/yellow]\")\n             else:\n                 break\n+        else:\n+            # Loop completed without break (all retries exhausted)\n+            console.print(\"  [yellow]Docker daemon not available after retries. Continuing without Docker.[/yellow]\")\n```\n\nNote: The `else` clause on a `for` loop executes only if the loop completes without `break`.\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between fb3e23cdf8a6cd8e618c6db62a088846b196bfbc and fbd55c5e868d648001efefe3c80aa194b54eb470.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (2)</summary>\n\n* `opc/scripts/setup/docker_setup.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (6)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/docker_setup.py (6)</summary><blockquote>\n\n`74-89`: **LGTM - Consistent compose file parameter addition.**\n\nThe `compose_file` parameter follows the same pattern used in `start_docker_stack()`, and the initialization with `compose_path = compose_file or DOCKER_COMPOSE_FILE` correctly provides a fallback default.\n\n---\n\n`101-112`: **LGTM - Compose file flag correctly added.**\n\nThe `-f compose_path` arguments are properly inserted into the docker compose command.\n\n---\n\n`132-146`: **LGTM - Consistent parameter addition to `run_migrations`.**\n\nThe `compose_file` parameter follows the established pattern and the docstring is properly updated.\n\n---\n\n`153-170`: **LGTM - Database name and compose file updates.**\n\nThe `-f compose_path` flag is correctly added, and the database name is updated to `continuous_claude` as noted in the PR description.\n\n---\n\n`175-195`: **LGTM - Consistent compose file and database name in fallback path.**\n\nBoth the compose file flag and the corrected database name are properly applied in the alternative approach for piping SQL directly.\n\n---\n\n`200-226`: **LGTM - Migration loop updated consistently.**\n\nThe compose file flag and corrected database name are properly applied to the additional migrations loop.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/23#pullrequestreview-3646667720",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/23",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/23#pullrequestreview-3646667720"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/23"
+      }
+    },
+    "submitted_at": "2026-01-10T09:38:45Z",
+    "commit_id": "fbd55c5e868d648001efefe3c80aa194b54eb470"
+  },
+  {
+    "id": 3647003677,
+    "node_id": "PRR_kwDOQtdKGM7ZYNwd",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n`173-189`: **LGTM! Docker daemon retry loop implementation is solid.**\n\nThe retry mechanism correctly addresses the PR objective by giving users up to 3 attempts to start Docker Desktop before continuing. The implementation properly:\n- Prompts the user before each retry with clear attempt tracking\n- Waits 2 seconds for the daemon to initialize\n- Re-checks the daemon status\n- Updates the result state on success\n- Handles user decline gracefully\n\n\n\n\n<details>\n<summary>♻️ Optional: Extract magic numbers as constants</summary>\n\nFor easier maintenance, consider extracting the hardcoded values:\n\n```diff\n+# Docker daemon retry configuration\n+DOCKER_DAEMON_RETRY_MAX = 3\n+DOCKER_DAEMON_RETRY_DELAY = 2  # seconds\n+\n async def check_prerequisites_with_install_offers() -> dict[str, Any]:\n     \"\"\"Check prerequisites and offer installation help for missing items.\n```\n\nThen use them in the loop:\n\n```diff\n         # Retry loop for daemon startup\n-        max_retries = 3\n+        max_retries = DOCKER_DAEMON_RETRY_MAX\n         for attempt in range(max_retries):\n             if Confirm.ask(f\"\\n  Retry checking Docker daemon? (attempt {attempt + 1}/{max_retries})\", default=True):\n                 console.print(\"  Checking Docker daemon...\")\n-                await asyncio.sleep(2)  # Give daemon time to start\n+                await asyncio.sleep(DOCKER_DAEMON_RETRY_DELAY)  # Give daemon time to start\n```\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between fbd55c5e868d648001efefe3c80aa194b54eb470 and 484268d8dd92bb1decbf0ba14fc50dfa77764b23.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/23#pullrequestreview-3647003677",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/23",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/23#pullrequestreview-3647003677"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/23"
+      }
+    },
+    "submitted_at": "2026-01-10T15:48:24Z",
+    "commit_id": "484268d8dd92bb1decbf0ba14fc50dfa77764b23"
+  }
+]

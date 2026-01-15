@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3647926367,
+    "node_id": "PRR_kwDOQtdKGM7ZbvBf",
+    "user": {
+      "login": "manishin2050",
+      "id": 155342769,
+      "node_id": "U_kgDOCUJXsQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155342769?u=bf5336ab43017a5429eef6eee2d83497c4deba61&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/manishin2050",
+      "html_url": "https://github.com/manishin2050",
+      "followers_url": "https://api.github.com/users/manishin2050/followers",
+      "following_url": "https://api.github.com/users/manishin2050/following{/other_user}",
+      "gists_url": "https://api.github.com/users/manishin2050/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/manishin2050/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/manishin2050/subscriptions",
+      "organizations_url": "https://api.github.com/users/manishin2050/orgs",
+      "repos_url": "https://api.github.com/users/manishin2050/repos",
+      "events_url": "https://api.github.com/users/manishin2050/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/manishin2050/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "Great job",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/48#pullrequestreview-3647926367",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/48",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/48#pullrequestreview-3647926367"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/48"
+      }
+    },
+    "submitted_at": "2026-01-11T15:40:11Z",
+    "commit_id": "fc5d30b426b5157afe6b2cff6832392067025b46"
+  }
+]

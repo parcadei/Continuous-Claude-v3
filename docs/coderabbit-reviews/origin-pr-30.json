@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3646849292,
+    "node_id": "PRR_kwDOQtdKGM7ZXoEM",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.claude/hooks/CONFIG.md:\n- Around line 460-462: The third markdown link referencing\n../../thoughts/shared/handoffs/general/2026-01-10_13-28_hook-path-fixes.md is\nbroken because that directory/file does not exist; open the\n.claude/hooks/CONFIG.md entry containing that link and either remove the entire\nthird list item or replace it with a valid existing path or README (e.g., remove\nthe line with\n'../../thoughts/shared/handoffs/general/2026-01-10_13-28_hook-path-fixes.md' or\nupdate it to a correct doc), then save and run a quick repo search to confirm no\nother references to that exact filename remain.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/hook_launcher.py (1)</summary><blockquote>\n\n`207-207`: **Address the unused variable.**\n\nThe `hooks_dir` variable is unpacked but never used in the function. Consider using `_` to indicate it's intentionally unused, improving code clarity.\n\n\n\n<details>\n<summary>♻️ Proposed fix</summary>\n\n```diff\n-    script_path, hooks_dir, project_root = find_hook_script(name)\n+    script_path, _, project_root = find_hook_script(name)\n```\n</details>\n\nBased on static analysis hints.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 4fee297a6f2b3a5dec48b6e995b37d43adc6c7fe and b10a490aec4c5fd50dd3c4e50b9a8e119ec3068d.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (2)</summary>\n\n* `.claude/hooks/CONFIG.md`\n* `.claude/hooks/hook_launcher.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 Ruff (0.14.10)</summary>\n\n<details>\n<summary>.claude/hooks/hook_launcher.py</summary>\n\n207-207: Unpacked variable `hooks_dir` is never used\n\nPrefix it with an underscore or any other dummy variable pattern\n\n(RUF059)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (3)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/CONFIG.md (1)</summary><blockquote>\n\n`335-346`: **Excellent troubleshooting documentation.**\n\nThis section clearly documents the path resolution fix, provides verification steps, and will help users understand the change. The status notation with date is particularly helpful for tracking when issues were resolved.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/hook_launcher.py (2)</summary><blockquote>\n\n`141-186`: **Well-structured fix for project root resolution.**\n\nThe implementation correctly extends the return value to include `project_root` and determines it appropriately for both user-level and project-level hooks. The resolution order (CLAUDE_PROJECT_DIR environment variable → fallback) provides good flexibility.\n\nThe fallback logic (`hooks_dir.parent.parent`) assumes the standard `.claude/hooks` structure, which is a reasonable assumption given the hooks system design.\n\n---\n\n`257-257`: **Critical fix correctly implemented.**\n\nSetting the working directory to `project_root` is the correct solution for preventing path doubling. The inline comment clearly explains the purpose, and this directly addresses the core issue described in the PR.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/30#pullrequestreview-3646849292",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/30",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/30#pullrequestreview-3646849292"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/30"
+      }
+    },
+    "submitted_at": "2026-01-10T13:27:02Z",
+    "commit_id": "b10a490aec4c5fd50dd3c4e50b9a8e119ec3068d"
+  },
+  {
+    "id": 3646859504,
+    "node_id": "PRR_kwDOQtdKGM7ZXqjw",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/CONFIG.md (1)</summary><blockquote>\n\n`348-359`: **Concrete example improves UX, but scope may be unclear.**\n\nThe example is helpful, but it's positioned under a general \"False Positive Detections\" heading yet specifically references `post-tool-use-tracker.sh`. Clarify whether this skip-condition pattern applies to all hooks or is specific to the post-tool-use tracker, to avoid user confusion about applicability to other hooks.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between b10a490aec4c5fd50dd3c4e50b9a8e119ec3068d and 9e34c9bd7405e432cd65a6e411ed14a4afb2135b.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `.claude/hooks/CONFIG.md`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/CONFIG.md (2)</summary><blockquote>\n\n`335-347`: **Clear documentation of the fix with helpful verification steps.**\n\nThe new section accurately documents the path resolution fix with concrete troubleshooting guidance. The manual testing command is a useful addition for users verifying the fix works in their environment.\n\n---\n\n`460-461`: **Documentation links are valid.** Both `../../docs/hooks/README.md` and `../../docs/skills/README.md` exist and resolve correctly.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/30#pullrequestreview-3646859504",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/30",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/30#pullrequestreview-3646859504"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/30"
+      }
+    },
+    "submitted_at": "2026-01-10T13:38:00Z",
+    "commit_id": "9e34c9bd7405e432cd65a6e411ed14a4afb2135b"
+  }
+]

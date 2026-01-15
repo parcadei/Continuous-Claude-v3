@@ -1,0 +1,682 @@
+[
+  {
+    "id": 3653012711,
+    "node_id": "PRR_kwDOQtdKGM7ZvIzn",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 4**\n\n> [!CAUTION]\n> Some comments are outside the diff and can’t be posted inline due to platform limitations.\n> \n> \n> \n> <details>\n> <summary>⚠️ Outside diff range comments (3)</summary><blockquote>\n> \n> <details>\n> <summary>.claude/hooks/session_start_continuity.py (1)</summary><blockquote>\n> \n> `242-247`: **Remove redundant \"python\" argument from uv run command.**\n> \n> When using `uv run` on a Python script, the Python interpreter is automatically invoked. The explicit \"python\" argument is redundant and deviates from standard `uv run` usage patterns.\n> \n> \n> \n> <details>\n> <summary>♻️ Proposed fix</summary>\n> \n> ```diff\n>          if daemon_script:\n>              subprocess.Popen(\n> -                [\"uv\", \"run\", \"python\", str(daemon_script), \"start\"],\n> +                [\"uv\", \"run\", str(daemon_script), \"start\"],\n>                  stdout=subprocess.DEVNULL,\n>                  stderr=subprocess.DEVNULL,\n>                  cwd=str(daemon_script.parent.parent.parent),  # opc/ dir\n>              )\n> ```\n> \n> </details>\n> \n> </blockquote></details>\n> <details>\n> <summary>.claude/hooks/premortem-suggest.py (1)</summary><blockquote>\n> \n> `15-17`: **Documentation is now outdated.**\n> \n> These lines reference `python3` invocation, but with this PR the hooks are now invoked via `uv run` through `hook_launcher.py`. Consider updating the cross-platform notes to reflect the new execution model.\n> \n> <details>\n> <summary>📝 Suggested documentation update</summary>\n> \n> ```diff\n>  Cross-platform:\n> -- macOS/Linux: Called via `python3` in settings.json\n> -- Windows: Change settings.json to use `py -3` or `python` instead\n> +- All platforms: Called via `uv run` through hook_launcher.py\n> +- Fallback: If uv not available, uses python3 (or python on Windows)\n> ```\n> </details>\n> \n> </blockquote></details>\n> <details>\n> <summary>.claude/hooks/hook_launcher.py (1)</summary><blockquote>\n> \n> `1-32`: **Missing PEP 723 metadata in `hook_launcher.py` itself.**\n> \n> Since `settings.json` invokes this file via `uv run $HOME/.claude/hooks/hook_launcher.py`, this script should also include PEP 723 inline metadata to declare its Python version requirement. Currently it only has the standard shebang.\n> \n> <details>\n> <summary>📝 Suggested fix</summary>\n> \n> ```diff\n>  #!/usr/bin/env python3\n> +# /// script\n> +# requires-python = \">=3.10\"\n> +# dependencies = []\n> +# ///\n>  \"\"\"Cross-platform hook launcher for Claude Code hooks.\n> ```\n> </details>\n> \n> </blockquote></details>\n> \n> </blockquote></details>\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.claude/hooks/post-tool-use-tracker.py:\n- Around line 1-5: Shebang line is incorrect for this repo's PR objectives;\nreplace the current first-line shebang with the required invocation string\n\"#!/usr/bin/env -S uv run\" so the script uses the project's specified runner;\nupdate the top of the file (the existing shebang in\n.claude/hooks/post-tool-use-tracker.py) accordingly, keeping the PEP 723\nmetadata block and dependencies list unchanged.\n\nIn @.claude/hooks/session_start_continuity.py:\n- Around line 1-5: Replace the current shebang line with the project-standard\nshebang \"#!/usr/bin/env -S uv run\" so the script is executed via the PR-required\nrunner; ensure this new shebang is the very first line of the file (replacing\nthe existing \"#!/usr/bin/env python3\") and keep the rest of the PEP 723 metadata\nblock unchanged.\n\nIn @.claude/hooks/session-symbol-index.py:\n- Around line 1-5: Update the script shebang to match the PR objectives by\nreplacing the current first line \"#!/usr/bin/env python3\" with \"#!/usr/bin/env\n-S uv run\" so the file uses the required launcher; keep the rest of the PEP 723\nmetadata block and empty dependencies list unchanged.\n\nIn @.claude/settings.json:\n- Line 4: The settings entry uses a direct invocation \"uv run\n$HOME/.claude/scripts/status.py\" which is inconsistent with other hooks that\nroute through hook_launcher.py; update this to use the same launcher pattern by\ninvoking hook_launcher.py (or adjust the launcher to accept status.py) so all\nPython hooks follow a uniform launch path—locate the command string for\nstatus.py and replace the direct \"uv run ...\" invocation with the\nhook_launcher-based invocation used elsewhere, ensuring any required arguments\nor environment handling for status.py are preserved.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 49cef1012da794a7563d16ded83a1e6ef8d59693 and 3d50026169c1bdad7c2dc665b464cfc0a85d5be0.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (10)</summary>\n\n* `.claude/hooks/auto-handoff-stop.py`\n* `.claude/hooks/braintrust_hooks.py`\n* `.claude/hooks/hook_launcher.py`\n* `.claude/hooks/post-tool-use-tracker.py`\n* `.claude/hooks/post_tool_use_tracker.py`\n* `.claude/hooks/pre_compact_continuity.py`\n* `.claude/hooks/premortem-suggest.py`\n* `.claude/hooks/session-symbol-index.py`\n* `.claude/hooks/session_start_continuity.py`\n* `.claude/settings.json`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (11)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/pre_compact_continuity.py (2)</summary><blockquote>\n\n`1-1`: **Clarify shebang strategy.**\n\nThe PR objectives state that scripts should use `#!/usr/bin/env -S uv run` as the shebang, but this file retains `#!/usr/bin/env python3`. Is this intentional (to provide a fallback when scripts are executed directly) or an oversight?\n\nIf execution via `uv run` only happens at the settings.json/hook_launcher.py level, the current shebang is fine. Otherwise, consider updating to align with the stated PR objectives.\n\n---\n\n`2-5`: **PEP 723 metadata is correct.**\n\nThe inline script metadata follows the correct syntax and is properly supported by `uv run`. The configuration accurately specifies:\n- Python >=3.10 requirement (needed for PEP 604 union syntax like `str | None` used throughout)\n- Empty dependencies array (script uses only standard library)\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/braintrust_hooks.py (2)</summary><blockquote>\n\n`1-1`: **Clarify shebang strategy.**\n\nSame as pre_compact_continuity.py: the PR objectives mention `#!/usr/bin/env -S uv run` but the file retains `#!/usr/bin/env python3`. Confirm whether this is intentional or an oversight.\n\n---\n\n`2-5`: **PEP 723 metadata correctly declares httpx dependency.**\n\nThe metadata properly specifies:\n- Python >=3.10 requirement (for PEP 604 union syntax, confirmed by `str | None` patterns in the code)\n- httpx dependency (imported at line 33 and used for Braintrust API calls: GET `/v1/project` and POST `/v1/project_logs/{project_id}/insert`)\n\nuv supports PEP 723 and will auto-install the httpx dependency when running `uv run`.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/post_tool_use_tracker.py (2)</summary><blockquote>\n\n`2-5`: **PEP 723 metadata is correct and consistent.**\n\nThe metadata accurately declares:\n- Python >=3.10 requirement (matches PEP 604 union syntax usage)\n- Empty dependencies (uses only standard library: subprocess, json, pathlib, etc.)\n\nThe metadata format is consistent across all three hook files in this PR.\n\n---\n\n`1-1`: **Clarify shebang strategy.**\n\nSame shebang discrepancy as the other files: PR objectives state `#!/usr/bin/env -S uv run` but the file retains `#!/usr/bin/env python3`. Confirm this is intentional.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/auto-handoff-stop.py (1)</summary><blockquote>\n\n`2-6`: **LGTM - PEP 723 metadata correctly added.**\n\nThe inline script metadata follows the correct format. The empty dependencies array is appropriate since the script only uses standard library modules (`json`, `sys`, `glob`).\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/premortem-suggest.py (1)</summary><blockquote>\n\n`2-5`: **LGTM - PEP 723 metadata correctly added.**\n\nThe metadata format is correct and the empty dependencies array is consistent with the comment on line 19 stating the script uses only standard library.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/hook_launcher.py (2)</summary><blockquote>\n\n`123-154`: **LGTM - `find_uv()` implementation is well-structured.**\n\nThe function follows the same pattern as `find_node()` and `find_python()`, checking both `shutil.which` and common installation paths for cross-platform compatibility. The inclusion of `~/.cargo/bin` is appropriate since uv can be installed via cargo.\n\n---\n\n`260-274`: **Remove this optimization suggestion—the proposed detection mechanism is unreliable.**\n\nUV_PYTHON is a user-settable environment variable that uv respects as a configuration input (equivalent to the `--python` flag), not an automatic marker set by uv when running scripts. Checking `os.environ.get(\"UV_PYTHON\")` will not reliably detect whether code is already running under `uv run`. This variable may or may not be set regardless of whether the process was invoked by uv, making the proposed optimization unsound.\n\nAdditionally, the fallback to `sys.executable` when UV_PYTHON is present could break dependency resolution for PEP 723 scripts, since `sys.executable` in a nested uv context may not be the intended Python interpreter.\n\nWhile nested uv invocations do create minor subprocess overhead, there is no standard, reliable environment-based mechanism in uv to detect nested invocation. The current approach of preferring `uv run` when available is appropriate.\n\n\n\n> Likely an incorrect or invalid review comment.\n\n</blockquote></details>\n<details>\n<summary>.claude/settings.json (1)</summary><blockquote>\n\n`110-111`: **The double `uv run` invocation is by design for dependency management.**\n\nThe settings do invoke `uv run hook_launcher.py`, which then calls `uv run` again for `.py` hooks. This pattern is intentional: hook_launcher.py uses the inner `uv run` to handle PEP 723 inline dependencies declared in individual hook scripts. Each hook can specify its own dependencies (e.g., `# /// script` metadata), and `uv run` ensures they're resolved. This approach allows hook_launcher.py to work regardless of how it's invoked (`python` directly or via `uv run`), making it a truly universal launcher.\n\nNo refactoring needed—the design is correct as-is.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3653012711",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3653012711"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-12T22:40:32Z",
+    "commit_id": "3d50026169c1bdad7c2dc665b464cfc0a85d5be0"
+  },
+  {
+    "id": 3653020693,
+    "node_id": "PRR_kwDOQtdKGM7ZvKwV",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 4**\n\n> [!CAUTION]\n> Some comments are outside the diff and can’t be posted inline due to platform limitations.\n> \n> \n> \n> <details>\n> <summary>⚠️ Outside diff range comments (4)</summary><blockquote>\n> \n> <details>\n> <summary>.claude/hooks/auto-handoff-stop.py (2)</summary><blockquote>\n> \n> `17-17`: **Consider using a context manager for file operations.**\n> \n> The file is opened without a context manager, which can leave the file handle open until garbage collection. While the script exits immediately after, using a context manager is best practice.\n> \n> \n> \n> <details>\n> <summary>♻️ Suggested improvement</summary>\n> \n> ```diff\n> -        pct = int(open(ctx_files[0]).read().strip())\n> +        with open(ctx_files[0]) as f:\n> +            pct = int(f.read().strip())\n> ```\n> </details>\n> \n> ---\n> \n> `24-24`: **Replace bare except with specific exception handling.**\n> \n> The bare `except:` clause catches all exceptions, including `KeyboardInterrupt` and `SystemExit`, which can mask unexpected errors and make debugging harder.\n> \n> \n> \n> <details>\n> <summary>♻️ Suggested improvement</summary>\n> \n> ```diff\n> -    except: pass\n> +    except Exception:\n> +        pass\n> ```\n> </details>\n> \n> </blockquote></details>\n> <details>\n> <summary>.claude/hooks/session_start_continuity.py (1)</summary><blockquote>\n> \n> `241-248`: **Hardcoded `uv` command may fail silently when uv is not installed.**\n> \n> This `Popen` call uses `\"uv\"` directly without checking if uv is available, but stderr/stdout are sent to DEVNULL. If uv is not installed, the call will fail and return \"Memory daemon: Started\" (misleading), or raise `FileNotFoundError` which is caught but returns `None` instead of an error message.\n> \n> Consider using the `find_uv()` helper from `hook_launcher.py` or adding a fallback to direct Python execution, similar to how `hook_launcher.py` handles this.\n> \n> \n> \n> <details>\n> <summary>Suggested approach</summary>\n> \n> ```diff\n> +from .hook_launcher import find_uv, find_python\n> +\n>  def ensure_memory_daemon() -> str | None:\n>      # ... existing code ...\n>      \n>      if daemon_script:\n> -        subprocess.Popen(\n> -            [\"uv\", \"run\", \"python\", str(daemon_script), \"start\"],\n> -            stdout=subprocess.DEVNULL,\n> -            stderr=subprocess.DEVNULL,\n> -            cwd=str(daemon_script.parent.parent.parent),  # opc/ dir\n> -        )\n> +        uv_path = shutil.which(\"uv\")\n> +        if uv_path:\n> +            cmd = [uv_path, \"run\", \"python\", str(daemon_script), \"start\"]\n> +        else:\n> +            python_path = shutil.which(\"python3\") or shutil.which(\"python\")\n> +            if not python_path:\n> +                return None\n> +            cmd = [python_path, str(daemon_script), \"start\"]\n> +        subprocess.Popen(\n> +            cmd,\n> +            stdout=subprocess.DEVNULL,\n> +            stderr=subprocess.DEVNULL,\n> +            cwd=str(daemon_script.parent.parent.parent),\n> +        )\n>          return \"Memory daemon: Started\"\n> ```\n> </details>\n> \n> </blockquote></details>\n> <details>\n> <summary>.claude/hooks/hook_launcher.py (1)</summary><blockquote>\n> \n> `1-5`: **Consider adding PEP 723 metadata to hook_launcher.py itself.**\n> \n> Since `hook_launcher.py` is invoked via `uv run` from `settings.json`, it should include PEP 723 metadata for consistency and to ensure `uv` can properly manage its execution environment. While it only uses stdlib modules, adding the metadata makes the intent explicit.\n> \n> \n> \n> <details>\n> <summary>Suggested metadata header</summary>\n> \n> ```diff\n>  #!/usr/bin/env python3\n> +# /// script\n> +# requires-python = \">=3.10\"\n> +# dependencies = []\n> +# ///\n>  \"\"\"Cross-platform hook launcher for Claude Code hooks.\n> ```\n> </details>\n> \n> </blockquote></details>\n> \n> </blockquote></details>\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.claude/hooks/auto-handoff-stop.py:\n- Around line 1-5: Update the PEP 723 metadata `requires-python` declaration\nfrom \">=3.9\" to \">=3.10\" in the hook metadata block (the `requires-python` line\nin the shebang/metadata header) so the hook matches other hooks in the\n`.claude/hooks/` directory and the project standard.\n\nIn @.claude/hooks/premortem-suggest.py:\n- Around line 2-5: Update the script metadata so the Python requirement matches\nthe code's actual syntax: change the requires-python value from \">=3.10\" to\n\">=3.9\". This aligns with the use of built-in generic types like list[str] (see\noccurrences around the list[str] hints) which require Python 3.9+, and keeps\neverything else unchanged.\n\nIn @.claude/hooks/session-symbol-index.py:\n- Around line 2-5: The requires-python metadata currently says \">=3.10\" but the\nscript uses only older stdlib features; update the header's requires-python\nvalue in the script metadata (the \"requires-python\" key at the top of\n.claude/hooks/session-symbol-index.py) to a lower constraint such as \">=3.8\" (or\n\">=3.9\" if your repo prefers) so it accurately reflects the minimum Python\nversion; keep the rest of the header unchanged.\n\nIn @.claude/settings.json:\n- Line 4: The command string \"command\": \"uv run $HOME/.claude/scripts/status.py\"\nin settings.json uses the unsupported $HOME variable; update this entry to avoid\nvariable expansion by replacing $HOME with an absolute path or a relative path\n(e.g., \"/home/youruser/.claude/scripts/status.py\" or\n\"./.claude/scripts/status.py\"), or move the environment variable setup into the\n\"env\" section and reference a plain path in \"command\"; ensure the final\n\"command\" value contains no shell variable references.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 3d50026169c1bdad7c2dc665b464cfc0a85d5be0 and f379a1595f33eedaf3cdf10c19ad7bcce501c081.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (10)</summary>\n\n* `.claude/hooks/auto-handoff-stop.py`\n* `.claude/hooks/braintrust_hooks.py`\n* `.claude/hooks/hook_launcher.py`\n* `.claude/hooks/post-tool-use-tracker.py`\n* `.claude/hooks/post_tool_use_tracker.py`\n* `.claude/hooks/pre_compact_continuity.py`\n* `.claude/hooks/premortem-suggest.py`\n* `.claude/hooks/session-symbol-index.py`\n* `.claude/hooks/session_start_continuity.py`\n* `.claude/settings.json`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (10)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/auto-handoff-stop.py (1)</summary><blockquote>\n\n`6-6`: **Good addition of module documentation.**\n\nThe docstring clearly describes the hook's purpose.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/post_tool_use_tracker.py (1)</summary><blockquote>\n\n`2-5`: **PEP 723 metadata correctly added with accurate version requirement.**\n\nThe script metadata is properly formatted. The `requires-python = \">=3.10\"` requirement is correct because the code uses the union type operator syntax (`str | None` at line 100, `int | None` at line 180), which requires Python 3.10+. The `from __future__ import annotations` on line 15 defers annotation evaluation but doesn't backport the `|` operator syntax to earlier versions.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/post-tool-use-tracker.py (1)</summary><blockquote>\n\n`1-5`: **PEP 723 metadata header looks good.**\n\nThe script metadata block is correctly formatted with `requires-python = \">=3.10\"` and an empty `dependencies` array, which is appropriate since only standard library modules are used. This aligns with the PR's goal of enabling `uv run` execution.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/braintrust_hooks.py (1)</summary><blockquote>\n\n`1-5`: **PEP 723 metadata correctly declares the httpx dependency.**\n\nThe `dependencies = [\"httpx\"]` declaration enables `uv run` to automatically install this package when the hook is invoked, which addresses the PR's motivation of handling missing dependencies gracefully.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/session_start_continuity.py (1)</summary><blockquote>\n\n`2-5`: **PEP 723 metadata header is correct.**\n\nThe empty `dependencies` array is appropriate since only standard library modules are used.\n\n</blockquote></details>\n<details>\n<summary>.claude/settings.json (1)</summary><blockquote>\n\n`110-112`: **Settings consistently updated to use `uv run` for Python hooks.**\n\nThe hook commands are consistently updated to invoke `uv run $HOME/.claude/hooks/hook_launcher.py <hook-name>`. This aligns with the PR objective of using uv for portable Python execution.\n\nNote that if uv is not installed on a system, these hooks will fail. This is the intended behavior per the PR motivation (systems should have uv installed for the new workflow).\n\n\n\n\nAlso applies to: 149-151, 209-211, 249-250\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/pre_compact_continuity.py (1)</summary><blockquote>\n\n`1-5`: **PEP 723 metadata header is correctly formatted.**\n\nThe empty `dependencies` array is appropriate since only standard library modules are used.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/hook_launcher.py (3)</summary><blockquote>\n\n`17-28`: **Documentation clearly explains PEP 723 metadata requirements for Python hooks.**\n\nThe updated docstring provides clear guidance on including inline script metadata for portability. This is helpful for contributors adding new Python hooks.\n\n---\n\n`123-154`: **Well-implemented `find_uv()` function with comprehensive path search.**\n\nThe function correctly:\n- Checks `shutil.which()` first (respects PATH)\n- Searches common Windows install locations (`LOCALAPPDATA`, `USERPROFILE/.local/bin`)\n- Searches common Unix install locations (`~/.local/bin`, `~/.cargo/bin`)\n\nThis mirrors the pattern used by `find_node()` and provides good cross-platform coverage.\n\n---\n\n`260-274`: **Correct fallback logic for Python hook execution.**\n\nThe implementation properly prefers `uv run` for handling PEP 723 dependencies, with a graceful fallback to direct Python execution. The error message at line 272 is helpful, recommending uv as the preferred option.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3653020693",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3653020693"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-12T22:43:46Z",
+    "commit_id": "f379a1595f33eedaf3cdf10c19ad7bcce501c081"
+  },
+  {
+    "id": 3654584085,
+    "node_id": "PRR_kwDOQtdKGM7Z1IcV",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 3**\n\n> [!CAUTION]\n> Some comments are outside the diff and can’t be posted inline due to platform limitations.\n> \n> \n> \n> <details>\n> <summary>⚠️ Outside diff range comments (2)</summary><blockquote>\n> \n> <details>\n> <summary>.claude/hooks/session_start_continuity.py (2)</summary><blockquote>\n> \n> `128-132`: **Resource leak: File handle not properly closed.**\n> \n> The `open()` call for `log_file` is passed directly to `Popen.stdout` without a context manager. If `Popen` fails, the file handle leaks.\n> \n> \n> \n> <details>\n> <summary>Suggested fix</summary>\n> \n> ```diff\n>              # Start background indexing\n> +            log_handle = open(log_file, \"w\")\n>              subprocess.Popen(\n>                  [\"tldr\", \"warm\", \"--project\", project_dir],\n> -                stdout=open(log_file, \"w\"),\n> +                stdout=log_handle,\n>                  stderr=subprocess.STDOUT,\n>              )\n> +            # Note: log_handle intentionally not closed - it's owned by the subprocess\n> ```\n> \n> Alternatively, if the subprocess should detach completely:\n> \n> ```diff\n>              # Start background indexing\n> -            subprocess.Popen(\n> -                [\"tldr\", \"warm\", \"--project\", project_dir],\n> -                stdout=open(log_file, \"w\"),\n> -                stderr=subprocess.STDOUT,\n> -            )\n> +            with open(log_file, \"w\") as log_handle:\n> +                subprocess.Popen(\n> +                    [\"tldr\", \"warm\", \"--project\", project_dir],\n> +                    stdout=log_handle,\n> +                    stderr=subprocess.STDOUT,\n> +                )\n> ```\n> \n> </details>\n> \n> ---\n> \n> `186-190`: **Same resource leak pattern as above.**\n> \n> The `open(log_file, \"w\")` passed to `Popen.stdout` has the same leak risk.\n> \n> \n> \n> <details>\n> <summary>Suggested fix</summary>\n> \n> ```diff\n>          log_file = tldr_dir / \"semantic_indexing.log\"\n> -        subprocess.Popen(\n> -            [\"tldr\", \"semantic\", \"index\", project_dir],\n> -            stdout=open(log_file, \"w\"),\n> -            stderr=subprocess.STDOUT,\n> -        )\n> +        with open(log_file, \"w\") as log_handle:\n> +            subprocess.Popen(\n> +                [\"tldr\", \"semantic\", \"index\", project_dir],\n> +                stdout=log_handle,\n> +                stderr=subprocess.STDOUT,\n> +            )\n> ```\n> \n> </details>\n> \n> </blockquote></details>\n> \n> </blockquote></details>\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.claude/hooks/auto-handoff-stop.py:\n- Around line 25-26: The bare \"except Exception: pass\" in the auto-handoff-stop\nhook silently swallows errors and triggers S110/BLE001; replace it by catching\nspecific expected exceptions (e.g., FileNotFoundError, OSError, ValueError)\naround the failing operation and handle them explicitly, and for any unexpected\nexception either log it via the existing logger or re-raise after logging;\nupdate the except block that currently reads \"except Exception: pass\" to list\nthe specific exception types and add minimal logging for unexpected cases.\n- Around line 14-18: The code uses glob.glob to collect ctx_files and then opens\nctx_files[0], which is non-deterministic when multiple matches exist; change the\nselection to pick the most recently modified file (e.g., compute latest =\nmax(ctx_files, key=os.path.getmtime) or sort by os.path.getmtime and take the\nlast) and open that file instead of ctx_files[0] so you reliably read the newest\nclaude-context-pct-*.txt.\n\nIn @.claude/hooks/hook_launcher.py:\n- Around line 127-158: The Windows install path LOCALAPPDATA/Programs/uv/uv.exe\nin find_uv() is non-standard; update the common_paths list used in the\nsys.platform == \"win32\" branch to remove the LOCALAPPDATA entry and keep (or\nexplicitly prefer) Path(os.environ.get(\"USERPROFILE\", \"\")) / \".local\" / \"bin\" /\n\"uv.exe\" (and add a brief inline comment that ~/.local/bin/uv.exe is the\nofficial default) so the function only checks the documented default Windows\nlocation; adjust references to common_paths and the p.exists() loop accordingly.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between f379a1595f33eedaf3cdf10c19ad7bcce501c081 and d30a158c7a8905e579967a25832d487d719001b4.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (4)</summary>\n\n* `.claude/hooks/auto-handoff-stop.py`\n* `.claude/hooks/hook_launcher.py`\n* `.claude/hooks/premortem-suggest.py`\n* `.claude/hooks/session_start_continuity.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>.claude/hooks/auto-handoff-stop.py (1)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/dist/skill-activation-prompt.mjs (1)</summary>\n\n* `pct` (490-490)\n\n</details>\n\n</blockquote></details>\n\n</details><details>\n<summary>🪛 Ruff (0.14.10)</summary>\n\n<details>\n<summary>.claude/hooks/session_start_continuity.py</summary>\n\n243-243: Starting a process with a partial executable path\n\n(S607)\n\n</details>\n<details>\n<summary>.claude/hooks/auto-handoff-stop.py</summary>\n\n25-26: `try`-`except`-`pass` detected, consider logging the exception\n\n(S110)\n\n---\n\n25-25: Do not catch blind exception: `Exception`\n\n(BLE001)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (8)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/premortem-suggest.py (2)</summary><blockquote>\n\n`2-5`: **LGTM!**\n\nThe PEP 723 inline script metadata is correctly formatted and aligns with the standardization to `requires-python = \">=3.10\"` across hooks. Empty dependencies array is appropriate since the script uses only the standard library.\n\n---\n\n`16-17`: **LGTM!**\n\nDocumentation accurately reflects the new `uv run` invocation pattern and the fallback mechanism for environments without uv installed.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/session_start_continuity.py (2)</summary><blockquote>\n\n`2-5`: **LGTM: PEP 723 metadata added for consistency.**\n\nThe inline script metadata block aligns with the PR's goal of standardizing Python hooks for `uv run` execution. Empty dependencies list is appropriate since this script uses only stdlib modules.\n\n---\n\n`243-243`: **Correct fix: Remove redundant \"python\" argument from `uv run`.**\n\nWith PEP 723 inline metadata, `uv run <script.py>` directly executes Python scripts without needing an explicit `python` interpreter argument. This change is correct.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/auto-handoff-stop.py (2)</summary><blockquote>\n\n`1-6`: **LGTM: Proper uv run shebang and PEP 723 metadata.**\n\nThe shebang `#!/usr/bin/env -S uv run` with PEP 723 inline metadata enables portable execution. Empty dependencies are correct for stdlib-only usage.\n\n---\n\n`10-11`: **LGTM: Short-circuit prevents recursive hook invocation.**\n\nThis guard prevents infinite loops if the hook system inadvertently re-triggers this stop hook.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/hook_launcher.py (2)</summary><blockquote>\n\n`2-5`: **LGTM: PEP 723 metadata for the launcher itself.**\n\nAdding inline script metadata to the launcher ensures it can also be executed via `uv run` if needed, maintaining consistency with the hooks it launches.\n\n---\n\n`264-278`: **LGTM: Clean uv-first execution with Python fallback.**\n\nThe implementation correctly:\n1. Prefers `uv run` for PEP 723 dependency handling\n2. Falls back to direct Python when uv is unavailable\n3. Provides a clear error message when neither is found\n\nThis aligns with the PR objective of using uv while maintaining backward compatibility.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654584085",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654584085"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:42:16Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654586398,
+    "node_id": "PRR_kwDOQtdKGM7Z1JAe",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654586398",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654586398"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:42:50Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654587080,
+    "node_id": "PRR_kwDOQtdKGM7Z1JLI",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587080",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587080"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:02Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654587224,
+    "node_id": "PRR_kwDOQtdKGM7Z1JNY",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587224",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587224"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:04Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654587383,
+    "node_id": "PRR_kwDOQtdKGM7Z1JP3",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587383",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587383"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:07Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654587550,
+    "node_id": "PRR_kwDOQtdKGM7Z1JSe",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587550",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587550"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:10Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654587686,
+    "node_id": "PRR_kwDOQtdKGM7Z1JUm",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587686",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587686"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:12Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654587846,
+    "node_id": "PRR_kwDOQtdKGM7Z1JXG",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587846",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654587846"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:14Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654588785,
+    "node_id": "PRR_kwDOQtdKGM7Z1Jlx",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654588785",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654588785"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:29Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654589093,
+    "node_id": "PRR_kwDOQtdKGM7Z1Jql",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589093",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589093"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:34Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654589482,
+    "node_id": "PRR_kwDOQtdKGM7Z1Jwq",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589482",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589482"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:40Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654589547,
+    "node_id": "PRR_kwDOQtdKGM7Z1Jxr",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589547",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589547"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:41Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654589768,
+    "node_id": "PRR_kwDOQtdKGM7Z1J1I",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589768",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589768"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:45Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654589803,
+    "node_id": "PRR_kwDOQtdKGM7Z1J1r",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589803",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654589803"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:45Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  },
+  {
+    "id": 3654590245,
+    "node_id": "PRR_kwDOQtdKGM7Z1J8l",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654590245",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/76#pullrequestreview-3654590245"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/76"
+      }
+    },
+    "submitted_at": "2026-01-13T08:43:50Z",
+    "commit_id": "d30a158c7a8905e579967a25832d487d719001b4"
+  }
+]

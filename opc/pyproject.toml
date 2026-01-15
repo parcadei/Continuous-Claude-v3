@@ -42,9 +42,8 @@ discovery = [
     "anthropic>=0.28.0",
 ]
 embeddings = [
-    # Local embeddings when VOYAGE_API_KEY not available
-    "sentence-transformers>=2.0.0",
-    "torch>=2.0.0",
+    # NOTE: sentence-transformers and torch are now in main dependencies
+    # This group exists for backward compatibility with install commands
 ]
 dev = [
     "black>=24.0.0",

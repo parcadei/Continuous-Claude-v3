@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3646869989,
+    "node_id": "PRR_kwDOQtdKGM7ZXtHl",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>.claude/settings.json (1)</summary><blockquote>\n\n`249-249`: **Redundant nested `bash` invocation.**\n\nThis line wraps `bash` inside `bash -c`, which is unnecessary overhead. Since `bash -c` already spawns a bash shell, the inner `bash` is redundant.\n\n\n\n<details>\n<summary>Suggested fix</summary>\n\n```diff\n-            \"command\": \"bash -c 'bash \\\"$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh\\\"'\"\n+            \"command\": \"bash -c '\\\"$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh\\\"'\"\n```\n\nAlternatively, if explicit `bash` invocation is preferred for `.sh` files (to ensure bash interpreter regardless of shebang):\n\n```diff\n-            \"command\": \"bash -c 'bash \\\"$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh\\\"'\"\n+            \"command\": \"bash -c '. \\\"$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh\\\"'\"\n```\n\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 4fee297a6f2b3a5dec48b6e995b37d43adc6c7fe and 3f60223f03a8758ca332aba4b5108279c21e7d19.\n\n</details>\n\n<details>\n<summary>⛔ Files ignored due to path filters (1)</summary>\n\n* `.claude/hooks/package-lock.json` is excluded by `!**/package-lock.json`\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `.claude/settings.json`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>.claude/settings.json (2)</summary><blockquote>\n\n`4-4`: **The `bash -c` wrapping approach is correct for handling paths with spaces.**\n\nThe pattern `bash -c 'node \"$CLAUDE_PROJECT_DIR/...\"'` correctly handles the space-in-path issue:\n1. Single quotes prevent premature expansion\n2. `bash -c` performs the variable expansion\n3. Double quotes around the path preserve spaces in the expanded value\n\n\n\n\nAlso applies to: 12-12, 21-21\n\n---\n\n`87-87`: **Verify that `$HOME` paths won't contain spaces in your target environments.**\n\nThe PR intentionally leaves `$HOME`-based hooks unwrapped. While `$HOME` rarely contains spaces on Unix systems, Windows subsystems (WSL) or custom configurations could have spaces in home directory paths (e.g., `/mnt/c/Users/John Doe`).\n\nIf this is a concern, consider wrapping these consistently as well for defensive robustness.\n\n\n\n\nAlso applies to: 116-116, 141-141, 171-171, 196-196, 205-205, 263-263\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/32#pullrequestreview-3646869989",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/32",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/32#pullrequestreview-3646869989"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/32"
+      }
+    },
+    "submitted_at": "2026-01-10T13:52:59Z",
+    "commit_id": "3f60223f03a8758ca332aba4b5108279c21e7d19"
+  }
+]

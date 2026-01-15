@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3660773204,
+    "node_id": "PRR_kwDOQtdKGM7aMvdU",
+    "user": {
+      "login": "greptile-apps[bot]",
+      "id": 165735046,
+      "node_id": "BOT_kgDOCeDqhg",
+      "avatar_url": "https://avatars.githubusercontent.com/in/867647?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/greptile-apps%5Bbot%5D",
+      "html_url": "https://github.com/apps/greptile-apps",
+      "followers_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "<sub>2 files reviewed, 1 comment</sub>\n\n<sub>[Edit Code Review Agent Settings](https://app.greptile.com/review/github) | [Greptile](https://greptile.com?utm_source=greptile_expert&utm_medium=github&utm_campaign=code_reviews&utm_content=continuous-claude-v3_103)</sub>",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/103#pullrequestreview-3660773204",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/103",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/103#pullrequestreview-3660773204"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/103"
+      }
+    },
+    "submitted_at": "2026-01-14T13:39:30Z",
+    "commit_id": "1348af44c50663c3a1ae2c445ee14b19d895583a"
+  },
+  {
+    "id": 3660988792,
+    "node_id": "PRR_kwDOQtdKGM7aNkF4",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.claude/scripts/tldr_stats.py:\n- Around line 389-391: The progress bar is being fed cache_rate / 100 even\nthough cache_rate is already a percentage (0–100) and progress_bar expects a\n0–100 value; update the call in the block that prints cache stats to pass\ncache_rate (not divided) to progress_bar — i.e., change progress_bar(cache_rate\n/ 100, width=15) to progress_bar(cache_rate, width=15) so the bar reflects the\nactual cache percentage.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 1348af44c50663c3a1ae2c445ee14b19d895583a and 4e9f5f53d329ba200ba51b8ee56ff6f57ccee6f2.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (3)</summary>\n\n* `.claude/scripts/tldr_stats.py`\n* `.claude/skills/tldr-stats/SKILL.md`\n* `opc/scripts/setup/update.py`\n\n</details>\n\n<details>\n<summary>🚧 Files skipped from review as they are similar to previous changes (2)</summary>\n\n* .claude/skills/tldr-stats/SKILL.md\n* opc/scripts/setup/update.py\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (5)</summary><blockquote>\n\n<details>\n<summary>.claude/scripts/tldr_stats.py (5)</summary><blockquote>\n\n`7-11`: **LGTM!**\n\nClear usage documentation that accurately reflects the new `--project` flag functionality.\n\n---\n\n`13-20`: **LGTM!**\n\nImports are properly organized and all newly added imports (`argparse`, `socket`) are utilized in the code.\n\n---\n\n`237-238`: **LGTM!**\n\nAdding `TimeoutError` is appropriate given the socket timeout configuration. This improves clarity and ensures consistent behavior across Python versions.\n\n---\n\n`279-288`: **LGTM!**\n\nThe argparse setup is clean and correctly gates the `get_tldr_stats` call on the presence of the `--project` argument.\n\n---\n\n`367-397`: **Overall implementation looks good.**\n\nThe new project-specific stats section cleanly integrates with existing display logic. Defensive `.get()` calls with defaults ensure graceful handling when daemon stats are incomplete. Just fix the progress bar bug noted above.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/103#pullrequestreview-3660988792",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/103",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/103#pullrequestreview-3660988792"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/103"
+      }
+    },
+    "submitted_at": "2026-01-14T14:19:38Z",
+    "commit_id": "4e9f5f53d329ba200ba51b8ee56ff6f57ccee6f2"
+  }
+]

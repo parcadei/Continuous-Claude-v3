@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3659112722,
+    "node_id": "PRR_kwDOQ5BBoM7aGaES",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 3**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.env.example:\n- Around line 6-10: Add a clarifying note in .env.example explaining the\nrelationship and precedence between OPC_POSTGRES_URL and DATABASE_URL: state\nthat OPC_POSTGRES_URL is the primary connection string used by the application\n(and will override DATABASE_URL if both are set), DATABASE_URL is provided as a\nconventional fallback for scripts/tools that expect that env var, and recommend\nusers set OPC_POSTGRES_URL for normal operation (or set DATABASE_URL only if you\nrely on external tooling that requires it); also suggest keeping both\nsynchronized or leaving the unused one commented to avoid confusion and include\na short example sentence showing which one wins when both are present.\n- Around line 1-16: The .env.example is missing optional API key variables\nreferenced in the README; add commented example entries for BRAINTRUST_API_KEY,\nPERPLEXITY_API_KEY, and NIA_API_KEY so users see how to configure optional\nservices. Update the file by appending lines (with brief comments) showing\nBRAINTRUST_API_KEY=your_key_here for session tracing,\nPERPLEXITY_API_KEY=your_key_here for web search, and NIA_API_KEY=your_key_here\nfor documentation search so the example matches the README and guides users.\n\nIn `@README.md`:\n- Around line 192-215: The README's remote DB section lacks actionable steps to\ninstall pgvector and apply docker/init-schema.sql; update the \"Remote Database\nSetup\" section to include concise commands showing how to connect and apply the\nschema (e.g., use psql to connect to the remote host, run CREATE EXTENSION IF\nNOT EXISTS vector; and run the schema file via psql -h <host> -U <user> -d\ncontinuous_claude -f docker/init-schema.sql or inside psql use \\i\ndocker/init-schema.sql), and mention alternative credential/permission notes for\nmanaged DBs so users can successfully enable the pgvector extension and import\nthe schema before setting OPC_POSTGRES_URL.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (3)</summary><blockquote>\n\n<details>\n<summary>.env.example (2)</summary><blockquote>\n\n`13-16`: **Consider commenting out Docker defaults to clarify their scope.**\n\nThe Docker PostgreSQL defaults (lines 13-16) are provided as uncommented values, which might confuse users about whether these variables are always required or only when using the local Docker setup.\n\nSince this is an `.env.example` file for remote database configuration, consider either:\n1. Commenting these out with a note that they're only needed for local Docker usage\n2. Adding a section header clarifying these are \"Local Docker Setup Only\"\n\n\n\n<details>\n<summary>💡 Suggested clarification</summary>\n\n```diff\n-# Docker PostgreSQL defaults (used by docker-compose.yml)\n-POSTGRES_USER=claude\n-POSTGRES_PASSWORD=claude_dev\n-POSTGRES_DB=continuous_claude\n-POSTGRES_PORT=5432\n+# Docker PostgreSQL defaults (only needed for local Docker setup via docker-compose.yml)\n+# Uncomment if using local PostgreSQL container:\n+# POSTGRES_USER=claude\n+# POSTGRES_PASSWORD=claude_dev\n+# POSTGRES_DB=continuous_claude\n+# POSTGRES_PORT=5432\n```\n</details>\n\n---\n\n`13-16`: **Optional: Address static analysis key ordering hints.**\n\nThe dotenv-linter suggests alphabetical ordering of the POSTGRES_* keys. While this is a minor stylistic preference and not functionally significant, consistent ordering can improve readability.\n\n\n\nBased on static analysis hints.\n\n</blockquote></details>\n<details>\n<summary>README.md (1)</summary><blockquote>\n\n`192-215`: **Consider relocating this section closer to Installation or Configuration.**\n\nThe \"Remote Database Setup\" section appears immediately after the wizard installation steps (lines 179-191), which might cause confusion since the wizard is designed to set up a local Docker PostgreSQL instance.\n\nUsers might benefit from having this section placed either:\n- In the **Configuration** section (line 1015+) alongside other environment variable documentation\n- As a subsection under **Installation** (line 963+) titled \"Alternative: Remote Database Setup\"\n\nThis would create a clearer separation between the default local setup path and the alternative remote setup path.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: defaults\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 2e2e2cf81db9df95c2147c7f2c3eda6dea45976e and fbcc6552a60bbc8faf74b432e72b2b223e6c277c.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (2)</summary>\n\n* `.env.example`\n* `README.md`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 dotenv-linter (4.0.0)</summary>\n\n<details>\n<summary>.env.example</summary>\n\n[warning] 14-14: [UnorderedKey] The POSTGRES_PASSWORD key should go before the POSTGRES_USER key\n\n(UnorderedKey)\n\n---\n\n[warning] 15-15: [UnorderedKey] The POSTGRES_DB key should go before the POSTGRES_PASSWORD key\n\n(UnorderedKey)\n\n---\n\n[warning] 16-16: [UnorderedKey] The POSTGRES_PORT key should go before the POSTGRES_USER key\n\n(UnorderedKey)\n\n</details>\n\n</details>\n\n</details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/2#pullrequestreview-3659112722",
+    "pull_request_url": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/2",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/2#pullrequestreview-3659112722"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/2"
+      }
+    },
+    "submitted_at": "2026-01-14T06:45:37Z",
+    "commit_id": "fbcc6552a60bbc8faf74b432e72b2b223e6c277c"
+  },
+  {
+    "id": 3659250050,
+    "node_id": "PRR_kwDOQ5BBoM7aG7mC",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@README.md`:\n- Around line 192-230: README.md has duplicate \"Remote Database Setup\" headings\nand the flow shows connection config before preparing the DB; reorganize by\nrenaming and reordering as suggested: create a \"Database Preparation\" (or \"1.\nDatabase Preparation\") section containing the pgvector enablement and schema\napplication steps (move the psql commands and tip there) and then a \"Connection\nConfiguration\" section containing the OPC_POSTGRES_URL examples (settings.json +\nexport shell snippet). Remove the redundant \"Remote Database Setup\" heading and\nensure the JSON and bash examples remain under the new \"Connection\nConfiguration\" section, with the psql commands only under \"Database\nPreparation\".\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>README.md (1)</summary><blockquote>\n\n`228-228`: **Consider adding provider-specific guidance for pgvector enablement.**\n\nThe tip about managed PostgreSQL is helpful but could be more actionable with specific examples:\n\n\n\n<details>\n<summary>💡 Enhanced provider-specific tip</summary>\n\n```diff\n-> **Tip:** On managed PostgreSQL (AWS RDS, Supabase, etc.), pgvector may need to be enabled via the provider's dashboard first.\n+> **Tip:** On managed PostgreSQL, pgvector may need to be enabled first:\n+> - **AWS RDS**: Add `vector` to the `shared_preload_libraries` parameter in your DB Parameter Group, then restart the instance\n+> - **Supabase**: Enable the pgvector extension via the Database Extensions page in your dashboard\n+> - **Azure Database**: Use the Extensions pane to enable pgvector\n+> - **Self-hosted**: Ensure pgvector is installed and your user has `CREATE EXTENSION` privileges\n```\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: defaults\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 73d5ede946cbb26bf504c6b634f3e20832ded6f5 and 86dc6c8d4c954581bd4f0ee805ace33423644ec3.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `README.md`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (1)</summary><blockquote>\n\n<details>\n<summary>README.md (1)</summary><blockquote>\n\n`217-226`: **Technical commands are correct and address previous feedback.**\n\nThe PostgreSQL setup commands are accurate:\n- `CREATE EXTENSION IF NOT EXISTS vector;` correctly installs pgvector\n- The `-f docker/init-schema.sql` flag properly applies the schema\n- The superuser/rds_superuser permission note is helpful\n\nThis successfully addresses the previous review feedback requesting step-by-step instructions for database preparation.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/2#pullrequestreview-3659250050",
+    "pull_request_url": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/2",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/2#pullrequestreview-3659250050"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/2"
+      }
+    },
+    "submitted_at": "2026-01-14T07:25:31Z",
+    "commit_id": "86dc6c8d4c954581bd4f0ee805ace33423644ec3"
+  }
+]

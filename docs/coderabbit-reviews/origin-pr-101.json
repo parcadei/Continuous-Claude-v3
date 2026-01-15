@@ -1,0 +1,122 @@
+[
+  {
+    "id": 3660432189,
+    "node_id": "PRR_kwDOQtdKGM7aLcM9",
+    "user": {
+      "login": "greptile-apps[bot]",
+      "id": 165735046,
+      "node_id": "BOT_kgDOCeDqhg",
+      "avatar_url": "https://avatars.githubusercontent.com/in/867647?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/greptile-apps%5Bbot%5D",
+      "html_url": "https://github.com/apps/greptile-apps",
+      "followers_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/greptile-apps%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "<sub>4 files reviewed, 2 comments</sub>\n\n<sub>[Edit Code Review Agent Settings](https://app.greptile.com/review/github) | [Greptile](https://greptile.com?utm_source=greptile_expert&utm_medium=github&utm_campaign=code_reviews&utm_content=continuous-claude-v3_101)</sub>",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/101#pullrequestreview-3660432189",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/101",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/101#pullrequestreview-3660432189"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/101"
+      }
+    },
+    "submitted_at": "2026-01-14T12:13:04Z",
+    "commit_id": "26183afe8a426fbf292d09425c46f81079fb732b"
+  },
+  {
+    "id": 3660445489,
+    "node_id": "PRR_kwDOQtdKGM7aLfcx",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/disable_tldr_hooks.py`:\n- Around line 25-130: The function strip_tldr_hooks_from_settings in this file\nduplicates logic already implemented in\nclaude_integration.strip_tldr_hooks_from_settings; remove the duplicate\nimplementation and call/reuse the existing function instead (or add a verbose\nparameter to claude_integration.strip_tldr_hooks_from_settings and call it here\nwith verbose=True to preserve the print output). Update imports to import\nclaude_integration.strip_tldr_hooks_from_settings (or the module) and delegate\nresponsibility to that function, keeping only any CLI/user-facing prints in this\nmodule's main() wrapper if needed.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (4)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (2)</summary><blockquote>\n\n`640-656`: **Task hook group conditional logic is complex but correct.**\n\nThe logic handles three cases:\n1. `new_hooks` has items → keep the group with filtered hooks\n2. `new_hooks` is empty but original `hooks` had items → skip the group entirely\n3. `new_hooks` is empty and original `hooks` was empty → keep the (empty) group\n\nThis preserves empty Task hook groups that were already empty while removing groups that became empty due to TLDR hook removal. The logic is correct but could benefit from a brief inline comment explaining the intent.\n\n\n<details>\n<summary>💡 Optional: Add clarifying comment</summary>\n\n```diff\n                     if new_hooks:  # Only keep if there are remaining hooks\n                         new_pretooluse.append(hook_group)\n-                    elif len(hooks) > 0:  # Had hooks, but all were removed\n-                        continue  # Skip this group entirely\n+                    elif len(hooks) > 0:\n+                        # Group had hooks but all were TLDR-related; drop the empty group\n+                        continue\n                     else:\n+                        # Group was already empty; preserve it as-is\n                         new_pretooluse.append(hook_group)\n```\n</details>\n\n---\n\n`688-695`: **Consider adding a trailing newline to the written JSON.**\n\nThe `json.dumps()` output doesn't include a trailing newline. Many editors and tools expect files to end with a newline (POSIX convention). This is a minor consistency issue.\n\n\n<details>\n<summary>💡 Optional: Add trailing newline</summary>\n\n```diff\n         if modified:\n-            settings_path.write_text(json.dumps(settings, indent=2))\n+            settings_path.write_text(json.dumps(settings, indent=2) + \"\\n\")\n```\n</details>\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n`1047-1071`: **Consistent handling for when TLDR CLI is not installed.**\n\nThis section correctly handles the case where users skip TLDR installation but may want to configure hooks for future use. The messaging is appropriate.\n\nOne observation: Lines 1059-1061 and 1017-1019 have the same import and function call pattern. While lazy imports are fine, you could consider moving the import to the top of the function or consolidating the logic into a helper to reduce duplication.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/disable_tldr_hooks.py (1)</summary><blockquote>\n\n`19-22`: **`get_global_claude_dir()` duplicates existing function in `claude_integration.py`.**\n\nThis function (lines 251-257 in `claude_integration.py`) already exists and does exactly the same thing. Consider importing it instead:\n\n```python\nfrom scripts.setup.claude_integration import get_global_claude_dir\n```\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between cd329217a8c00073a71a0d704a74bf9d771a5393 and 26183afe8a426fbf292d09425c46f81079fb732b.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (4)</summary>\n\n* `README.md`\n* `opc/scripts/disable_tldr_hooks.py`\n* `opc/scripts/setup/claude_integration.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>⏰ Context from checks skipped due to timeout of 90000ms. You can increase the timeout in your CodeRabbit configuration to a maximum of 15 minutes (900000ms). (1)</summary>\n\n* GitHub Check: Greptile Review\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (4)</summary><blockquote>\n\n<details>\n<summary>README.md (1)</summary><blockquote>\n\n`680-703`: **Documentation looks good and aligns with the PR objectives.**\n\nThe changes clearly document the opt-in nature of TLDR hooks. One minor note: Line 695 references \"Step 9\" for hooks configuration, but based on the wizard.py code, TLDR is at Step 10/13 and the hooks prompt appears within that step. Consider verifying the step number is accurate.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n`594-608`: **Function signature and docstring are clear.**\n\nThe function correctly documents what hooks will be removed and the return value semantics.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n`1001-1030`: **TLDR hooks configuration flow is well-structured.**\n\nThe prompts clearly explain what TLDR hooks do and correctly default to `False` (opt-in behavior per PR objectives). The conditional logic properly handles both enable and disable scenarios.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/disable_tldr_hooks.py (1)</summary><blockquote>\n\n`133-165`: **Main entry point is well-structured with clear user messaging.**\n\nThe script provides good CLI UX with clear status messages and appropriate exit codes.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/101#pullrequestreview-3660445489",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/101",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/101#pullrequestreview-3660445489"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/101"
+      }
+    },
+    "submitted_at": "2026-01-14T12:13:39Z",
+    "commit_id": "26183afe8a426fbf292d09425c46f81079fb732b"
+  },
+  {
+    "id": 3660537040,
+    "node_id": "PRR_kwDOQtdKGM7aL1zQ",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/setup/wizard.py`:\n- Around line 1069-1070: Update the user-facing string in the else branch that\nprints the TLDR hook state: replace the current message printed by console.print\n(the \"TLDR hooks will be enabled when CLI is installed\" line) with a clearer\nmessage stating that hooks are already configured and will activate once the\nTLDR CLI is installed (e.g., \"TLDR hooks are configured and will activate when\nCLI is installed\"); locate the string in opc/scripts/setup/wizard.py in the else\nblock where console.print is called and change only the message text to the\nsuggested clearer wording.\n\nIn `@README.md`:\n- Around line 694-696: Documentation step number is inconsistent: README.md\nreferences \"Step 9\" for the TLDR hooks prompt but the wizard code (wizard.py at\nthe TLDR installation prompt around line 867) shows it as Step 10/13; update the\nREADME.md snippet to reflect the actual wizard step (e.g., \"Step 10\" or \"Step\n10/13\") so the docs match wizard.py's TLDR hooks configuration prompt.\n```\n\n</details>\n\n<details>\n<summary>♻️ Duplicate comments (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n`641-654`: **Duplicate: Empty hook groups handling logic.**\n\nThis logic issue was already flagged in a previous review. The `else` branch at line 654 would keep empty Task hook groups that were already empty (not ones emptied by our filtering). While this may be intentional defensive behavior, the code pattern is confusing.\n\nThe same pattern exists in SessionStart handling (lines 679-682).\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n`594-695`: **Consider reducing code duplication with disable_tldr_hooks.py.**\n\nThis function is nearly identical to `strip_tldr_hooks_from_settings` in `opc/scripts/disable_tldr_hooks.py` (lines 24-129). The main difference is that the CLI script includes print statements for user feedback.\n\nOne option to reduce duplication: the CLI script could import this function and wrap it with print statements. However, keeping them separate may be intentional if you want the CLI script to be self-contained.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 26183afe8a426fbf292d09425c46f81079fb732b and 7c2a16cf3ab2f3bb3e384bbb1ced852b27e8c331.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (4)</summary>\n\n* `README.md`\n* `opc/scripts/disable_tldr_hooks.py`\n* `opc/scripts/setup/claude_integration.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>🚧 Files skipped from review as they are similar to previous changes (1)</summary>\n\n* opc/scripts/disable_tldr_hooks.py\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/disable_tldr_hooks.py (1)</summary>\n\n* `strip_tldr_hooks_from_settings` (25-130)\n\n</details>\n\n</blockquote></details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (4)</summary><blockquote>\n\n<details>\n<summary>README.md (1)</summary><blockquote>\n\n`680-703`: **Documentation structure looks good.**\n\nThe documentation clearly explains the opt-in/opt-out behavior for TLDR hooks with appropriate sections for:\n- Default enabled behavior\n- Opt-out disabled behavior\n- How to enable/disable during setup\n- How to disable for existing installations\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n`609-616`: **LGTM: Good defensive handling for edge cases.**\n\nThe function properly handles:\n- Missing settings file → returns `False`\n- Missing \"hooks\" section → returns `True` (correctly indicates success since no TLDR hooks need removal)\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (2)</summary><blockquote>\n\n`1001-1030`: **LGTM: TLDR Hooks Configuration block (successful install path).**\n\nThe implementation correctly:\n- Explains what TLDR hooks do before asking\n- Uses `default=True` to enable hooks by default (aligns with README documentation)\n- Strips hooks from settings when user opts out\n- Provides appropriate feedback messages\n\n---\n\n`1047-1071`: **LGTM: TLDR Hooks Configuration block (skipped install path).**\n\nGood UX decision to still ask about hooks configuration even when TLDR CLI installation is skipped, allowing users to pre-configure for later CLI installation.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/101#pullrequestreview-3660537040",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/101",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/101#pullrequestreview-3660537040"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/101"
+      }
+    },
+    "submitted_at": "2026-01-14T12:38:26Z",
+    "commit_id": "7c2a16cf3ab2f3bb3e384bbb1ced852b27e8c331"
+  }
+]

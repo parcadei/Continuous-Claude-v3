@@ -1,0 +1,13 @@
+# CodeRabbit reviews with local paths
+docs/coderabbit-reviews/origin-pr-76.json:local-username-path:1
+
+# Dev database connection strings with default passwords
+.claude/hooks/dist/heartbeat.mjs:connection-string-with-password:38
+.claude/hooks/src/heartbeat.ts:connection-string-with-password:46
+docs/coderabbit-reviews/fork-pr-13.json:connection-string-with-password:1
+docs/coderabbit-reviews/fork-pr-14.json:connection-string-with-password:1
+
+# CodeRabbit review archives containing example code with placeholder credentials
+docs/coderabbit-reviews/fork-pr-13.json:connection-string-with-password:26
+docs/coderabbit-reviews/fork-pr-14.json:connection-string-with-password:26
+docs/coderabbit-reviews/origin-pr-76.json:local-username-path:66

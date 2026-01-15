@@ -213,6 +213,81 @@ if (isMainModule) {
   console.log(generateAutoHandoff(summary, sessionName));
 }
 
+// src/shared/learning-extractor.ts
+import { spawnSync } from "child_process";
+
+// src/shared/opc-path.ts
+import { existsSync as existsSync2 } from "fs";
+import { join } from "path";
+function getOpcDir() {
+  const envOpcDir = process.env.CLAUDE_OPC_DIR;
+  if (envOpcDir && existsSync2(envOpcDir)) {
+    return envOpcDir;
+  }
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const localOpc = join(projectDir, "opc");
+  if (existsSync2(localOpc)) {
+    return localOpc;
+  }
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  if (homeDir) {
+    const globalClaude = join(homeDir, ".claude");
+    const globalScripts = join(globalClaude, "scripts", "core");
+    if (existsSync2(globalScripts)) {
+      return globalClaude;
+    }
+  }
+  return null;
+}
+
+// src/shared/learning-extractor.ts
+function storeCheckpoint(checkpoint, sessionId, agentId) {
+  const opcDir = getOpcDir();
+  if (!opcDir) return null;
+  const args = [
+    "run",
+    "python",
+    "scripts/core/checkpoint.py",
+    "create",
+    "--session-id",
+    sessionId,
+    "--phase",
+    checkpoint.phase
+  ];
+  if (agentId) {
+    args.push("--agent-id", agentId);
+  }
+  if (checkpoint.contextUsage !== void 0) {
+    args.push("--context-usage", checkpoint.contextUsage.toString());
+  }
+  if (checkpoint.filesModified && checkpoint.filesModified.length > 0) {
+    args.push("--files-json", JSON.stringify(checkpoint.filesModified));
+  }
+  if (checkpoint.unknowns && checkpoint.unknowns.length > 0) {
+    args.push("--unknowns-json", JSON.stringify(checkpoint.unknowns));
+  }
+  if (checkpoint.handoffPath) {
+    args.push("--handoff-path", checkpoint.handoffPath);
+  }
+  const result = spawnSync("uv", args, {
+    encoding: "utf-8",
+    cwd: opcDir,
+    env: {
+      ...process.env,
+      PYTHONPATH: opcDir
+    },
+    timeout: 1e4
+  });
+  if (result.status === 0 && result.stdout) {
+    const match = result.stdout.match(/Created checkpoint: ([a-f0-9-]+)/i);
+    return match ? match[1] : null;
+  }
+  if (result.stderr) {
+    console.error(`[checkpoint] storeCheckpoint failed: ${result.stderr}`);
+  }
+  return null;
+}
+
 // src/pre-compact-continuity.ts
 async function main() {
   const input = JSON.parse(await readStdin());
@@ -243,8 +318,8 @@ async function main() {
       fs2.mkdirSync(handoffDir, { recursive: true });
       const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
       handoffFile = `auto-handoff-${timestamp}.yaml`;
-      const handoffPath = path.join(handoffDir, handoffFile);
-      fs2.writeFileSync(handoffPath, handoffContent);
+      const handoffPath2 = path.join(handoffDir, handoffFile);
+      fs2.writeFileSync(handoffPath2, handoffContent);
       const briefSummary = generateAutoSummary(projectDir, input.session_id);
       if (briefSummary) {
         appendToLedger(ledgerPath, briefSummary);
@@ -255,7 +330,20 @@ async function main() {
         appendToLedger(ledgerPath, briefSummary);
       }
     }
-    const message = handoffFile ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${sessionName}/${handoffFile}` : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}`;
+    const editedFiles = getEditedFiles(projectDir, input.session_id);
+    const handoffPath = handoffFile ? `thoughts/shared/handoffs/${sessionName}/${handoffFile}` : void 0;
+    const checkpointId = storeCheckpoint(
+      {
+        phase: "pre-compact",
+        contextUsage: 0.95,
+        // Compacting means we're near limit
+        filesModified: editedFiles,
+        handoffPath
+      },
+      input.session_id
+    );
+    const checkpointStatus = checkpointId ? "+ checkpoint saved" : "(checkpoint failed)";
+    const message = handoffFile ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${sessionName}/${handoffFile} ${checkpointStatus}` : `[PreCompact:auto] Session summary auto-appended to ${mostRecent} ${checkpointStatus}`;
     const output = {
       continue: true,
       systemMessage: message
@@ -270,21 +358,28 @@ Ledger: ${mostRecent}`
     console.log(JSON.stringify(output));
   }
 }
+function getEditedFiles(projectDir, sessionId) {
+  const cacheDir = path.join(projectDir, ".claude", "tsc-cache", sessionId || "default");
+  const editedFilesPath = path.join(cacheDir, "edited-files.log");
+  if (!fs2.existsSync(editedFilesPath)) {
+    return [];
+  }
+  const content = fs2.readFileSync(editedFilesPath, "utf-8");
+  const normalizedProjectDir = projectDir.replace(/\\/g, "/");
+  return [...new Set(
+    content.split("\n").filter((line) => line.trim()).map((line) => {
+      const parts = line.split(":");
+      if (parts.length < 3) return "";
+      const filepath = parts.slice(1, -1).join(":");
+      const normalized = filepath.replace(/\\/g, "/");
+      return normalized.startsWith(normalizedProjectDir + "/") ? normalized.slice(normalizedProjectDir.length + 1) : normalized;
+    }).filter((f) => f)
+  )];
+}
 function generateAutoSummary(projectDir, sessionId) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const lines = [];
-  const cacheDir = path.join(projectDir, ".claude", "tsc-cache", sessionId || "default");
-  const editedFilesPath = path.join(cacheDir, "edited-files.log");
-  let editedFiles = [];
-  if (fs2.existsSync(editedFilesPath)) {
-    const content = fs2.readFileSync(editedFilesPath, "utf-8");
-    editedFiles = [...new Set(
-      content.split("\n").filter((line) => line.trim()).map((line) => {
-        const parts = line.split(":");
-        return parts[1]?.replace(projectDir + "/", "") || "";
-      }).filter((f) => f)
-    )];
-  }
+  const editedFiles = getEditedFiles(projectDir, sessionId);
   const gitClaudeDir = path.join(projectDir, ".git", "claude", "branches");
   let buildAttempts = { passed: 0, failed: 0 };
   if (fs2.existsSync(gitClaudeDir)) {

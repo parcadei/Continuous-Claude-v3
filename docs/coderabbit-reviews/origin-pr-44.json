@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3647239070,
+    "node_id": "PRR_kwDOQtdKGM7ZZHOe",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>.claude/skills/math-unified/SKILL.md (1)</summary><blockquote>\n\n`162-162`: **Optional: Add language specifiers to fenced code blocks.**\n\nThe example output blocks could specify a language identifier (e.g., `text` or `console`) for better markdown rendering, though this is a minor stylistic improvement.\n\n\n\n<details>\n<summary>📝 Proposed markdown improvement</summary>\n\nFor line 162:\n```diff\n-```\n+```text\n User: Solve x² - 5x + 6 = 0\n```\n\nApply similar changes to lines 169 and 176.\n</details>\n\n\nAlso applies to: 169-169, 176-176\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 20a3d31a85f43b2d3fa4da53e467d2dfb019f727 and 96184195f3e55926add945b49e620b8ae1ebb809.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (16)</summary>\n\n* `.claude/skills/math-unified/SKILL.md`\n* `opc/scripts/mathtools/__init__.py`\n* `opc/scripts/mathtools/math_base.py`\n* `opc/scripts/mathtools/math_plot.py`\n* `opc/scripts/mathtools/math_router.py`\n* `opc/scripts/mathtools/math_scratchpad.py`\n* `opc/scripts/mathtools/math_tutor.py`\n* `opc/scripts/mathtools/mpmath_compute.py`\n* `opc/scripts/mathtools/numpy_compute.py`\n* `opc/scripts/mathtools/pint_compute.py`\n* `opc/scripts/mathtools/scipy_compute.py`\n* `opc/scripts/mathtools/shapely_compute.py`\n* `opc/scripts/mathtools/sympy_baseline_validation.py`\n* `opc/scripts/mathtools/sympy_compute.py`\n* `opc/scripts/mathtools/z3_solve.py`\n* `opc/scripts/setup/claude_integration.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 markdownlint-cli2 (0.18.1)</summary>\n\n<details>\n<summary>.claude/skills/math-unified/SKILL.md</summary>\n\n162-162: Fenced code blocks should have a language specified\n\n(MD040, fenced-code-language)\n\n---\n\n169-169: Fenced code blocks should have a language specified\n\n(MD040, fenced-code-language)\n\n---\n\n176-176: Fenced code blocks should have a language specified\n\n(MD040, fenced-code-language)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (3)</summary><blockquote>\n\n<details>\n<summary>.claude/skills/math-unified/SKILL.md (1)</summary><blockquote>\n\n`34-34`: **LGTM! Path updates are consistent.**\n\nAll script path references have been correctly updated from `math/` to `mathtools/` to avoid shadowing Python's standard library. The changes are consistent across command examples and documentation.\n\n\n\n\nAlso applies to: 86-86, 99-99, 108-108, 157-157, 164-164, 171-171, 178-178\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/claude_integration.py (2)</summary><blockquote>\n\n`498-507`: **LGTM! Path update correctly implements the stdlib shadowing fix.**\n\nThe rename from `math/` to `mathtools/` is correctly implemented with clear documentation explaining the rationale. The source and target paths are accurate.\n\n---\n\n`540-545`: **LGTM! Status script copy logic is correct.**\n\nThe new code properly copies `status.py` from `.claude/scripts/` to the target directory with appropriate existence checks and counter increments. The comment clearly distinguishes this from `opc/scripts/` files. The `status.py` file exists at the expected location.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/44#pullrequestreview-3647239070",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/44",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/44#pullrequestreview-3647239070"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/44"
+      }
+    },
+    "submitted_at": "2026-01-10T22:01:55Z",
+    "commit_id": "96184195f3e55926add945b49e620b8ae1ebb809"
+  },
+  {
+    "id": 3647932050,
+    "node_id": "PRR_kwDOQtdKGM7ZbwaS",
+    "user": {
+      "login": "manishin2050",
+      "id": 155342769,
+      "node_id": "U_kgDOCUJXsQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155342769?u=bf5336ab43017a5429eef6eee2d83497c4deba61&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/manishin2050",
+      "html_url": "https://github.com/manishin2050",
+      "followers_url": "https://api.github.com/users/manishin2050/followers",
+      "following_url": "https://api.github.com/users/manishin2050/following{/other_user}",
+      "gists_url": "https://api.github.com/users/manishin2050/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/manishin2050/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/manishin2050/subscriptions",
+      "organizations_url": "https://api.github.com/users/manishin2050/orgs",
+      "repos_url": "https://api.github.com/users/manishin2050/repos",
+      "events_url": "https://api.github.com/users/manishin2050/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/manishin2050/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "Nice \r\n\r\nHave you tested.?",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/44#pullrequestreview-3647932050",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/44",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/44#pullrequestreview-3647932050"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/44"
+      }
+    },
+    "submitted_at": "2026-01-11T15:43:10Z",
+    "commit_id": "96184195f3e55926add945b49e620b8ae1ebb809"
+  }
+]

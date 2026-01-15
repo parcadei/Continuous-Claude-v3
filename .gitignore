@@ -163,3 +163,4 @@ opc/README.md
 opc/LICENSE
 opc/.git/
 opc/.python-version
+.claude/.coordination-session-id

@@ -399,6 +399,20 @@ async def prompt_embedding_config() -> dict[str, str]:
         model = Prompt.ask("Ollama embedding model", default="nomic-embed-text")
         config["host"] = host
         config["model"] = model
+    elif provider == "openai":
+        api_key = Prompt.ask("OpenAI API key (for embeddings)", password=True, default="")
+        if api_key:
+            config["openai_api_key"] = api_key
+        else:
+            console.print("  [yellow]Warning: OPENAI_API_KEY required for OpenAI embeddings[/yellow]")
+            console.print("  [dim]Set it later in .env or as environment variable[/dim]")
+    elif provider == "voyage":
+        api_key = Prompt.ask("Voyage API key (for embeddings)", password=True, default="")
+        if api_key:
+            config["voyage_api_key"] = api_key
+        else:
+            console.print("  [yellow]Warning: VOYAGE_API_KEY required for Voyage embeddings[/yellow]")
+            console.print("  [dim]Set it later in .env or as environment variable[/dim]")
 
     return config
 
@@ -486,6 +500,18 @@ def generate_env_file(config: dict[str, Any], env_path: Path) -> None:
             ollama_model = embeddings.get("model", "nomic-embed-text")
             lines.append(f"OLLAMA_HOST={ollama_host}")
             lines.append(f"OLLAMA_EMBED_MODEL={ollama_model}")
+        elif provider == "openai":
+            openai_key = embeddings.get("openai_api_key", "")
+            if openai_key:
+                lines.append(f"OPENAI_API_KEY={openai_key}")
+            else:
+                lines.append("# OPENAI_API_KEY=your-api-key-here")
+        elif provider == "voyage":
+            voyage_key = embeddings.get("voyage_api_key", "")
+            if voyage_key:
+                lines.append(f"VOYAGE_API_KEY={voyage_key}")
+            else:
+                lines.append("# VOYAGE_API_KEY=your-api-key-here")
         lines.append("")
 
     # API keys (only write non-empty keys)
@@ -627,7 +653,7 @@ async def run_setup_wizard() -> None:
 
     # Step 5: Container stack (Sandbox Infrastructure)
     runtime = prereqs.get("container_runtime", "docker")
-    console.print(f"\n[bold]Step 6/13: Container Stack (Sandbox Infrastructure)[/bold]")
+    console.print("\n[bold]Step 6/13: Container Stack (Sandbox Infrastructure)[/bold]")
     console.print("  The sandbox requires PostgreSQL and Redis for:")
     console.print("  - Agent coordination and scheduling")
     console.print("  - Build cache and LSP index storage")

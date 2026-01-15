@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3661156658,
+    "node_id": "PRR_kwDOQ5BBoM7aONEy",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 3**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/core/db/embedding_service.py`:\n- Around line 452-458: Remove the redundant local imports of os and httpx and\nmake SSL verification configurable instead of hardcoding verify=False: add a\nparameter or read an env var (e.g., verify_ssl or OLLAMA_VERIFY_SSL) used when\nconstructing httpx.AsyncClient(timeout=30.0, verify=...), defaulting to True,\nand update the AsyncClient creation in the constructor (symbol: self._client) to\nuse that variable; ensure any callers of the class can pass the new parameter if\nneeded and adjust default behavior so production defaults to certificate\nverification enabled.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 2e2e2cf81db9df95c2147c7f2c3eda6dea45976e and 37f043921424f781a68d21e4c94c547f5ed4a75c.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (5)</summary>\n\n* `.coderabbit.yaml`\n* `opc/pyproject.toml`\n* `opc/scripts/core/db/embedding_service.py`\n* `opc/scripts/core/store_learning.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>opc/scripts/core/store_learning.py (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (4)</summary>\n\n* `EmbeddingService` (544-729)\n* `aclose` (106-108)\n* `aclose` (254-256)\n* `aclose` (718-721)\n\n</details>\n\n</blockquote></details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (10)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/core/db/embedding_service.py (1)</summary><blockquote>\n\n`623-626`: **LGTM!**\n\nThe Ollama provider integration follows the established pattern for other providers. Environment-driven defaults are handled correctly within `OllamaEmbeddingProvider`.\n\n</blockquote></details>\n<details>\n<summary>opc/pyproject.toml (2)</summary><blockquote>\n\n`44-47`: **LGTM!**\n\nGood practice to retain the empty `embeddings` group with a comment explaining backward compatibility. Users with existing `uv sync --extra embeddings` commands will not break.\n\n---\n\n`36-37`: **Dependency versions verified and intentional design decision acknowledged.**\n\nBoth `sentence-transformers>=5.2.0` and `torch>=2.9.1` exist on PyPI as stable releases. Their inclusion in main dependencies is intentional to enable local embeddings as core functionality via the `EmbeddingService` (visible in `recall_temporal_facts.py`), allowing users to choose between API-based (Voyage) or local embedding providers. The `embeddings` optional group was intentionally emptied with a backward-compatibility note. While these dependencies add significant size (~2GB+), this is an accepted trade-off for the local embeddings feature.\n\n</blockquote></details>\n<details>\n<summary>.coderabbit.yaml (1)</summary><blockquote>\n\n`1-44`: **LGTM!**\n\nThe CodeRabbit configuration is well-structured and all values conform to the schema. The path filters sensibly exclude generated/minified files, and the \"chill\" profile is appropriate for a less strict review experience.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/core/store_learning.py (3)</summary><blockquote>\n\n`117-127`: **LGTM - Good resource initialization pattern.**\n\nPre-initializing `memory` and `embedder` to `None` before the try block enables proper cleanup in the finally block regardless of where an exception occurs. The environment-driven provider selection via `EMBEDDING_PROVIDER` aligns well with the wizard configuration.\n\n---\n\n`249-282`: **LGTM!**\n\nThe same robust initialization and cleanup pattern is consistently applied to the legacy `store_learning` function. The finally block ensures resources are properly released.\n\n---\n\n`179-183`: No action needed. The code is correct.\n\n`memory.close()` is an async method (as defined in `opc/scripts/core/db/memory_service_pg.py` and `opc/scripts/core/db/memory_protocol.py`), and the finally block already properly awaits it alongside `embedder.aclose()`.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (3)</summary><blockquote>\n\n`380-418`: **LGTM - Well-structured embedding configuration prompt.**\n\nThe function provides clear options, uses `password=True` for API key inputs (good security practice), and returns a clean configuration dict. The fallback warnings for missing API keys are helpful.\n\n---\n\n`492-515`: **LGTM!**\n\nThe environment file generation correctly handles all embedding providers:\n- Always writes `EMBEDDING_PROVIDER`\n- Ollama gets host/model vars\n- OpenAI/Voyage get API keys or commented placeholders\n\nThe commented placeholder pattern (`# OPENAI_API_KEY=your-api-key-here`) is helpful for users who skip configuration.\n\n---\n\n`633-649`: **LGTM!**\n\nThe embedding configuration is well-integrated into the wizard flow as Step 3/13. The default to `{\"provider\": \"local\"}` when skipped ensures backward compatibility and a working out-of-box experience.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/5#pullrequestreview-3661156658",
+    "pull_request_url": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/5",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/5#pullrequestreview-3661156658"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/5"
+      }
+    },
+    "submitted_at": "2026-01-14T14:53:23Z",
+    "commit_id": "37f043921424f781a68d21e4c94c547f5ed4a75c"
+  }
+]

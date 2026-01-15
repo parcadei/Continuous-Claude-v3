@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3659193040,
+    "node_id": "PRR_kwDOQtdKGM7aGtrQ",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 3**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.env.example:\n- Around line 6-10: The .env.example is ambiguous about OPC_POSTGRES_URL vs\nDATABASE_URL; clarify which variable the app reads and the precedence: state\nexplicitly whether OPC_POSTGRES_URL is preferred, whether DATABASE_URL is a\nfallback, or if only one is used; update the file to explain which variable to\nset, that both are PostgreSQL connection strings, and remove the alternative\nline if only one is active; mention the exact variable names OPC_POSTGRES_URL\nand DATABASE_URL so readers know which to set.\n\nIn `@README.md`:\n- Line 206: The ordered list numbering is incorrect—change the list item \"2.\n**Or export in shell** before running Claude:\" to start with \"1.\" so it\ncontinues correctly after the preceding code block (or alternatively remove the\nblank line before this item to preserve the \"2.\" continuation); update the line\ncontaining the exact text \"2. **Or export in shell** before running Claude:\"\naccordingly to resolve the markdown linter warning.\n- Around line 194-213: Add explicit remote database setup steps to the README:\nunder the remote PostgreSQL section, include commands that show how to create\nthe pgvector extension on the remote DB and how to apply the schema from\ndocker/init-schema.sql (using psql with -h, -U, -d and -f flags), and add a\nbrief note pointing readers to .env.example for available environment variables;\nplace this adjacent to the existing OPC_POSTGRES_URL examples so users can\ncopy/paste the commands when configuring a remote instance.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between c52cdcc6689e6d77606c5eb94af4358d4a9cdf09 and 73d5ede946cbb26bf504c6b634f3e20832ded6f5.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (2)</summary>\n\n* `.env.example`\n* `README.md`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 dotenv-linter (4.0.0)</summary>\n\n<details>\n<summary>.env.example</summary>\n\n[warning] 14-14: [UnorderedKey] The POSTGRES_PASSWORD key should go before the POSTGRES_USER key\n\n(UnorderedKey)\n\n---\n\n[warning] 15-15: [UnorderedKey] The POSTGRES_DB key should go before the POSTGRES_PASSWORD key\n\n(UnorderedKey)\n\n---\n\n[warning] 16-16: [UnorderedKey] The POSTGRES_PORT key should go before the POSTGRES_USER key\n\n(UnorderedKey)\n\n</details>\n\n</details>\n<details>\n<summary>🪛 markdownlint-cli2 (0.18.1)</summary>\n\n<details>\n<summary>README.md</summary>\n\n206-206: Ordered list item prefix\nExpected: 1; Actual: 2; Style: 1/1/1\n\n(MD029, ol-prefix)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (3)</summary><blockquote>\n\n<details>\n<summary>.env.example (1)</summary><blockquote>\n\n`1-21`: **LGTM! Clear documentation structure.**\n\nThe `.env.example` file provides comprehensive guidance for environment variable configuration. The structure is clear with well-organized sections for PostgreSQL connection, Docker defaults, and optional API keys.\n\n</blockquote></details>\n<details>\n<summary>README.md (2)</summary><blockquote>\n\n`192-215`: **Well-structured documentation for remote database setup.**\n\nThe new section clearly documents both configuration methods (settings.json and shell export) and includes the critical requirement about pgvector and schema initialization. The cross-reference to `.env.example` is helpful.\n\n---\n\n`192-215`: **No action needed—\"Remote Database Setup\" section appears only once.**\n\nThe search found only a single occurrence of the \"Remote Database Setup\" section in README.md at line 192. No duplication exists.\n\n\n\n> Likely an incorrect or invalid review comment.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/85#pullrequestreview-3659193040",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/85",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/85#pullrequestreview-3659193040"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/85"
+      }
+    },
+    "submitted_at": "2026-01-14T07:13:44Z",
+    "commit_id": "73d5ede946cbb26bf504c6b634f3e20832ded6f5"
+  },
+  {
+    "id": 3659303369,
+    "node_id": "PRR_kwDOQtdKGM7aHInJ",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 3**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@README.md`:\n- Around line 221-236: Add a brief security note after the shown\nOPC_POSTGRES_URL examples (after the block ending at line 236 / before line 238)\nreminding readers not to hardcode credentials in production and to use\nenvironment variables, secret managers, or .env files excluded from version\ncontrol; insert a short blockquote-style line that clearly labels it as a\nSecurity Note.\n- Line 226: Update the Environment Variables table to document OPC_POSTGRES_URL\nas an alternative to DATABASE_URL: add a row with `OPC_POSTGRES_URL` |\nPostgreSQL connection string (alternative to `DATABASE_URL`) | No, and add a\nbrief note near the table stating that `DATABASE_URL` is preferred because the\nsetup wizard generates it; ensure examples in the README that currently use\n`OPC_POSTGRES_URL` are consistent with this note.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 73d5ede946cbb26bf504c6b634f3e20832ded6f5 and c1a0cf44697764b2b1e51bb4e494c68644cb9478.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `README.md`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>README.md (2)</summary><blockquote>\n\n`192-195`: **LGTM! Clear introduction to remote database setup.**\n\nThe section is well-placed in Quick Start and clearly explains when users would need this configuration.\n\n---\n\n`211-216`: **Excellent provider-specific guidance.**\n\nThe managed PostgreSQL tips are helpful and cover the major providers. The note about `CREATE EXTENSION` privileges for self-hosted setups is particularly valuable.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/85#pullrequestreview-3659303369",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/85",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/85#pullrequestreview-3659303369"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/85"
+      }
+    },
+    "submitted_at": "2026-01-14T07:39:07Z",
+    "commit_id": "c1a0cf44697764b2b1e51bb4e494c68644cb9478"
+  }
+]

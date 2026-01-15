@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3646424128,
+    "node_id": "PRR_kwDOQtdKGM7ZWARA",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n`23-29`: **Gate/normalize the `sys.path` injection to avoid duplicate paths and unintended import-order changes.**\n\nThe fix is directionally right, but `str(_project_root) not in sys.path` won’t catch equivalent entries like `\"\"`/relative paths, and you don’t need to mutate `sys.path` for `python -m ...` runs.\n\n<details>\n<summary>Proposed tweak</summary>\n\n```diff\n # Ensure project root is in sys.path for imports when run as a script\n # This handles both `python -m scripts.setup.wizard` and `python scripts/setup/wizard.py`\n _this_file = Path(__file__).resolve()\n _project_root = _this_file.parent.parent.parent  # scripts/setup/wizard.py -> opc/\n-if str(_project_root) not in sys.path:\n-    sys.path.insert(0, str(_project_root))\n+if __package__ is None:\n+    project_root_resolved = _project_root.resolve()\n+    syspath_resolved = {\n+        Path(p).resolve() for p in sys.path if p\n+    } | {Path.cwd().resolve()}\n+    if project_root_resolved not in syspath_resolved:\n+        sys.path.insert(0, str(project_root_resolved))\n```\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 41de827c868178e22aa1d1880315808beba88794 and 2aa85840b623ca34f5c8b94b4fdbc3f0c555b32a.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/17#pullrequestreview-3646424128",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/17",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/17#pullrequestreview-3646424128"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/17"
+      }
+    },
+    "submitted_at": "2026-01-10T04:07:44Z",
+    "commit_id": "2aa85840b623ca34f5c8b94b4fdbc3f0c555b32a"
+  }
+]

@@ -1,0 +1,1082 @@
+[
+  {
+    "id": 3655920846,
+    "node_id": "PRR_kwDOQtdKGM7Z6OzO",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 6**\n\n> [!CAUTION]\n> Some comments are outside the diff and can’t be posted inline due to platform limitations.\n> \n> \n> \n> <details>\n> <summary>⚠️ Outside diff range comments (1)</summary><blockquote>\n> \n> <details>\n> <summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n> \n> `713-733`: **Consider extracting common symlink installation logic to reduce duplication.**\n> \n> The symlink installation handling is duplicated between the \"existing config\" flow (lines 713-733) and the \"clean install\" flow (lines 771-791). Both blocks:\n> 1. Call `install_opc_integration_symlink`\n> 2. Report symlinked/backed-up dirs\n> 3. Build TypeScript hooks\n> 4. Handle errors\n> \n> \n> <details>\n> <summary>Proposed refactor: Extract helper function</summary>\n> \n> ```python\n> def _run_symlink_install(claude_dir: Path, opc_source: Path) -> bool:\n>     \"\"\"Run symlink installation and report results. Returns success status.\"\"\"\n>     result = install_opc_integration_symlink(claude_dir, opc_source)\n> \n>     if result[\"success\"]:\n>         console.print(f\"  [green]OK[/green] Symlinked: {', '.join(result['symlinked_dirs'])}\")\n>         if result[\"backed_up_dirs\"]:\n>             console.print(f\"  [green]OK[/green] Backed up: {', '.join(result['backed_up_dirs'])}\")\n>         console.print(\"  [dim]Changes in ~/.claude/ now sync to repo automatically[/dim]\")\n> \n>         # Build TypeScript hooks\n>         console.print(\"  Building TypeScript hooks...\")\n>         hooks_dir = claude_dir / \"hooks\"\n>         build_success, build_msg = build_typescript_hooks(hooks_dir)\n>         if build_success:\n>             console.print(f\"  [green]OK[/green] {build_msg}\")\n>         else:\n>             console.print(f\"  [yellow]WARN[/yellow] {build_msg}\")\n>             console.print(\"  [dim]You can build manually: cd ~/.claude/hooks && npm install && npm run build[/dim]\")\n>         return True\n>     else:\n>         console.print(f\"  [red]ERROR[/red] {result.get('error', 'Unknown error')}\")\n>         return False\n> ```\n> \n> Then use in both places:\n> ```python\n> elif choice == \"3\":  # or choice == \"2\" in clean install\n>     _run_symlink_install(claude_dir, opc_source)\n> ```\n> </details>\n> \n> \n> Also applies to: 771-791\n> \n> </blockquote></details>\n> \n> </blockquote></details>\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n````\nIn @opc/scripts/setup/claude_integration.py:\n- Line 600: Move the local \"import os\" out of the function and add it with the\nother module-level imports at the top of the file, then remove the in-function\n\"import os\" so the module uses the top-level import instead.\n- Around line 657-678: The symlink install in claude_integration.py is missing\nthe same root scripts copy done by install_opc_integration; add code that copies\nthe individual root scripts (e.g. ast_grep_find.py, qlty_check.py and the other\nfiles copied in the regular install) from opc_source.parent / \"opc\" / \"scripts\"\ninto target_dir / \"scripts\" (create the parent dir if needed, remove any\nexisting target files before copying, and preserve permissions), using the\nexisting opc_source and target_dir variables so skills/hooks that reference\nthose root scripts can find them.\n- Around line 616-618: The current code creates backup_dir (variable)\nunconditionally which leaves empty timestamped folders when nothing is backed\nup; change the flow in the backup routine so you first scan target_dir for\nactual items to back up (skip symlinks and non-existent entries), and only call\nbackup_dir.mkdir(parents=True, exist_ok=True) and proceed with copying when that\nscan finds at least one real item; update any logic in the same function that\nreferences backup_dir to be inside the conditional that runs after creation so\nno empty backup directories are ever created.\n- Around line 637-639: Wrap the os.symlink(source_path, target_path) call in a\ntry/except that catches OSError, and when platform.system() == \"Windows\" set a\nclear actionable message on result[\"error\"] (e.g. instruct enabling Developer\nMode or running as Administrator, include the original exception text) and\nreturn result; otherwise re-raise the exception; preserve appending dir_name to\nresult[\"symlinked_dirs\"] only on successful symlink creation.\n\nIn @README.md:\n- Around line 992-995: The fenced ASCII diagram block lacks a language\nspecifier; update the triple-backtick fence surrounding the diagram (the block\ncontaining \"continuous-claude/.claude/  ──COPY──>  ~/.claude/\") to include a\nspecifier such as text (e.g., change ``` to ```text) so the README's diagram\nrenders consistently and satisfies the linter.\n- Around line 1004-1008: The fenced ASCII diagram block in README.md is missing\na language specifier; update the three-backtick fence that wraps the\n\"~/.claude/...\" symlink diagram to include a language (e.g., \"text\") so the\nlinter recognizes it—locate the fenced block (the ASCII diagram showing\n~/.claude/rules, ~/.claude/skills, ~/.claude/hooks, ~/.claude/agents) and change\nthe opening ``` to ```text.\n````\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between c52cdcc6689e6d77606c5eb94af4358d4a9cdf09 and 2b9ede452c0bd301accf3ea6ff141990eef0106a.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (3)</summary>\n\n* `README.md`\n* `opc/scripts/setup/claude_integration.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (3)</summary>\n\n* `install_opc_integration_symlink` (581-685)\n* `backup_claude_dir` (229-248)\n* `get_opc_integration_source` (130-141)\n\n</details>\n\n</blockquote></details>\n\n</details><details>\n<summary>🪛 markdownlint-cli2 (0.18.1)</summary>\n\n<details>\n<summary>README.md</summary>\n\n992-992: Fenced code blocks should have a language specified\n\n(MD040, fenced-code-language)\n\n---\n\n1004-1004: Fenced code blocks should have a language specified\n\n(MD040, fenced-code-language)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (6)</summary><blockquote>\n\n<details>\n<summary>README.md (1)</summary><blockquote>\n\n`979-1041`: **Documentation is clear and comprehensive.**\n\nThe new \"Installation Mode: Copy vs Symlink\" section accurately documents:\n- Differences between copy and symlink modes\n- Pros/cons of each approach\n- Manual switching instructions with verification\n\nThe symlink directories (rules, skills, hooks, agents) match what's implemented in `install_opc_integration_symlink()`.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/claude_integration.py (1)</summary><blockquote>\n\n`581-685`: **Function structure and approach are sound.**\n\nThe symlink installation mode correctly:\n- Symlinks the four key directories (rules, skills, hooks, agents)\n- Copies settings.json separately (allowing user customization)\n- Backs up existing non-symlink directories before replacing\n- Handles existing symlinks by unlinking first\n\nThe return type accurately documents `backed_up_dirs` in both the result dict and the usage in wizard.py.\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (4)</summary><blockquote>\n\n`634-634`: **Import correctly added.**\n\nThe `install_opc_integration_symlink` import is properly added alongside other imports from `claude_integration`.\n\n---\n\n`665-673`: **Clear and informative installation options.**\n\nThe updated UI effectively communicates:\n- Three options for existing config (Full/Fresh/Symlink/Skip)\n- Visual highlighting with `[cyan]` for the symlink option\n- Explanatory notes about symlink behavior\n\nThe descriptions align well with contributor workflows.\n\n---\n\n`702-733`: **TypeScript hooks build is correctly integrated for symlink path.**\n\nAfter symlink installation succeeds, the TypeScript hooks are built, matching the behavior of the copy installation path. This ensures hooks work regardless of installation mode.\n\n---\n\n`737-746`: **Clean install flow properly updated with symlink option.**\n\nThe clean install path now offers:\n1. Copy install (default)\n2. Symlink install\n3. Skip\n\nThis mirrors the existing config flow appropriately, with clear messaging about the benefits of symlink mode for contributors.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3655920846",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3655920846"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T13:55:00Z",
+    "commit_id": "2b9ede452c0bd301accf3ea6ff141990eef0106a"
+  },
+  {
+    "id": 3656158196,
+    "node_id": "PRR_kwDOQtdKGM7Z7Iv0",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158196",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158196"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:10Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656158425,
+    "node_id": "PRR_kwDOQtdKGM7Z7IzZ",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158425",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158425"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:12Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656158571,
+    "node_id": "PRR_kwDOQtdKGM7Z7I1r",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158571",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158571"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:14Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656158740,
+    "node_id": "PRR_kwDOQtdKGM7Z7I4U",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158740",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158740"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:17Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656158887,
+    "node_id": "PRR_kwDOQtdKGM7Z7I6n",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158887",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656158887"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:19Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656159149,
+    "node_id": "PRR_kwDOQtdKGM7Z7I-t",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656159149",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656159149"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:21Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656159431,
+    "node_id": "PRR_kwDOQtdKGM7Z7JDH",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656159431",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656159431"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:24Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656159620,
+    "node_id": "PRR_kwDOQtdKGM7Z7JGE",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656159620",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656159620"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:27Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656161532,
+    "node_id": "PRR_kwDOQtdKGM7Z7Jj8",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656161532",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656161532"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:47Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656161670,
+    "node_id": "PRR_kwDOQtdKGM7Z7JmG",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656161670",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656161670"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:48Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656161685,
+    "node_id": "PRR_kwDOQtdKGM7Z7JmV",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656161685",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656161685"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:49Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656162111,
+    "node_id": "PRR_kwDOQtdKGM7Z7Js_",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656162111",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656162111"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:37:54Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656164866,
+    "node_id": "PRR_kwDOQtdKGM7Z7KYC",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @opc/scripts/setup/claude_integration.py:\n- Around line 667-707: The duplicated script-copying logic in\nclaude_integration.py (in the block that copies \"core\", \"math\", \"tldr\" and the\nroot_scripts list) is the same as the one in install_opc_integration; extract a\nshared helper (e.g., _copy_scripts(opc_source: Path, target_dir: Path) -> int)\nto perform the directory copies and individual root script copies, return a\ncount if needed, and replace the duplicated blocks in both\ninstall_opc_integration and the code that currently lives in\nclaude_integration.py to call this helper (referencing the root_scripts list and\nthe same src/dst construction inside the helper).\n\nIn @README.md:\n- Around line 1020-1041: Add a Windows-specific note under the \"Switching to\nSymlink Mode\" section after the verification step explaining how to create\ndirectory symlinks on Windows (mention both mklink /D for Command Prompt and\nNew-Item -ItemType SymbolicLink for PowerShell), instruct to run as\nAdministrator or enable Developer Mode, show example variable use for $REPO and\n$HOME with backslash paths, and remind users about elevated privileges required;\nreference the section heading \"Switching to Symlink Mode\" and the commands\nmklink and New-Item so the maintainer can place the Windows note in the same\nblock.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 2b9ede452c0bd301accf3ea6ff141990eef0106a and c0d864bbfdcaee957a97f926960cb2ffd6ff029d.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (2)</summary>\n\n* `README.md`\n* `opc/scripts/setup/claude_integration.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 Ruff (0.14.10)</summary>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py</summary>\n\n642-642: Local variable `e` is assigned to but never used\n\nRemove assignment to unused variable `e`\n\n(F841)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (6)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (3)</summary><blockquote>\n\n`582-606`: **LGTM! Clean function signature and result structure.**\n\nThe function signature is well-documented with clear docstring explaining the purpose and return type. The result dictionary structure with `success`, `symlinked_dirs`, `backed_up_dirs`, and `error` keys provides good feedback for the wizard UI.\n\n---\n\n`608-650`: **Solid symlink creation logic with proper Windows handling.**\n\nThe implementation correctly:\n- Creates backup directory lazily (only when backups are actually needed)\n- Backs up existing directories before replacing with symlinks\n- Removes stale symlinks before creating new ones\n- Provides actionable Windows-specific guidance when symlinks fail\n\nNote: The static analysis warning about unused variable `e` on line 642 is a false positive—`e` is correctly used in the error message on line 646.\n\n---\n\n`709-714`: **LGTM!**\n\nError handling is consistent with the existing `install_opc_integration` function. Success is correctly set only after all operations complete.\n\n</blockquote></details>\n<details>\n<summary>README.md (3)</summary><blockquote>\n\n`979-987`: **Clear and helpful comparison table.**\n\nThe table concisely explains when to use each mode. The distinction between \"End users, stable setup\" vs \"Contributors, development\" provides good guidance for user selection.\n\n---\n\n`988-999`: **LGTM!**\n\nClear explanation of copy mode behavior with accurate pros/cons.\n\n---\n\n`1000-1019`: **LGTM!**\n\nThe documented symlinked directories (rules, skills, hooks, agents) correctly match the implementation in `install_opc_integration_symlink`. Pros and cons accurately represent the tradeoffs.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656164866",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656164866"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:38:22Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656175229,
+    "node_id": "PRR_kwDOQtdKGM7Z7M59",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656175229",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656175229"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:40:11Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656175551,
+    "node_id": "PRR_kwDOQtdKGM7Z7M-_",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656175551",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656175551"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:40:14Z",
+    "commit_id": "c0d864bbfdcaee957a97f926960cb2ffd6ff029d"
+  },
+  {
+    "id": 3656178033,
+    "node_id": "PRR_kwDOQtdKGM7Z7Nlx",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656178033",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656178033"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:40:40Z",
+    "commit_id": "59a56df9ceb811f3ed812d549e97003796a5ef52"
+  },
+  {
+    "id": 3656179142,
+    "node_id": "PRR_kwDOQtdKGM7Z7N3G",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656179142",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656179142"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:40:52Z",
+    "commit_id": "59a56df9ceb811f3ed812d549e97003796a5ef52"
+  },
+  {
+    "id": 3656188458,
+    "node_id": "PRR_kwDOQtdKGM7Z7QIq",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @README.md:\n- Around line 1020-1042: Add an explicit verification step after the backup and\nbefore the destructive rm -rf: instruct users to list and inspect the backup\ndirectory (e.g., ls -la ~/.claude/backups/$(date +%Y%m%d) and optionally check\ncontents of rules, skills, hooks, agents or run du -sh on the backup folder) and\nonly proceed to run rm -rf ~/.claude/{rules,skills,hooks,agents} once they\nconfirm the files exist and look correct.\n- Around line 1043-1066: Add an explicit backup verification step after creating\n$BackupDir and running Copy-Item to ensure the expected directories/files were\nsuccessfully copied; use PowerShell checks (e.g., Test-Path or Get-ChildItem\nagainst $BackupDir and check the presence/count of \"$BackupDir\\rules\",\n\"$BackupDir\\skills\", \"$BackupDir\\hooks\", \"$BackupDir\\agents\") and log or throw\nan error if any expected item is missing before proceeding to Remove-Item and\nsymlink creation.\n```\n\n</details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: ASSERTIVE\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between c0d864bbfdcaee957a97f926960cb2ffd6ff029d and 59a56df9ceb811f3ed812d549e97003796a5ef52.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `README.md`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (3)</summary><blockquote>\n\n<details>\n<summary>README.md (3)</summary><blockquote>\n\n`979-987`: **LGTM! Clear documentation structure.**\n\nThe section introduction and comparison table effectively communicate the two installation modes and their use cases.\n\n---\n\n`988-999`: **LGTM! Copy mode documentation is clear.**\n\nThe explanation, diagram, and trade-offs are well-articulated for users choosing the default installation mode.\n\n---\n\n`1000-1019`: **LGTM! Symlink mode benefits and trade-offs are well-explained.**\n\nThe documentation clearly articulates why contributors would prefer symlink mode and provides appropriate warnings about the trade-offs.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656188458",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656188458"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:42:35Z",
+    "commit_id": "59a56df9ceb811f3ed812d549e97003796a5ef52"
+  },
+  {
+    "id": 3656192752,
+    "node_id": "PRR_kwDOQtdKGM7Z7RLw",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656192752",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656192752"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:43:16Z",
+    "commit_id": "6e307ce01940e5af71444600872e48855fd46a4a"
+  },
+  {
+    "id": 3656196688,
+    "node_id": "PRR_kwDOQtdKGM7Z7SJQ",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656196688",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656196688"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:43:58Z",
+    "commit_id": "6e307ce01940e5af71444600872e48855fd46a4a"
+  },
+  {
+    "id": 3656206730,
+    "node_id": "PRR_kwDOQtdKGM7Z7UmK",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656206730",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656206730"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:45:48Z",
+    "commit_id": "41f58e31db2101d5beb2fcaa842a6716a6547fa7"
+  },
+  {
+    "id": 3656207051,
+    "node_id": "PRR_kwDOQtdKGM7Z7UrL",
+    "user": {
+      "login": "ClementWalter",
+      "id": 18620296,
+      "node_id": "MDQ6VXNlcjE4NjIwMjk2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18620296?u=9e194f129d9bf061acbb8a5bf7a7bb557a9d56db&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ClementWalter",
+      "html_url": "https://github.com/ClementWalter",
+      "followers_url": "https://api.github.com/users/ClementWalter/followers",
+      "following_url": "https://api.github.com/users/ClementWalter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ClementWalter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ClementWalter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ClementWalter/subscriptions",
+      "organizations_url": "https://api.github.com/users/ClementWalter/orgs",
+      "repos_url": "https://api.github.com/users/ClementWalter/repos",
+      "events_url": "https://api.github.com/users/ClementWalter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ClementWalter/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656207051",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "CONTRIBUTOR",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656207051"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:45:51Z",
+    "commit_id": "41f58e31db2101d5beb2fcaa842a6716a6547fa7"
+  },
+  {
+    "id": 3656209645,
+    "node_id": "PRR_kwDOQtdKGM7Z7VTt",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656209645",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656209645"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:46:19Z",
+    "commit_id": "41f58e31db2101d5beb2fcaa842a6716a6547fa7"
+  },
+  {
+    "id": 3656210356,
+    "node_id": "PRR_kwDOQtdKGM7Z7Ve0",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656210356",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3656210356"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-13T14:46:26Z",
+    "commit_id": "41f58e31db2101d5beb2fcaa842a6716a6547fa7"
+  },
+  {
+    "id": 3660433007,
+    "node_id": "PRR_kwDOQtdKGM7aLcZv",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn `@opc/scripts/setup/claude_integration.py`:\n- Line 411: The for-loop defining subdirectories is syntactically malformed and\ncauses a SyntaxError at import; in the loop that iterates over subdir (used by\ninstall_opc_integration and install_opc_integration_symlink), replace the broken\nliteral [\"core\", \"math\", \"tldr, \"mcp\" \"] with a properly quoted, comma-separated\nlist (e.g., [\"core\", \"math\", \"tldr\", \"mcp\"]) so the module can import and the\nfunctions can run.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n`783-837`: **Clean install symlink option works correctly.**\n\nThe symlink path for clean installs correctly:\n- Calls `install_opc_integration_symlink`\n- Reports symlinked directories (no backed_up_dirs expected)\n- Builds TypeScript hooks\n\nMinor observation: The TypeScript build block appears in multiple branches. Consider extracting to a helper in a follow-up if more install modes are added.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 59a56df9ceb811f3ed812d549e97003796a5ef52 and 5cf3b7524ec80ad37ece3b79eaed58d704620e75.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (3)</summary>\n\n* `README.md`\n* `opc/scripts/setup/claude_integration.py`\n* `opc/scripts/setup/wizard.py`\n\n</details>\n\n<details>\n<summary>🚧 Files skipped from review as they are similar to previous changes (1)</summary>\n\n* README.md\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>opc/scripts/setup/wizard.py (1)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (3)</summary>\n\n* `install_opc_integration_symlink` (585-678)\n* `backup_claude_dir` (230-249)\n* `get_opc_integration_source` (131-142)\n\n</details>\n\n</blockquote></details>\n\n</details><details>\n<summary>🪛 Ruff (0.14.11)</summary>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py</summary>\n\n411-411: Expected `,`, found name\n\n(invalid-syntax)\n\n---\n\n411-411: Expected `,`, found string\n\n(invalid-syntax)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>⏰ Context from checks skipped due to timeout of 90000ms. You can increase the timeout in your CodeRabbit configuration to a maximum of 15 minutes (900000ms). (1)</summary>\n\n* GitHub Check: Cursor Bugbot\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (5)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/claude_integration.py (2)</summary><blockquote>\n\n`383-431`: **Good refactoring: Shared helper eliminates duplication.**\n\nThe extraction of `ROOT_SCRIPTS` constant and `_copy_scripts()` helper centralizes script-copying logic, making future maintenance easier. Both install paths now share identical behavior for scripts.\n\nNote: Fix the syntax error on line 411 (flagged separately) before merging.\n\n---\n\n`585-678`: **LGTM: Symlink installation with proper safeguards.**\n\nThe function handles key edge cases well:\n- Lazy backup directory creation (only when needed)\n- Windows-specific error messaging with Developer Mode guidance\n- Graceful handling of existing symlinks vs. real directories\n- Delegates script copying to shared helper\n\n</blockquote></details>\n<details>\n<summary>opc/scripts/setup/wizard.py (3)</summary><blockquote>\n\n`680-681`: **LGTM: Import aligns with new public API.**\n\nThe import of `install_opc_integration_symlink` correctly references the new function from `claude_integration.py`.\n\n---\n\n`710-719`: **Clear menu presentation for installation options.**\n\nThe expanded menu with symlink explanation helps users make an informed choice. The dim text describing auto-sync behavior is a nice touch for contributor UX.\n\n---\n\n`759-779`: **Symlink flow correctly integrated with existing config handling.**\n\nThe flow:\n1. Calls `install_opc_integration_symlink`\n2. Reports symlinked/backed-up directories\n3. Builds TypeScript hooks\n4. Handles errors gracefully\n\nMatches the copy install pattern appropriately.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3660433007",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3660433007"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-14T12:10:32Z",
+    "commit_id": "5cf3b7524ec80ad37ece3b79eaed58d704620e75"
+  },
+  {
+    "id": 3660458412,
+    "node_id": "PRR_kwDOQtdKGM7aLims",
+    "user": {
+      "login": "cursor[bot]",
+      "id": 206951365,
+      "node_id": "BOT_kgDODFXTxQ",
+      "avatar_url": "https://avatars.githubusercontent.com/in/1210556?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/cursor%5Bbot%5D",
+      "html_url": "https://github.com/apps/cursor",
+      "followers_url": "https://api.github.com/users/cursor%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/cursor%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/cursor%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/cursor%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/cursor%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/cursor%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/cursor%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/cursor%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/cursor%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3660458412",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/84#pullrequestreview-3660458412"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/84"
+      }
+    },
+    "submitted_at": "2026-01-14T12:17:24Z",
+    "commit_id": "5cf3b7524ec80ad37ece3b79eaed58d704620e75"
+  }
+]

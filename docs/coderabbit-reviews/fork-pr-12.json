@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3664759026,
+    "node_id": "PRR_kwDOQ5BBoM7ab8jy",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @.claude/hooks/src/heartbeat.ts:\n- Around line 27-34: Replace the dead null-check on getSessionId() with a check\nfor a persisted session by calling readSessionId(): import and call\nreadSessionId() (instead of relying on getSessionId()) to determine if a session\nexists in storage, and if readSessionId() returns falsy log the HookOutput\ncontinue and return; you can still call getSessionId()/generateSessionId() later\nto obtain the value used in the UPDATE, but the presence check must use\nreadSessionId() so the update won't silently affect 0 rows.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/src/heartbeat.ts (1)</summary><blockquote>\n\n`63-66`: **Consider verifying the UPDATE actually modified a row.**\n\nCurrently, if the session ID doesn't exist in the database, the UPDATE will affect 0 rows but still print \"ok\" and return success. For debugging purposes, you may want to check if any row was actually updated.\n\n\n<details>\n<summary>💡 Optional: Return affected row count for observability</summary>\n\n```diff\n async def main():\n     conn = await asyncpg.connect(pg_url)\n     try:\n         result = await conn.execute('''\n             UPDATE sessions\n             SET last_heartbeat = NOW(), project = $2\n             WHERE id = $1\n         ''', session_id, project)\n-        print('ok')\n+        # result format: \"UPDATE N\" where N is affected rows\n+        print(result)\n     finally:\n         await conn.close()\n```\n\nThen in TypeScript, you could check for \"UPDATE 0\" if needed.\n\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Path: .coderabbit.yaml\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 59e359a86e72cd8bca1bc372fe2ac63766c2902f and f68274b4d33fd61191a563e65363f91bda761fff.\n\n</details>\n\n<details>\n<summary>⛔ Files ignored due to path filters (3)</summary>\n\n* `.claude/hooks/dist/file-claims.mjs` is excluded by `!**/dist/**`, `!**/dist/**`, `!**/.claude/hooks/dist/**`\n* `.claude/hooks/dist/heartbeat.mjs` is excluded by `!**/dist/**`, `!**/dist/**`, `!**/.claude/hooks/dist/**`\n* `.claude/hooks/dist/session-register.mjs` is excluded by `!**/dist/**`, `!**/dist/**`, `!**/.claude/hooks/dist/**`\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (3)</summary>\n\n* `.claude/hooks/src/heartbeat.ts`\n* `.claude/hooks/src/shared/session-id.ts`\n* `.gitleaksignore`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🧬 Code graph analysis (1)</summary>\n\n<details>\n<summary>.claude/hooks/src/heartbeat.ts (2)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/src/shared/session-id.ts (2)</summary>\n\n* `getSessionId` (98-117)\n* `getProject` (124-126)\n\n</details>\n<details>\n<summary>.claude/hooks/src/shared/db-utils-pg.ts (1)</summary>\n\n* `runPgQuery` (50-90)\n\n</details>\n\n</blockquote></details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (4)</summary><blockquote>\n\n<details>\n<summary>.claude/hooks/src/shared/session-id.ts (2)</summary><blockquote>\n\n`31-42`: **LGTM - Per-project session ID path isolation.**\n\nThe change from a global HOME-based path to a per-project path correctly addresses the collision issue when running multiple Claude sessions in different project directories. The directory creation with `mode: 0o700` maintains appropriate permissions.\n\n---\n\n`124-126`: **LGTM!**\n\nThe `getProject()` function provides consistent project directory resolution, matching the logic in `getSessionIdFile()`.\n\n</blockquote></details>\n<details>\n<summary>.claude/hooks/src/heartbeat.ts (2)</summary><blockquote>\n\n`40-61`: **SQL logic looks correct for the intended behavior.**\n\nThe UPDATE query correctly:\n- Uses parameterized queries (`$1`, `$2`) preventing SQL injection\n- Matches only on `id` and updates the `project` field, supporting session ID reuse across projects as intended\n\n---\n\n`71-71`: **LGTM!**\n\nThe unconditional `main()` invocation is appropriate for a hook entry point.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<sub>✏️ Tip: You can disable this entire section by setting `review_details` to `false` in your review settings.</sub>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/12#pullrequestreview-3664759026",
+    "pull_request_url": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/12",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/marcodelpin/Continuous-Claude-v3/pull/12#pullrequestreview-3664759026"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/marcodelpin/Continuous-Claude-v3/pulls/12"
+      }
+    },
+    "submitted_at": "2026-01-15T09:48:36Z",
+    "commit_id": "f68274b4d33fd61191a563e65363f91bda761fff"
+  }
+]

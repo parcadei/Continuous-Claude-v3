@@ -2,12 +2,16 @@
  * Session ID utilities for cross-process coordination.
  *
  * Provides consistent session ID generation and persistence across hooks.
- * Session IDs are persisted to ~/.claude/.coordination-session-id to enable
+ * Session IDs are persisted to <project>/.claude/.coordination-session-id to enable
  * cross-process sharing (each hook runs as a separate Node.js process).
+ *
+ * Uses per-project files to avoid collision between concurrent sessions in
+ * different projects (e.g., two terminals with different CLAUDE_PROJECT_DIR).
  *
  * Used by:
  * - session-register.ts (writes ID on session start)
  * - file-claims.ts (reads ID for file conflict detection)
+ * - heartbeat.ts (reads ID for heartbeat updates)
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -18,13 +22,15 @@ const SESSION_ID_FILENAME = '.coordination-session-id';
 
 /**
  * Returns the path to the session ID persistence file.
+ * Uses per-project path to avoid collision between concurrent sessions.
  * Optionally creates the parent directory if it doesn't exist.
  *
- * @param options.createDir - If true, creates ~/.claude/ directory (default: false)
- * @returns Path to ~/.claude/.coordination-session-id
+ * @param options.createDir - If true, creates <project>/.claude/ directory (default: false)
+ * @returns Path to <project>/.claude/.coordination-session-id
  */
 export function getSessionIdFile(options: { createDir?: boolean } = {}): string {
-  const claudeDir = join(process.env.HOME || '/tmp', '.claude');
+  const projectDir = getProject();
+  const claudeDir = join(projectDir, '.claude');
 
   if (options.createDir) {
     try {
@@ -51,7 +57,7 @@ export function generateSessionId(): string {
 
 /**
  * Writes the session ID to the persistence file.
- * Creates the ~/.claude/ directory if needed.
+ * Creates the <project>/.claude/ directory if needed.
  *
  * @param sessionId - The session ID to persist
  * @returns true if write succeeded, false otherwise

@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3646446210,
+    "node_id": "PRR_kwDOQtdKGM7ZWFqC",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 6**\n\n<details>\n<summary>🤖 Fix all issues with AI agents</summary>\n\n```\nIn @opc/scripts/setup/update_claude.py:\n- Around line 773-878: merge_user_custom_items can preserve agents even when no\nother items exist, but run_update only calls it when existing_setup.has_existing\nis true; has_existing currently ignores agents so users with only agents won't\nget merges. Update the caller in run_update (or the surrounding logic that\ndecides to call merge_user_custom_items) to call merge_user_custom_items\nwhenever a backup/previous target exists (e.g., backup_dir is not None or\ntarget_claude.exists() or existing_setup.claude_dir is set) instead of relying\nsolely on existing_setup.has_existing; keep merge_user_custom_items behavior\nunchanged (it already no-ops if there's nothing to merge).\n- Around line 528-565: The docstring and inline comment for deep_merge_dicts are\nincorrect for scalar conflicts — implement an explicit option to let OPC-managed\nscalar keys win: add a new parameter (e.g., opc_override_scalar_keys:\nfrozenset[str] | None) to deep_merge_dicts, update the function signature and\ndocstring to document it, and in the loop check if key is in\nopc_override_scalar_keys and not both dicts then set result[key] = value (so\noverride wins); keep the existing override_keys behavior for full-key\nreplacement and preserve current behavior for keys not in either set.\n- Around line 466-526: The function copy_opc_directory currently catches\nshutil.Error and only prints a warning, which hides partial-copy failures;\nchange it so that when a shutil.Error is caught you either re-raise the\nexception (to abort) or append a message to an UpdateResult object's warnings\nlist so callers/CI see the problem. Concretely, add an optional parameter (e.g.,\nupdate_result: Optional[UpdateResult] = None) to copy_opc_directory, and inside\nthe except shutil.Error as e block do either\nupdate_result.warnings.append(f\"Failed to copy some files in {dir_name}/: {e}\")\nif update_result is provided, or raise OSError(f\"Partial copy failure for\n{dir_name}/: {e}\") from e so the failure is not silently ignored; ensure call\nsites are updated to pass an UpdateResult when available.\n- Around line 187-222: In backup_global_claude_dir, shutil.copytree currently\nfollows symlinks which can copy external trees; change the copy invocation to\npreserve symlinks (pass symlinks=True to shutil.copytree) so the backup keeps\nsymlink entries instead of recursing into their targets; keep the existing\ncleanup/exception handling around the copy.\n- Around line 880-1186: The update currently overwrites plugins via\ncopy_opc_directory without conflict analysis or merging; update\nanalyze_conflicts to detect plugins by comparing source_claude/\"plugins\" vs\nexisting_setup and populate mergeable_plugins and plugin_conflicts (or similar\nfields), then extend merge_user_custom_items to accept and restore\nnon-conflicting user plugins after copy_opc_directory runs (use existing_setup\nand the new mergeable_plugins list to copy user plugin files back into\ntarget_claude/\"plugins\"), and update run_update's confirmation text/docstring to\nmention that plugins are preserved/merged like hooks/skills/rules/agents; ensure\nfunction names referenced are analyze_conflicts, merge_user_custom_items,\ncopy_opc_directory, run_update and new fields\nmergeable_plugins/plugin_conflicts.\n```\n\n</details>\n\n<details>\n<summary>🧹 Nitpick comments (4)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/update_claude.py (4)</summary><blockquote>\n\n`34-186`: **Avoid drift between imported `claude_integration` and the inline fallback (types + detection/merge rules).**  \nRight now the standalone fallback’s `ExistingSetup` doesn’t model/scan agents/plugins/etc, so behavior can differ depending on how the script is invoked (module vs file). Consider either (a) making the fallback a thin shim that imports via an adjusted `sys.path`, or (b) ensuring the fallback mirrors the full behavior you rely on later.\n\n---\n\n`321-394`: **Symlink detection/removal flow is reasonable (esp. broken-link tolerance).**  \nMinor: consider de-duping `symlinks` (a symlink might be discovered multiple times via nested scans) to avoid repeated unlink attempts/noise.\n\n---\n\n`686-771`: **npm build step is defensive (which/timeout/check) — good.**  \nOptional: use `text=True` in `subprocess.run(...)` to simplify stderr handling (avoid manual decode branches).\n\n---\n\n`396-464`: **The `onexc` callback signature is correct.** The implementation properly passes an exception instance (not an exc_info tuple) to the handler, matching Python 3.12+ documentation.\n\nHowever, **preserve existing permission bits in chmod**: `os.chmod(path, stat.S_IWUSR | stat.S_IRUSR)` removes the executable bit and other permission flags. OR with the current mode instead:\n\n<details>\n<summary>Recommended fix</summary>\n\n```diff\n-            os.chmod(path, stat.S_IWUSR | stat.S_IRUSR)\n+            current_mode = os.stat(path).st_mode\n+            os.chmod(path, current_mode | stat.S_IWUSR)\n             func(path)\n```\n</details>\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 41de827c868178e22aa1d1880315808beba88794 and 031134c81a7d6636db2fa60b82521f832053421f.\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `opc/scripts/setup/update_claude.py`\n\n</details>\n\n<details>\n<summary>🧰 Additional context used</summary>\n\n<details>\n<summary>🪛 Ruff (0.14.10)</summary>\n\n<details>\n<summary>opc/scripts/setup/update_claude.py</summary>\n\n619-619: Local variable `user_settings_source` is assigned to but never used\n\nRemove assignment to unused variable `user_settings_source`\n\n(F841)\n\n</details>\n\n</details>\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (2)</summary><blockquote>\n\n<details>\n<summary>opc/scripts/setup/update_claude.py (2)</summary><blockquote>\n\n`287-319`: **`get_project_root()` fallback search looks solid.**  \nDepth limiting + validation against `.claude/` is a good balance for robustness.\n\n---\n\n`1189-1265`: **CLI/exit codes look good (incl. dry-run behavior + 130 on Ctrl-C).**  \nRaising on unknown exceptions is fine for debugging, and you still print a helpful message first.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/19#pullrequestreview-3646446210",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/19",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/19#pullrequestreview-3646446210"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/19"
+      }
+    },
+    "submitted_at": "2026-01-10T05:07:32Z",
+    "commit_id": "031134c81a7d6636db2fa60b82521f832053421f"
+  },
+  {
+    "id": 3647947726,
+    "node_id": "PRR_kwDOQtdKGM7Zb0PO",
+    "user": {
+      "login": "manishin2050",
+      "id": 155342769,
+      "node_id": "U_kgDOCUJXsQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155342769?u=bf5336ab43017a5429eef6eee2d83497c4deba61&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/manishin2050",
+      "html_url": "https://github.com/manishin2050",
+      "followers_url": "https://api.github.com/users/manishin2050/followers",
+      "following_url": "https://api.github.com/users/manishin2050/following{/other_user}",
+      "gists_url": "https://api.github.com/users/manishin2050/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/manishin2050/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/manishin2050/subscriptions",
+      "organizations_url": "https://api.github.com/users/manishin2050/orgs",
+      "repos_url": "https://api.github.com/users/manishin2050/repos",
+      "events_url": "https://api.github.com/users/manishin2050/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/manishin2050/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "Nice job \r\n\r\nHave you tested..?",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/19#pullrequestreview-3647947726",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/19",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/19#pullrequestreview-3647947726"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/19"
+      }
+    },
+    "submitted_at": "2026-01-11T15:51:07Z",
+    "commit_id": "031134c81a7d6636db2fa60b82521f832053421f"
+  }
+]

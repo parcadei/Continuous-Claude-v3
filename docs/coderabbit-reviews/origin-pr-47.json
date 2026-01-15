@@ -1,0 +1,82 @@
+[
+  {
+    "id": 3647562459,
+    "node_id": "PRR_kwDOQtdKGM7ZaWLb",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 0**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary><blockquote>\n\n<details>\n<summary>.claude/settings.json (1)</summary><blockquote>\n\n`249-249`: **Redundant bash wrapping.**\n\nThis command wraps `bash` inside `bash -c`, creating two bash processes. While functional, it could be simplified:\n\n```diff\n-\"command\": \"bash -c 'bash \\\"$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh\\\"'\"\n+\"command\": \"bash -c '\\\"$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh\\\"'\"\n```\n\nAlternatively, if the script has a proper shebang, you could execute it directly. However, if explicit bash invocation is required for compatibility, the current approach is acceptable.\n\n</blockquote></details>\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: Organization UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n<details>\n<summary>📥 Commits</summary>\n\nReviewing files that changed from the base of the PR and between 395b7b2ae571b9cdf9e53a819bf282c9d4d33e58 and 3f60223f03a8758ca332aba4b5108279c21e7d19.\n\n</details>\n\n<details>\n<summary>⛔ Files ignored due to path filters (1)</summary>\n\n* `.claude/hooks/package-lock.json` is excluded by `!**/package-lock.json`\n\n</details>\n\n<details>\n<summary>📒 Files selected for processing (1)</summary>\n\n* `.claude/settings.json`\n\n</details>\n\n<details>\n<summary>🔇 Additional comments (7)</summary><blockquote>\n\n<details>\n<summary>.claude/settings.json (7)</summary><blockquote>\n\n`4-4`: **LGTM: statusLine command properly wrapped.**\n\nThe `bash -c` wrapping with escaped quotes correctly handles spaces in `$CLAUDE_PROJECT_DIR`.\n\n---\n\n`12-76`: **LGTM: PreToolUse hooks properly wrapped.**\n\nAll PreToolUse hooks referencing `$CLAUDE_PROJECT_DIR` are consistently wrapped in `bash -c` with proper quoting.\n\n---\n\n`101-106`: **LGTM: SessionStart hooks properly wrapped.**\n\nAll SessionStart hooks using `$CLAUDE_PROJECT_DIR` are correctly wrapped in `bash -c` with proper quoting.\n\n\n\n\nAlso applies to: 125-130\n\n---\n\n`145-145`: **LGTM: UserPromptSubmit hooks properly wrapped.**\n\nAll UserPromptSubmit hooks using `$CLAUDE_PROJECT_DIR` are correctly wrapped in `bash -c`.\n\n\n\n\nAlso applies to: 150-150, 155-155\n\n---\n\n`176-186`: **LGTM: PostToolUse hooks properly wrapped.**\n\nAll PostToolUse hooks using `$CLAUDE_PROJECT_DIR` are correctly wrapped in `bash -c` with proper quoting.\n\n\n\n\nAlso applies to: 224-224, 234-234\n\n---\n\n`277-277`: **LGTM: Trailing newline added.**\n\nGood practice to end JSON files with a newline.\n\n---\n\n`87-87`: **Address the inconsistency between `$HOME` and `$CLAUDE_PROJECT_DIR` path wrapping.**\n\nAll `$CLAUDE_PROJECT_DIR` commands are wrapped in `bash -c`, but `$HOME` paths (lines 87, 97, 116, 141, 160, 171, 196, 205, 215, 263, 267, 271) are not. If the wrapping is necessary to prevent quote stripping when paths contain spaces, `$HOME` could face the same issue. Either wrap `$HOME` commands consistently, or document why they're exempt from this treatment.\n\n</blockquote></details>\n\n</blockquote></details>\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/47#pullrequestreview-3647562459",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/47",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/47#pullrequestreview-3647562459"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/47"
+      }
+    },
+    "submitted_at": "2026-01-11T09:48:14Z",
+    "commit_id": "3f60223f03a8758ca332aba4b5108279c21e7d19"
+  },
+  {
+    "id": 3647946334,
+    "node_id": "PRR_kwDOQtdKGM7Zbz5e",
+    "user": {
+      "login": "manishin2050",
+      "id": 155342769,
+      "node_id": "U_kgDOCUJXsQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155342769?u=bf5336ab43017a5429eef6eee2d83497c4deba61&v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/manishin2050",
+      "html_url": "https://github.com/manishin2050",
+      "followers_url": "https://api.github.com/users/manishin2050/followers",
+      "following_url": "https://api.github.com/users/manishin2050/following{/other_user}",
+      "gists_url": "https://api.github.com/users/manishin2050/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/manishin2050/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/manishin2050/subscriptions",
+      "organizations_url": "https://api.github.com/users/manishin2050/orgs",
+      "repos_url": "https://api.github.com/users/manishin2050/repos",
+      "events_url": "https://api.github.com/users/manishin2050/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/manishin2050/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "Nice job \r\n\r\nHave you tested..?",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/parcadei/Continuous-Claude-v3/pull/47#pullrequestreview-3647946334",
+    "pull_request_url": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/47",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/parcadei/Continuous-Claude-v3/pull/47#pullrequestreview-3647946334"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/parcadei/Continuous-Claude-v3/pulls/47"
+      }
+    },
+    "submitted_at": "2026-01-11T15:50:28Z",
+    "commit_id": "3f60223f03a8758ca332aba4b5108279c21e7d19"
+  }
+]
