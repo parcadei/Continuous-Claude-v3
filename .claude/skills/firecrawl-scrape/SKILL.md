@@ -15,7 +15,7 @@ allowed-tools: [Bash, Read]
 ## Instructions
 
 ```bash
-opc-run -m runtime.harness scripts/mcp/firecrawl_scrape.py \
+opc-run scripts/mcp/firecrawl_scrape.py \
     --url "https://example.com" \
     --format "markdown"
 ```
@@ -30,11 +30,11 @@ opc-run -m runtime.harness scripts/mcp/firecrawl_scrape.py \
 
 ```bash
 # Scrape a page
-opc-run -m runtime.harness scripts/mcp/firecrawl_scrape.py \
+opc-run scripts/mcp/firecrawl_scrape.py \
     --url "https://docs.python.org/3/library/asyncio.html"
 
 # Search and scrape
-opc-run -m runtime.harness scripts/mcp/firecrawl_scrape.py \
+opc-run scripts/mcp/firecrawl_scrape.py \
     --search "Python asyncio best practices 2024"
 ```
 

@@ -164,19 +164,19 @@ Primary tool: **nia-docs** - Find API documentation, usage patterns, code exampl
 
 ```bash
 # Semantic search in package
-opc-run -m runtime.harness scripts/mcp/nia_docs.py \
+opc-run scripts/mcp/nia_docs.py \
   --package "$LIBRARY" \
   --registry "$REGISTRY" \
   --query "$TOPIC" \
   --limit 10)
 
 # If thorough depth, also grep for specific patterns
-opc-run -m runtime.harness scripts/mcp/nia_docs.py \
+opc-run scripts/mcp/nia_docs.py \
   --package "$LIBRARY" \
   --grep "$TOPIC")
 
 # Supplement with official docs if URL known
-opc-run -m runtime.harness scripts/mcp/firecrawl_scrape.py \
+opc-run scripts/mcp/firecrawl_scrape.py \
   --url "https://docs.example.com/api/$TOPIC" \
   --format markdown)
 ```
@@ -222,7 +222,7 @@ Use ALL available MCP tools - comprehensive multi-source research.
 
 **Step 2a: Library documentation (nia-docs)**
 ```bash
-opc-run -m runtime.harness scripts/mcp/nia_docs.py \
+opc-run scripts/mcp/nia_docs.py \
   --search "$TOPIC")
 ```
 
@@ -235,7 +235,7 @@ opc-run scripts/mcp/perplexity_search.py \
 **Step 2c: Specific documentation (firecrawl)**
 ```bash
 # Scrape relevant documentation pages found in perplexity results
-opc-run -m runtime.harness scripts/mcp/firecrawl_scrape.py \
+opc-run scripts/mcp/firecrawl_scrape.py \
   --url "$FOUND_DOC_URL" \
   --format markdown)
 ```
