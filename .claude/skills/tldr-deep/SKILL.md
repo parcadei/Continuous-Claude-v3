@@ -1,3 +1,9 @@
+---
+name: tldr-deep
+description: Full 5-layer analysis of a specific function for debugging or deep understanding
+allowed-tools: [Bash, Read]
+---
+
 # TLDR Deep Analysis
 
 Full 5-layer analysis of a specific function. Use when debugging or deeply understanding code.

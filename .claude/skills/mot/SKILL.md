@@ -1,7 +1,6 @@
 ---
 name: mot
 description: System health check (MOT) for skills, agents, hooks, and memory
-model: sonnet
 allowed-tools: [Read, Bash, Glob, Grep]
 ---
 

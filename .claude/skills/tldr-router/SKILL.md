@@ -1,3 +1,9 @@
+---
+name: tldr-router
+description: Maps questions to the optimal tldr command for code analysis
+allowed-tools: [Bash, Read]
+---
+
 # TLDR Smart Router
 
 Maps questions to the optimal tldr command. Use this to pick the right layer.

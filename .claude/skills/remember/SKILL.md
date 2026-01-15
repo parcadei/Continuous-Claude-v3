@@ -1,3 +1,9 @@
+---
+name: remember
+description: Store a learning, pattern, or decision in the memory system for future recall
+allowed-tools: [Bash, Read]
+---
+
 # Remember - Store Learning in Memory
 
 Store a learning, pattern, or decision in the memory system for future recall.

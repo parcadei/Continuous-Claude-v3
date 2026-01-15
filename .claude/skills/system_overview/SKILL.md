@@ -1,3 +1,9 @@
+---
+name: system_overview
+description: Show users how Continuous Claude works - hooks, memory, and coordination
+allowed-tools: [Bash, Read]
+---
+
 # System Overview
 
 Show users how Continuous Claude works - the opinionated setup with hooks, memory, and coordination.

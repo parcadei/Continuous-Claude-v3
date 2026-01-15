@@ -1,3 +1,9 @@
+---
+name: tldr-overview
+description: Get a token-efficient overview of any project using the TLDR stack
+allowed-tools: [Bash, Read]
+---
+
 # TLDR Project Overview
 
 Get a token-efficient overview of any project using the TLDR stack.
