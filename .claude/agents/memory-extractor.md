@@ -31,10 +31,10 @@ You receive:
 
 ```bash
 # Use the extraction script with filtering
-(cd $OPC_HOME/opc && uv run python scripts/core/extract_thinking_blocks.py \
+opc-run scripts/core/extract_thinking_blocks.py \
   --jsonl "$JSONL_PATH" \
   --filter \
-  --format json) > /tmp/perception-blocks.json
+  --format json > /tmp/perception-blocks.json
 ```
 
 This extracts only thinking blocks containing perception signals (actually, realized, the issue, etc.).
@@ -42,9 +42,9 @@ This extracts only thinking blocks containing perception signals (actually, real
 ### Step 2: Check Stats
 
 ```bash
-(cd $OPC_HOME/opc && uv run python scripts/core/extract_thinking_blocks.py \
+opc-run scripts/core/extract_thinking_blocks.py \
   --jsonl "$JSONL_PATH" \
-  --stats)
+  --stats
 ```
 
 If 0 blocks with perception signals, skip to Step 5 (output summary with 0 learnings).
@@ -80,34 +80,34 @@ For each extracted perception change, use the mapped type from Step 3:
 
 ```bash
 # Example for a CORRECTION → ERROR_FIX
-(cd $OPC_HOME/opc && uv run python scripts/core/store_learning.py \
+opc-run scripts/core/store_learning.py \
   --session-id "$SESSION_ID" \
   --type "ERROR_FIX" \
   --context "what this relates to" \
   --tags "perception,correction,topic" \
   --confidence "high" \
   --content "The actual learning: X was Y because Z" \
-  --json)
+  --json
 
 # Example for a REALIZATION/INSIGHT → CODEBASE_PATTERN
-(cd $OPC_HOME/opc && uv run python scripts/core/store_learning.py \
+opc-run scripts/core/store_learning.py \
   --session-id "$SESSION_ID" \
   --type "CODEBASE_PATTERN" \
   --context "what this relates to" \
   --tags "perception,insight,topic" \
   --confidence "high" \
   --content "The actual learning: X was Y because Z" \
-  --json)
+  --json
 
 # Example for a DEBUGGING_APPROACH → WORKING_SOLUTION
-(cd $OPC_HOME/opc && uv run python scripts/core/store_learning.py \
+opc-run scripts/core/store_learning.py \
   --session-id "$SESSION_ID" \
   --type "WORKING_SOLUTION" \
   --context "debugging methodology" \
   --tags "perception,debugging,approach" \
   --confidence "high" \
   --content "The actual learning: X was Y because Z" \
-  --json)
+  --json
 ```
 
 ### Step 5: Output Summary
