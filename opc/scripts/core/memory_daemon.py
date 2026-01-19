@@ -61,6 +61,25 @@ active_extractions: dict[int, str] = {}  # pid -> session_id
 pending_queue: list[tuple[str, str]] = []  # [(session_id, project), ...]
 
 
+def _process_exists(pid: int) -> bool:
+    """Check if a process exists, cross-platform."""
+    if sys.platform == "win32":
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if handle:
+            kernel32.CloseHandle(handle)
+            return True
+        return False
+    else:
+        try:
+            os.kill(pid, 0)
+            return True
+        except (ProcessLookupError, PermissionError):
+            return False
+
+
 def log(msg: str):
     """Write timestamped log message."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -220,30 +239,16 @@ def extract_memories(session_id: str, project_dir: str):
     log(f"Extracting memories for session {session_id} in {project_dir}")
 
     # Find the most recent JSONL for this session
-    config_dir = Path(os.environ.get('CLAUDE_CONFIG_DIR', str(Path.home() / '.claude')))
-    jsonl_dir = config_dir / "projects"
+    jsonl_dir = Path.home() / ".opc-dev" / "projects"
+    if not jsonl_dir.exists():
+        jsonl_dir = Path.home() / ".claude" / "projects"
 
     # Look for session JSONL
-    # Session IDs may be truncated (s-mkb24ccg) while JSONL uses full UUIDs
-    # Strategy: Match by ID if possible, otherwise use most recent modified JSONL
     jsonl_path = None
-    all_jsonls = sorted(jsonl_dir.glob("*/*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True)
-
-    # First try exact/partial match on session ID
-    for f in all_jsonls:
+    for f in sorted(jsonl_dir.glob("*/*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True):
         if session_id in f.name or f.stem == session_id:
             jsonl_path = f
             break
-
-    # Fallback: Use most recent JSONL if no ID match (common with truncated IDs)
-    if not jsonl_path and all_jsonls:
-        # Use most recent JSONL modified in last 10 minutes (likely the stale session)
-        recent_threshold = datetime.now() - timedelta(minutes=10)
-        for f in all_jsonls:
-            if datetime.fromtimestamp(f.stat().st_mtime) > recent_threshold:
-                jsonl_path = f
-                log(f"Using recent JSONL {f.name} for session {session_id} (no ID match)")
-                break
 
     if not jsonl_path:
         log(f"No JSONL found for session {session_id}, skipping")
@@ -252,8 +257,9 @@ def extract_memories(session_id: str, project_dir: str):
     # Run headless memory extraction
     try:
         # Read agent prompt from memory-extractor.md (strip YAML frontmatter)
-        config_dir = Path(os.environ.get('CLAUDE_CONFIG_DIR', str(Path.home() / '.claude')))
-        agent_file = config_dir / "agents" / "memory-extractor.md"
+        agent_file = Path.home() / ".opc-dev" / ".claude" / "agents" / "memory-extractor.md"
+        if not agent_file.exists():
+            agent_file = Path.home() / ".claude" / "agents" / "memory-extractor.md"
 
         agent_prompt = ""
         if agent_file.exists():
@@ -270,19 +276,30 @@ def extract_memories(session_id: str, project_dir: str):
 Look for decisions, what worked, what failed, and patterns discovered.
 Store each learning using store_learning.py with appropriate type and tags."""
 
-        proc = subprocess.Popen(
-            [
-                "claude", "-p",
-                "--model", "sonnet",  # Better extraction quality
-                "--dangerously-skip-permissions",
-                "--max-turns", "15",
-                "--append-system-prompt", agent_prompt,
-                f"Extract learnings from session {session_id}. JSONL path: {jsonl_path}"
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True  # Detach from parent
-        )
+        cmd = [
+            "claude", "-p",
+            "--model", "sonnet",
+            "--dangerously-skip-permissions",
+            "--max-turns", "15",
+            "--append-system-prompt", agent_prompt,
+            f"Extract learnings from session {session_id}. JSONL path: {jsonl_path}"
+        ]
+        if sys.platform == "win32":
+            DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                creationflags=DETACHED_PROCESS
+            )
+        else:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
         active_extractions[proc.pid] = session_id
         log(f"Started extraction for {session_id} (pid={proc.pid}, active={len(active_extractions)})")
     except Exception as e:
@@ -293,16 +310,9 @@ def reap_completed_extractions():
     """Check for completed extraction processes and remove from active set."""
     completed = []
     for pid, session_id in active_extractions.items():
-        try:
-            # Check if process is still running (signal 0 = check existence)
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            # Process finished
+        if not _process_exists(pid):
             completed.append(pid)
             log(f"Extraction completed for {session_id} (pid={pid})")
-        except PermissionError:
-            # Process exists but we can't signal it - assume still running
-            pass
 
     for pid in completed:
         del active_extractions[pid]
@@ -362,11 +372,12 @@ def is_running() -> tuple[bool, int | None]:
 
     try:
         pid = int(PID_FILE.read_text().strip())
-        # Check if process exists
-        os.kill(pid, 0)
-        return True, pid
-    except (ValueError, ProcessLookupError, PermissionError):
-        # Stale PID file
+        if _process_exists(pid):
+            return True, pid
+        else:
+            PID_FILE.unlink(missing_ok=True)
+            return False, None
+    except (ValueError, OSError):
         PID_FILE.unlink(missing_ok=True)
         return False, None
 
