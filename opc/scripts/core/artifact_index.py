@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sqlite3
+import yaml
 from datetime import datetime
 from pathlib import Path
 
@@ -492,6 +493,103 @@ def parse_handoff(file_path: Path) -> dict:
     }
 
 
+def parse_handoff_yaml(file_path: Path) -> dict:
+    """Parse a handoff YAML file into structured data.
+
+    Handles the YAML format used by newer handoff files with:
+    - YAML frontmatter (session, date, status, outcome)
+    - YAML body sections (done_this_session, decisions, findings, etc.)
+    """
+    raw_content = file_path.read_text()
+
+    # Parse YAML with frontmatter and body
+    parts = raw_content.split("---", 2)
+    if len(parts) < 3:
+        raise ValueError("Invalid YAML handoff format - missing frontmatter")
+
+    # Parse frontmatter (first --- block)
+    frontmatter = yaml.safe_load(parts[1]) or {}
+
+    # Parse body (everything after second ---)
+    body = yaml.safe_load(parts[2]) or {}
+
+    # Generate ID from file path
+    file_id = hashlib.md5(str(file_path).encode()).hexdigest()[:12]
+
+    # Use helper for session info extraction
+    session_name, session_uuid = extract_session_info(file_path)
+
+    # Extract task number from filename (e.g., "2026-01-20_19-37_phase-1-7-complete.yaml")
+    task_match = re.search(r"phase-(\d+)-(\d+)", file_path.stem)
+    task_number = None
+    if task_match:
+        # Combine major.minor into single number (e.g., 1.7 -> 17)
+        task_number = int(task_match.group(1)) * 10 + int(task_match.group(2))
+
+    # Get outcome (already in canonical format in YAML)
+    outcome = frontmatter.get("outcome", "UNKNOWN")
+
+    # Build task summary from goal or done_this_session
+    task_summary = body.get("goal", "")
+    if not task_summary and "done_this_session" in body:
+        tasks = body["done_this_session"]
+        if isinstance(tasks, list) and len(tasks) > 0:
+            task_summary = tasks[0].get("task", "")
+    task_summary = task_summary[:500]
+
+    # Extract what worked/failed
+    worked_items = body.get("worked", [])
+    what_worked = "\n".join(f"- {item}" for item in worked_items) if isinstance(worked_items, list) else str(worked_items)
+
+    failed_items = body.get("failed", [])
+    what_failed = "\n".join(f"- {item}" for item in failed_items) if isinstance(failed_items, list) else str(failed_items)
+
+    # Extract decisions
+    decisions = body.get("decisions", {})
+    if isinstance(decisions, dict):
+        key_decisions = "\n".join(f"- {k}: {v}" for k, v in decisions.items())
+    elif isinstance(decisions, list):
+        key_decisions = "\n".join(f"- {item}" for item in decisions)
+    else:
+        key_decisions = str(decisions)
+
+    # Extract files from done_this_session and files sections
+    all_files = []
+    if "done_this_session" in body:
+        for task in body["done_this_session"]:
+            if isinstance(task, dict) and "files" in task:
+                files = task["files"]
+                if isinstance(files, list):
+                    all_files.extend(files)
+
+    if "files" in body:
+        files_section = body["files"]
+        if isinstance(files_section, dict):
+            for file_list in files_section.values():
+                if isinstance(file_list, list):
+                    all_files.extend(file_list)
+
+    return {
+        "id": file_id,
+        "session_name": session_name,
+        "session_uuid": session_uuid,
+        "task_number": task_number,
+        "file_path": str(file_path),
+        "task_summary": task_summary,
+        "what_worked": what_worked,
+        "what_failed": what_failed,
+        "key_decisions": key_decisions,
+        "files_modified": json.dumps(all_files),
+        "outcome": outcome,
+        # Braintrust trace links (may not be present in YAML format)
+        "root_span_id": frontmatter.get("root_span_id", ""),
+        "turn_span_id": frontmatter.get("turn_span_id", ""),
+        "session_id": frontmatter.get("session_id", ""),
+        "braintrust_session_id": frontmatter.get("braintrust_session_id", ""),
+        "created_at": frontmatter.get("date", datetime.now().isoformat()),
+    }
+
+
 def extract_files(content: str) -> list:
     """Extract file paths from markdown content."""
     files = []
@@ -513,9 +611,81 @@ def index_handoffs(conn, base_path: Path = Path("thoughts/shared/handoffs")):
         return 0
 
     count = 0
+
+    # Index markdown handoffs
     for handoff_file in base_path.rglob("*.md"):
         try:
             data = parse_handoff(handoff_file)
+            db_execute(
+                conn,
+                """
+                INSERT OR REPLACE INTO handoffs
+                (id, session_name, task_number, file_path, task_summary, what_worked,
+                 what_failed, key_decisions, files_modified, outcome,
+                 root_span_id, turn_span_id, session_id, braintrust_session_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    data["id"],
+                    data["session_name"],
+                    data["task_number"],
+                    data["file_path"],
+                    data["task_summary"],
+                    data["what_worked"],
+                    data["what_failed"],
+                    data["key_decisions"],
+                    data["files_modified"],
+                    data["outcome"],
+                    data["root_span_id"],
+                    data["turn_span_id"],
+                    data["session_id"],
+                    data["braintrust_session_id"],
+                    data["created_at"],
+                ),
+            )
+            count += 1
+        except Exception as e:
+            print(f"Error indexing {handoff_file}: {e}")
+
+    # Index YAML handoffs
+    for handoff_file in base_path.rglob("*.yaml"):
+        try:
+            data = parse_handoff_yaml(handoff_file)
+            db_execute(
+                conn,
+                """
+                INSERT OR REPLACE INTO handoffs
+                (id, session_name, task_number, file_path, task_summary, what_worked,
+                 what_failed, key_decisions, files_modified, outcome,
+                 root_span_id, turn_span_id, session_id, braintrust_session_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    data["id"],
+                    data["session_name"],
+                    data["task_number"],
+                    data["file_path"],
+                    data["task_summary"],
+                    data["what_worked"],
+                    data["what_failed"],
+                    data["key_decisions"],
+                    data["files_modified"],
+                    data["outcome"],
+                    data["root_span_id"],
+                    data["turn_span_id"],
+                    data["session_id"],
+                    data["braintrust_session_id"],
+                    data["created_at"],
+                ),
+            )
+            count += 1
+        except Exception as e:
+            print(f"Error indexing {handoff_file}: {e}")
+
+    # Also index .yml files
+    for handoff_file in base_path.rglob("*.yml"):
+        try:
+            data = parse_handoff_yaml(handoff_file)
             db_execute(
                 conn,
                 """
@@ -770,6 +940,43 @@ def index_single_file(conn, file_path: Path) -> bool:
             return True
         except Exception as e:
             print(f"Error indexing handoff {file_path}: {e}")
+            return False
+
+    elif "handoffs" in path_str and file_path.suffix in [".yaml", ".yml"]:
+        try:
+            data = parse_handoff_yaml(file_path)
+            db_execute(
+                conn,
+                """
+                INSERT OR REPLACE INTO handoffs
+                (id, session_name, task_number, file_path, task_summary, what_worked,
+                 what_failed, key_decisions, files_modified, outcome,
+                 root_span_id, turn_span_id, session_id, braintrust_session_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    data["id"],
+                    data["session_name"],
+                    data["task_number"],
+                    data["file_path"],
+                    data["task_summary"],
+                    data["what_worked"],
+                    data["what_failed"],
+                    data["key_decisions"],
+                    data["files_modified"],
+                    data["outcome"],
+                    data["root_span_id"],
+                    data["turn_span_id"],
+                    data["session_id"],
+                    data["braintrust_session_id"],
+                    data["created_at"],
+                ),
+            )
+            conn.commit()
+            print(f"Indexed handoff: {file_path.name}")
+            return True
+        except Exception as e:
+            print(f"Error indexing YAML handoff {file_path}: {e}")
             return False
 
     elif "plans" in path_str and file_path.suffix == ".md":

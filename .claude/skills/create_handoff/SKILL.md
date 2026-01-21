@@ -104,15 +104,24 @@ Options:
   - FAILED: Task abandoned or blocked
 ```
 
-After the user responds, mark the outcome:
+After the user responds, index and mark the outcome:
 ```bash
 # Mark the most recent handoff (works with PostgreSQL or SQLite)
 # Use git root to find project, then opc/scripts/core/
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}")
+
+# First, index the handoff into the database
+cd "$PROJECT_ROOT/opc" && uv run python scripts/core/artifact_index.py --file thoughts/shared/handoffs/{session_name}/{filename}.yaml
+
+# Then mark the outcome
 cd "$PROJECT_ROOT/opc" && uv run python scripts/core/artifact_mark.py --latest --outcome <USER_CHOICE>
 ```
 
-This command auto-detects the database (PostgreSQL if configured, SQLite fallback).
+**IMPORTANT:** Replace `{session_name}` and `{filename}` with the actual values from step 1.
+
+These commands auto-detect the database (PostgreSQL if configured, SQLite fallback).
+
+**Note:** If indexing fails, the marking step will show "Database marking was not available" - this is acceptable for the first handoff but indicates the indexing step was skipped.
 
 ### 4. Confirm completion
 
