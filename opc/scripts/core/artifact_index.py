@@ -503,7 +503,8 @@ def parse_handoff_yaml(file_path: Path) -> dict:
     raw_content = file_path.read_text()
 
     # Parse YAML with frontmatter and body
-    parts = raw_content.split("---", 2)
+    # Use line-anchored regex to avoid splitting on '---' inside YAML content
+    parts = re.split(r'^\s*---\s*$', raw_content, maxsplit=2, flags=re.MULTILINE)
     if len(parts) < 3 or parts[0].strip():
         raise ValueError("Invalid YAML handoff format - missing frontmatter")
 
