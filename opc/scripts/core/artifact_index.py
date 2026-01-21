@@ -504,7 +504,7 @@ def parse_handoff_yaml(file_path: Path) -> dict:
 
     # Parse YAML with frontmatter and body
     parts = raw_content.split("---", 2)
-    if len(parts) < 3:
+    if len(parts) < 3 or parts[0].strip():
         raise ValueError("Invalid YAML handoff format - missing frontmatter")
 
     # Parse frontmatter (first --- block)
@@ -534,7 +534,7 @@ def parse_handoff_yaml(file_path: Path) -> dict:
     if not task_summary and "done_this_session" in body:
         tasks = body["done_this_session"]
         if isinstance(tasks, list) and len(tasks) > 0:
-            task_summary = tasks[0].get("task", "")
+            task_summary = tasks[0].get("task", "") if isinstance(tasks[0], dict) else ""
     task_summary = task_summary[:500]
 
     # Extract what worked/failed
@@ -647,75 +647,41 @@ def index_handoffs(conn, base_path: Path = Path("thoughts/shared/handoffs")):
         except Exception as e:
             print(f"Error indexing {handoff_file}: {e}")
 
-    # Index YAML handoffs
-    for handoff_file in base_path.rglob("*.yaml"):
-        try:
-            data = parse_handoff_yaml(handoff_file)
-            db_execute(
-                conn,
-                """
-                INSERT OR REPLACE INTO handoffs
-                (id, session_name, task_number, file_path, task_summary, what_worked,
-                 what_failed, key_decisions, files_modified, outcome,
-                 root_span_id, turn_span_id, session_id, braintrust_session_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    data["id"],
-                    data["session_name"],
-                    data["task_number"],
-                    data["file_path"],
-                    data["task_summary"],
-                    data["what_worked"],
-                    data["what_failed"],
-                    data["key_decisions"],
-                    data["files_modified"],
-                    data["outcome"],
-                    data["root_span_id"],
-                    data["turn_span_id"],
-                    data["session_id"],
-                    data["braintrust_session_id"],
-                    data["created_at"],
-                ),
-            )
-            count += 1
-        except Exception as e:
-            print(f"Error indexing {handoff_file}: {e}")
-
-    # Also index .yml files
-    for handoff_file in base_path.rglob("*.yml"):
-        try:
-            data = parse_handoff_yaml(handoff_file)
-            db_execute(
-                conn,
-                """
-                INSERT OR REPLACE INTO handoffs
-                (id, session_name, task_number, file_path, task_summary, what_worked,
-                 what_failed, key_decisions, files_modified, outcome,
-                 root_span_id, turn_span_id, session_id, braintrust_session_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    data["id"],
-                    data["session_name"],
-                    data["task_number"],
-                    data["file_path"],
-                    data["task_summary"],
-                    data["what_worked"],
-                    data["what_failed"],
-                    data["key_decisions"],
-                    data["files_modified"],
-                    data["outcome"],
-                    data["root_span_id"],
-                    data["turn_span_id"],
-                    data["session_id"],
-                    data["braintrust_session_id"],
-                    data["created_at"],
-                ),
-            )
-            count += 1
-        except Exception as e:
-            print(f"Error indexing {handoff_file}: {e}")
+    # Index YAML handoffs (both .yaml and .yml extensions)
+    for extension in ["*.yaml", "*.yml"]:
+        for handoff_file in base_path.rglob(extension):
+            try:
+                data = parse_handoff_yaml(handoff_file)
+                db_execute(
+                    conn,
+                    """
+                    INSERT OR REPLACE INTO handoffs
+                    (id, session_name, task_number, file_path, task_summary, what_worked,
+                     what_failed, key_decisions, files_modified, outcome,
+                     root_span_id, turn_span_id, session_id, braintrust_session_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        data["id"],
+                        data["session_name"],
+                        data["task_number"],
+                        data["file_path"],
+                        data["task_summary"],
+                        data["what_worked"],
+                        data["what_failed"],
+                        data["key_decisions"],
+                        data["files_modified"],
+                        data["outcome"],
+                        data["root_span_id"],
+                        data["turn_span_id"],
+                        data["session_id"],
+                        data["braintrust_session_id"],
+                        data["created_at"],
+                    ),
+                )
+                count += 1
+            except Exception as e:
+                print(f"Error indexing {handoff_file}: {e}")
 
     conn.commit()
     print(f"Indexed {count} handoffs")
