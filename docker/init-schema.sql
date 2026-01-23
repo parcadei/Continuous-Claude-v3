@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     project TEXT NOT NULL,
     working_on TEXT,
     started_at TIMESTAMP DEFAULT NOW(),
-    last_heartbeat TIMESTAMP DEFAULT NOW()
+    last_heartbeat TIMESTAMP DEFAULT NOW(),
+    last_activity_at TIMESTAMP,
+    memory_extracted_at TIMESTAMP
 );
 
 -- File Claims: Cross-terminal file locking

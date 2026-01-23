@@ -124,7 +124,15 @@ def pg_ensure_column():
 
 
 def pg_get_stale_sessions() -> list:
-    """Get sessions with stale heartbeat that haven't been extracted."""
+    """Get sessions with stale heartbeat that need extraction.
+
+    Extracts sessions that are:
+    1. Stale (heartbeat older than threshold) AND
+    2. Either never extracted OR have new activity since last extraction
+
+    This supports "session resurrection" - if a user resumes an idle session,
+    the new work will be extracted when it goes stale again.
+    """
     import psycopg2
     conn = psycopg2.connect(get_postgres_url())
     cur = conn.cursor()
@@ -132,7 +140,10 @@ def pg_get_stale_sessions() -> list:
     cur.execute("""
         SELECT id, project FROM sessions
         WHERE last_heartbeat < %s
-        AND memory_extracted_at IS NULL
+        AND (
+            memory_extracted_at IS NULL
+            OR last_activity_at > memory_extracted_at
+        )
     """, (threshold,))
     rows = cur.fetchall()
     conn.close()
@@ -170,20 +181,25 @@ def sqlite_ensure_table():
             working_on TEXT,
             started_at TIMESTAMP,
             last_heartbeat TIMESTAMP,
+            last_activity_at TIMESTAMP,
             memory_extracted_at TIMESTAMP
         )
     """)
-    # Add column if table already exists without it
-    try:
-        conn.execute("ALTER TABLE sessions ADD COLUMN memory_extracted_at TIMESTAMP")
-    except sqlite3.OperationalError:
-        pass  # Column already exists
+    # Add columns if table already exists without them
+    for col in ["memory_extracted_at", "last_activity_at"]:
+        try:
+            conn.execute(f"ALTER TABLE sessions ADD COLUMN {col} TIMESTAMP")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
     conn.commit()
     conn.close()
 
 
 def sqlite_get_stale_sessions() -> list:
-    """Get sessions with stale heartbeat that haven't been extracted."""
+    """Get sessions with stale heartbeat that need extraction.
+
+    Same logic as PostgreSQL version - supports session resurrection.
+    """
     db_path = get_sqlite_path()
     if not db_path.exists():
         return []
@@ -192,7 +208,10 @@ def sqlite_get_stale_sessions() -> list:
     cursor = conn.execute("""
         SELECT id, project FROM sessions
         WHERE last_heartbeat < ?
-        AND memory_extracted_at IS NULL
+        AND (
+            memory_extracted_at IS NULL
+            OR last_activity_at > memory_extracted_at
+        )
     """, (threshold,))
     rows = cursor.fetchall()
     conn.close()
