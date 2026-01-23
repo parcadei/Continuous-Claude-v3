@@ -38,12 +38,9 @@ for loc in "${LOCATIONS[@]}"; do
     fi
 done
 
-if [[ $TOTAL -eq 0 ]]; then
+if [[ $TOTAL -gt 0 ]]; then
+    echo "Cleaned $TOTAL temp files."
+elif [[ "$DRY_RUN" == "true" ]]; then
     echo "No temp files found."
-else
-    echo ""
-    echo "Total: $TOTAL temp files"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "Run without --dry-run to delete."
-    fi
 fi
+# Silent when nothing to clean (ideal for shell startup)
