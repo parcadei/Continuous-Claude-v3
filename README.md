@@ -23,21 +23,100 @@ It's like the difference between emailing someone vs. working with a colleague w
 
 ---
 
-## 🚨 Do I Need to Code?
+## 🚀 Can I Build Software Without Knowing How to Code?
 
-**Short answer: No.**
+**Yes. That's the whole point.**
 
-Most Continuous Claude features work through plain English conversation. You describe what you want, Claude figures out how to do it.
+Continuous Claude was built so that **non-technical people can create working software** by describing what they want in plain English. You don't write code — you describe outcomes, and the system figures out how to build it.
 
-| What You Can Do Without Coding | What Requires Code Knowledge |
-|-------------------------------|------------------------------|
-| Research topics and competitors | Building software features |
-| Analyze data and find trends | Debugging application code |
-| Generate reports and summaries | Creating custom automation |
-| Manage multi-day projects | Writing technical integrations |
-| Create documentation and content | Configuring advanced hooks |
+### How This Works
 
-**If you can describe what you want, Continuous Claude can help.** The specialized agents handle the technical complexity behind the scenes.
+1. **You describe what you want:** "Build me a dashboard that shows sales by region"
+2. **Maestro orchestrates the work:** Breaks your request into tasks and assigns them to specialist agents
+3. **Agents do the technical work:** Research agent finds best practices, architect agent designs the solution, builder agent writes the code, tester agent verifies it works
+4. **You review and refine:** See the results, give feedback in plain English, iterate until it's right
+
+**You're the director. The agents are your technical team.**
+
+### What You Can Build (Examples)
+
+| What You Describe | What Gets Built |
+|-------------------|-----------------|
+| "A form that collects customer feedback and emails me summaries" | Working web form with email integration |
+| "A tool that analyzes our spreadsheet and finds anomalies" | Data analysis script with visualizations |
+| "A simple app to track our team's project status" | Project management dashboard |
+| "Automate our weekly report from these data sources" | Scheduled automation with formatted output |
+
+The system handles the technical complexity. You focus on what you want it to do.
+
+---
+
+## ⭐ What Makes This Fork Special?
+
+This fork includes significant improvements over the original Continuous Claude, developed through real-world use:
+
+### 🎼 Maestro: The Orchestrator (Our Flagship Improvement)
+
+**The Problem:** Complex tasks require coordinating multiple specialists — researcher, planner, builder, tester, reviewer. Managing this manually is tedious and error-prone.
+
+**Our Solution:** Maestro acts as a project manager for AI agents. When you describe a complex task:
+
+1. **Discovery Interview** — Maestro asks clarifying questions to understand exactly what you need
+2. **Task Breakdown** — Splits your request into logical phases (research → plan → build → test)
+3. **Agent Assignment** — Assigns the right specialist to each phase (oracle for research, architect for planning, kraken for building)
+4. **Progress Tracking** — Keeps you informed as each phase completes
+5. **Quality Synthesis** — Combines outputs into coherent deliverables
+
+**Plain English Example:**
+```
+You: "Build me a customer feedback system"
+
+Maestro: "Let me understand what you need..."
+  → Asks: Web or mobile? What fields? Where should responses go?
+
+Maestro: "Here's my plan..."
+  → Phase 1: Research best practices (oracle agent)
+  → Phase 2: Design the solution (architect agent)
+  → Phase 3: Build it (kraken agent)
+  → Phase 4: Test it works (arbiter agent)
+
+You: "Approved, go ahead"
+
+Maestro: [Executes each phase, reports progress, delivers working system]
+```
+
+### 📚 138 Skills (vs. Original ~50)
+
+Skills are pre-built workflows you trigger by describing what you want:
+
+| Skill | What It Does | How You Trigger It |
+|-------|--------------|-------------------|
+| `/build` | Creates complete features from descriptions | "Build a login page" |
+| `/fix` | Investigates and repairs broken things | "This button doesn't work" |
+| `/research` | Deep-dives into topics with sources | "Research competitor pricing" |
+| `/review` | Gets multiple perspectives on work | "Review this document" |
+| `/premortem` | Identifies what could go wrong | "What risks does this plan have?" |
+
+### 🧠 Persistent Memory System
+
+**The Problem:** Every Claude conversation starts fresh. You waste time re-explaining your project, preferences, and past decisions.
+
+**Our Solution:** A PostgreSQL database stores learnings from every session:
+
+- **What worked** — Successful approaches get remembered and reused
+- **What failed** — Mistakes get flagged so you don't repeat them
+- **Your preferences** — How you like things done
+- **Project context** — What you're building and why
+
+**In Practice:** Start a new session, and Claude already knows your project, your preferences, and what you tried last time.
+
+### 🔍 95% Token Efficiency (TLDR System)
+
+**The Problem:** Claude normally reads entire files to understand code, burning through your token budget quickly.
+
+**Our Solution:** The TLDR system analyzes code structure instead of reading every line — like scanning a book's table of contents instead of reading every page.
+
+**The Benefit:** Same understanding, 95% fewer tokens. Longer conversations, more complex projects, lower costs.
 
 ---
 
