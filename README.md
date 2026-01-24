@@ -1,156 +1,134 @@
 # Continuous Claude
 
-> A persistent, learning, multi-agent development environment built on Claude Code
+> Give Claude a notebook, memory, and specialized assistants — so every conversation builds on the last
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)
-[![Skills](https://img.shields.io/badge/Skills-109-green.svg)](#skills-system)
-[![Agents](https://img.shields.io/badge/Agents-32-purple.svg)](#agents-system)
-[![Hooks](https://img.shields.io/badge/Hooks-30-blue.svg)](#hooks-system)
 
-**Continuous Claude** transforms Claude Code into a continuously learning system that maintains context across sessions, orchestrates specialized agents, and eliminates wasting tokens through intelligent code analysis.
-
-## Table of Contents
-
-- [Why Continuous Claude?](#why-continuous-claude)
-- [Design Principles](#design-principles)
-- [How to Talk to Claude](#how-to-talk-to-claude)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Core Systems](#core-systems)
-  - [Skills (109)](#skills-system)
-  - [Agents (32)](#agents-system)
-  - [Hooks (30)](#hooks-system)
-  - [TLDR Code Analysis](#tldr-code-analysis)
-  - [Memory System](#memory-system)
-  - [Continuity System](#continuity-system)
-  - [Math System](#math-system)
-- [Workflows](#workflows)
-- [Installation](#installation)
-- [Updating](#updating)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
+**Continuous Claude transforms how you work with Claude Code** — whether you're writing code, analyzing data, creating content, or researching topics. Instead of starting fresh every time, Claude remembers what you've worked on and gets smarter with each session.
 
 ---
 
-## Why Continuous Claude?
+## What Is This?
 
-Claude Code has a **compaction problem**: when context fills up, the system compacts your conversation, losing nuanced understanding and decisions made during the session.
+Think of Claude Code as having a brilliant assistant who helps you with tasks. The problem? Every time you close the conversation, they forget everything you did together. When you start a new chat, you have to explain your project from scratch.
 
-**Continuous Claude solves this with:**
+**Continuous Claude solves this** by giving Claude three superpowers:
 
-| Problem | Solution |
-|---------|----------|
-| Context loss on compaction | YAML handoffs - more token-efficient transfer |
-| Starting fresh each session | Memory system recalls + daemon auto-extracts learnings |
-| Reading entire files burns tokens | 5-layer code analysis + semantic index |
-| Complex tasks need coordination | Meta-skills orchestrate agent workflows |
-| Repeating workflows manually | 109 skills with natural language triggers |
+1. **📓 A Persistent Notebook** — Saves key decisions, learnings, and context so nothing gets lost when you start a new conversation
+2. **🎓 Long-term Memory** — Automatically remembers what worked (and what didn't) across all your sessions, retrievable when relevant
+3. **👥 Specialist Assistants** — Delegates complex tasks to focused AI agents (like having a research assistant, debugger, and code reviewer on call)
 
-**The mantra: Compound, don't compact.** Extract learnings automatically, then start fresh with full context.
-
-### Why "Continuous"? Why "Compounding"?
-
-The name is a pun. **Continuous** because Claude maintains state across sessions. **Compounding** because each session makes the system smarter—learnings accumulate like compound interest.
+It's like the difference between emailing someone vs. working with a colleague who remembers your previous conversations and can delegate work to their team.
 
 ---
 
-## Design Principles
+## 🚨 Do I Need to Code?
 
-An agent is five things: **Prompt + Tools + Context + Memory + Model**.
+**Short answer: No.**
 
-| Component | What We Optimize |
-|-----------|------------------|
-| **Prompt** | Skills inject relevant context; hooks add system reminders |
-| **Tools** | TLDR reduces tokens; agents parallelize work |
-| **Context** | Not just *what* Claude knows, but *how* it's provided |
-| **Memory** | Daemon extracts learnings; recall surfaces them |
-| **Model** | Becomes swappable when the other four are solid |
+Most Continuous Claude features work through plain English conversation. You describe what you want, Claude figures out how to do it.
 
-### Anti-Complexity
+| What You Can Do Without Coding | What Requires Code Knowledge |
+|-------------------------------|------------------------------|
+| Research topics and competitors | Building software features |
+| Analyze data and find trends | Debugging application code |
+| Generate reports and summaries | Creating custom automation |
+| Manage multi-day projects | Writing technical integrations |
+| Create documentation and content | Configuring advanced hooks |
 
-We resist plugin sprawl. Every MCP, subscription, and tool you add promises improvement but risks breaking context, tools, or prompts through clashes.
-
-**Our approach:**
-- **Time, not money** — No required paid services. Perplexity and NIA are optional, high-value-per-token.
-- **Learn, don't accumulate** — A system that learns handles edge cases better than one that collects plugins.
-- **Shift-left validation** — Hooks run pyright/ruff after edits, catching errors before tests.
-
-The failure modes of complex systems are structurally invisible until they happen. A learning, context-efficient system doesn't prevent all failures—but it recovers and improves.
+**If you can describe what you want, Continuous Claude can help.** The specialized agents handle the technical complexity behind the scenes.
 
 ---
 
-## How to Talk to Claude
+## Why Use It?
 
-**You don't need to memorize slash commands.** Just describe what you want naturally.
+### For Everyone
 
-### The Skill Activation System
+**Stop Repeating Yourself**
+- Context persists across sessions — no more "here's my project again"
+- Claude recalls relevant past work automatically
+- Decisions and learnings accumulate like compound interest
 
-When you send a message, a hook injects context that tells **Claude** which skills and agents are relevant. Claude infers from a rule-based system and decides which tools to use.
+**Work Faster**
+- Delegate research, analysis, and implementation to specialized agents
+- Get structured workflows instead of back-and-forth prompting
+- Natural language triggers — just describe what you want
 
-```
-> "Fix the login bug in auth.py"
+**Stay Organized**
+- Automatic session summaries and handoffs
+- Track progress on multi-day projects
+- Resume exactly where you left off
 
-🎯 SKILL ACTIVATION CHECK
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### For Technical Users
 
-⚠️ CRITICAL SKILLS (REQUIRED):
-  → create_handoff
+**95% Efficiency Boost**
+- Analyzes code structure instead of reading every line (like scanning a table of contents instead of the whole book)
+- Smart search finds relevant code instantly
+- Pattern detection finds similar code across your project
 
-📚 RECOMMENDED SKILLS:
-  → fix
-  → debug
+**Developer Workflows**
+- Test-driven development with automatic test generation
+- Risk analysis before implementation ("What could go wrong?" checklist)
+- Automated code review with multiple specialized reviewers
+- Cross-file refactoring with impact analysis
 
-🤖 RECOMMENDED AGENTS (token-efficient):
-  → debug-agent
-  → scout
+**Advanced Capabilities**
+- Mathematical proof verification (for those who need formal guarantees)
+- Symbolic computation for equations and constraints
+- Machine-verified proofs without learning specialized syntax
 
-ACTION: Use Skill tool BEFORE responding
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+---
 
-### Priority Levels
+## Who Is This For?
 
-| Level | Meaning |
-|-------|---------|
-| ⚠️ **CRITICAL** | Must use (e.g., handoffs before ending session) |
-| 📚 **RECOMMENDED** | Should use (e.g., workflow skills) |
-| 💡 **SUGGESTED** | Consider using (e.g., optimization tools) |
-| 📌 **OPTIONAL** | Nice to have (e.g., documentation helpers) |
+### Marketing & Content
 
-### Natural Language Examples
+**Research & Writing**
+- "Research our top 3 competitors and their messaging" → oracle agent gathers intel
+- "Find trends in customer feedback about feature X" → analyzes patterns
+- "Create a campaign brief for product launch" → structures workflow from research to deliverables
 
-| What You Say | What Activates |
-|--------------|----------------|
-| "Fix the broken login" | `/fix` workflow → debug-agent, scout |
-| "Build a user dashboard" | `/build` workflow → plan-agent, kraken |
-| "I want to understand this codebase" | `/explore` + scout agent |
-| "What could go wrong with this plan?" | `/premortem` |
-| "Help me figure out what I need" | `/discovery-interview` |
-| "Done for today" | `create_handoff` (critical) |
-| "Resume where we left off" | `resume_handoff` |
-| "Research auth patterns" | oracle agent + perplexity |
-| "Find all usages of this API" | scout agent + ast-grep |
+**Campaign Management**
+- Track multi-week campaigns with persistent context
+- Remember brand guidelines and voice across sessions
+- Recall what messaging performed well previously
 
-### Why This Approach?
+### Sales
 
-| Benefit | How |
-|---------|-----|
-| **More Discoverable** | Don't need to know commands exist |
-| **Context-Aware** | System knows when you're 90% through context |
-| **Reduces Cognitive Load** | Describe intent naturally, get curated suggestions |
-| **Power User Friendly** | Still supports /fix, /build, etc. directly |
+**Meeting Preparation**
+- "Research [company] and prepare talking points" → gathers industry context, competitive landscape
+- "Summarize our last 3 conversations with this prospect" → memory system recalls relevant details
+- "Create a proposal for [use case]" → builds on past successful proposals
 
-### Skill vs Workflow vs Agent
+**Competitive Intelligence**
+- Track competitor moves across sessions
+- Remember pricing discussions and objections
+- Build relationship context that persists
 
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Skill** | Single-purpose tool | `commit`, `tldr-code`, `qlty-check` |
-| **Workflow** | Multi-step process | `/fix` (sleuth → premortem → kraken → commit) |
-| **Agent** | Specialized sub-session | scout (exploration), oracle (research) |
+### Operations, Finance, Legal
 
-[See detailed skill activation docs →](docs/skill-activation.md)
+**Documentation & Analysis**
+- "Analyze Q4 spending patterns" → structures data analysis workflow
+- "Update our compliance documentation for new regulations" → researches changes, proposes updates
+- "Create a process document for onboarding" → systematic workflow creation
+
+**Report Generation**
+- Persistent templates and formatting preferences
+- Recall data sources and calculation methods
+- Multi-session report building with continuity
+
+### Engineering
+
+**Development Workflows**
+- `/build greenfield "user dashboard"` → end-to-end feature implementation
+- `/fix bug "login timeout"` → diagnosis → plan → fix → test → commit
+- `/refactor "extract auth module"` → safe refactoring with impact analysis
+
+**Code Understanding**
+- "Explain how authentication works in this codebase" → semantic analysis without reading every file
+- "Find all places that call this API" → instant structural search
+- "What would break if I change this function?" → impact analysis
 
 ---
 
@@ -158,110 +136,40 @@ ACTION: Use Skill tool BEFORE responding
 
 ### Prerequisites
 
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) package manager
-- Docker (for PostgreSQL)
-- Claude Code CLI
+You need these installed:
 
-### Installation
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) — stores your session history and learnings (like a filing cabinet for Claude's memory)
+- [Node.js 18+](https://nodejs.org/) — runs background helpers (you won't interact with it directly)
+- [Python 3.11+](https://www.python.org/downloads/) with [uv](https://github.com/astral-sh/uv) — runs the setup wizard and memory system
+- [Claude Code CLI](https://docs.anthropic.com/claude/docs/claude-code) — the main app you already use (if you're using Claude in terminal, you have this)
+
+### Install
 
 ```bash
-# Clone
-git clone https://github.com/parcadei/Continuous-Claude-v3.git
-cd Continuous-Claude-v3/opc
+# Clone the repository
+git clone https://github.com/parcadei/continuous-claude.git
+cd continuous-claude/opc
 
-# Run setup wizard (12 steps)
+# Run the setup wizard
 uv run python -m scripts.setup.wizard
 ```
 
-> **Note:** The `pyproject.toml` is in `opc/`. Always run `uv` commands from the `opc/` directory.
+**Time:** 5 minutes if prerequisites installed, 15-20 minutes for fresh setup with Docker.
 
-### What the Wizard Does
+The wizard walks you through 12 steps:
 
-| Step | What It Does |
-|------|--------------|
-| 1 | Backup existing .claude/ config (if present) |
-| 2 | Check prerequisites (Docker, Python, uv) |
-| 3-5 | Database + API key configuration |
-| 6-7 | Start Docker stack, run migrations |
-| 8 | Install Claude Code integration (32 agents, 109 skills, 30 hooks) |
-| 9 | Math features (SymPy, Z3, Pint - optional) |
-| 10 | TLDR code analysis tool |
-| 11-12 | Diagnostics tools + Loogle (optional) |
-
-
-#### To Uninstall:
-
-```
-cd Continuous-Claude-v3/opc
-  uv run python -m scripts.setup.wizard --uninstall
-```
-
-**What it does**
-
-1. Archives your current setup → Moves ~/.claude to ~/.claude-v3.archived.<timestamp>
-2. Restores your backup → Finds the most recent ~/.claude.backup.* (created during install) and restores it
-3. Preserves user data → Copies these back from the archive:
-
-  - history.jsonl (your command history)
-  - mcp_config.json (MCP servers)
-  - .env (API keys)
-  - projects.json (project configs)
-  - file-history/ directory
-  - projects/ directory
-4. Removes CC-v3 additions → Everything else (hooks, skills, agents, rules)
-
-
-**Safety Features**
-
-- Your current setup is archived with timestamp - nothing gets deleted
-- The wizard asks for confirmation before proceeding
-- It restores from the backup that was made during installation
-- All your Claude Code settings stay intact
-
-
-### Remote Database Setup
-
-By default, CC-v3 runs PostgreSQL locally via Docker. For remote database setups:
-
-#### 1. Database Preparation
-
-```bash
-# Connect to your remote PostgreSQL instance
-psql -h hostname -U user -d continuous_claude
-
-# Enable pgvector extension (requires superuser or rds_superuser)
-CREATE EXTENSION IF NOT EXISTS vector;
-
-# Apply the schema (from your local clone)
-psql -h hostname -U user -d continuous_claude -f docker/init-schema.sql
-```
-
-> **Managed PostgreSQL tips:**
-> - **AWS RDS**: Add `vector` to `shared_preload_libraries` in DB Parameter Group
-> - **Supabase**: Enable via Database Extensions page
-> - **Azure Database**: Use Extensions pane to enable pgvector
-
-#### 2. Connection Configuration
-
-Set `CONTINUOUS_CLAUDE_DB_URL` in `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CONTINUOUS_CLAUDE_DB_URL": "postgresql://user:password@hostname:5432/continuous_claude"
-  }
-}
-```
-
-Or export before running Claude:
-
-```bash
-export CONTINUOUS_CLAUDE_DB_URL="postgresql://user:password@hostname:5432/continuous_claude"
-claude
-```
-
-See `.env.example` for all available environment variables.
+1. ✅ Backs up your existing Claude configuration
+2. ✅ Checks that prerequisites are installed
+3. ✅ Sets up the database and API keys (optional)
+4. ✅ Starts Docker containers for PostgreSQL
+5. ✅ Installs 32 specialized agents
+6. ✅ Installs 138 skill workflows
+7. ✅ Installs 77 lifecycle hooks
+8. ✅ Installs code analysis tools (95% efficiency boost)
+9. ✅ Installs math capabilities (optional)
+10. ✅ Configures diagnostics and linting
+11. ✅ Sets up search tools
+12. ✅ Tests that everything works
 
 ### First Session
 
@@ -271,21 +179,511 @@ claude
 
 # Try a workflow
 > /workflow
+
+? What's your goal?
+  ○ Research - Understand codebase/docs
+  ○ Plan - Design implementation approach
+  ○ Build - Implement features
+  ○ Fix - Investigate and resolve issues
 ```
 
-### First Session Commands
-
-| Command | What it does |
-|---------|--------------|
-| `/workflow` | Goal-based routing (Research/Plan/Build/Fix) |
-| `/fix bug <description>` | Investigate and fix a bug |
-| `/build greenfield <feature>` | Build a new feature from scratch |
-| `/explore` | Understand the codebase |
-| `/premortem` | Risk analysis before implementation |
+That's it. You're now using Continuous Claude.
 
 ---
 
-## Architecture
+## How It Works (Simple Explanation)
+
+### The Problem
+
+Claude has a "context window" — think of it like short-term memory. When conversations get too long, Claude has to "forget" earlier parts to make room for new information. This means:
+
+- You lose important decisions and context
+- Each new session starts from zero
+- Complex projects require constant re-explaining
+- Reading entire files burns through your token budget
+
+### The Solution
+
+Continuous Claude adds four layers:
+
+**1. Persistent State (Ledgers & Handoffs)**
+
+Like a notebook that follows you between sessions:
+
+```
+Session 1: "Build user authentication"
+→ Creates handoff: Goals, decisions, next steps
+
+Session 2 (next day): "Resume work"
+→ Loads handoff: Exactly where you left off
+```
+
+**2. Learning Memory (Automatic)**
+
+A background system that watches for patterns:
+
+```
+Session ends → Database detects inactive session
+            → Spawns background Claude to analyze
+            → Extracts learnings: "What worked, what failed, why"
+            → Stores with semantic embeddings
+
+Next session → Relevant learnings surface automatically
+```
+
+**3. Specialized Agents (Delegation)**
+
+Instead of one generalist, you get a team:
+
+```
+You: "Fix the authentication bug and add tests"
+
+Claude: Spawns 3 agents in sequence:
+  → sleuth (investigates bug)
+  → kraken (implements fix)
+  → arbiter (writes tests)
+
+You: Get structured results without micromanaging
+```
+
+**4. Smart Code Analysis (95% Token Savings)**
+
+Instead of reading entire files, Claude sees structure:
+
+```
+Traditional: Read 23,000 tokens (entire file)
+Continuous Claude: Read 1,200 tokens (functions, calls, logic flows)
+
+Result: Same understanding, 95% fewer tokens
+```
+
+---
+
+## What You Get
+
+### 112 Skills (Pre-Built Workflows)
+
+Skills are like apps you trigger by asking naturally. No need to memorize commands.
+
+| What You Say | What Happens |
+|--------------|--------------|
+| "Fix the login bug" | `/fix` workflow → investigate → plan → implement → test → commit |
+| "Build a user dashboard" | `/build` workflow → clarify → design → validate → implement |
+| "What could go wrong with this plan?" | `/premortem` → TIGERS (clear threats) + ELEPHANTS (unspoken concerns) |
+| "Research authentication patterns" | `oracle` agent → searches web, docs, examples |
+| "Find all calls to this function" | `tldr impact` → structural analysis, not text search |
+| "Done for today" | `create_handoff` → saves state for next session |
+
+**Key workflows:**
+
+- **Research:** oracle (web search), scout (codebase exploration), nia-docs (library documentation)
+- **Planning:** premortem (risk analysis), discovery-interview (clarify vague ideas)
+- **Building:** /build (greenfield or brownfield), /tdd (test-first), /refactor (safe transformation)
+- **Fixing:** /fix (bugs), /security (vulnerabilities), /review (code review)
+- **Continuity:** create_handoff, resume_handoff, continuity_ledger
+
+### 32 Specialized Agents
+
+Agents are AI assistants focused on specific tasks. Claude delegates to them automatically.
+
+**Planners (4)**
+- **architect** — Feature planning with API integration
+- **phoenix** — Refactoring and framework migrations
+- **plan-agent** — Lightweight planning with research
+- **validate-agent** — Validate plans against best practices
+
+**Explorers (4)**
+- **scout** — Codebase exploration (90% accurate vs. 60% for generic search)
+- **oracle** — External research (web, docs, GitHub)
+- **pathfinder** — External repository analysis
+- **research-codebase** — Document codebase as-is
+
+**Implementers (3)**
+- **kraken** — Test-driven implementation with strict TDD workflow
+- **spark** — Lightweight fixes and quick tweaks
+- **agentica-agent** — Build Python agents using Agentica SDK
+
+**Debuggers (3)**
+- **sleuth** — Root cause investigation
+- **debug-agent** — Issue investigation via logs/code
+- **profiler** — Performance profiling and race conditions
+
+**Reviewers (6)**
+- **critic**, **judge**, **surveyor** — Different review perspectives
+- **liaison**, **plan-reviewer**, **review-agent** — Structured reviews
+
+**Validators (2)**
+- **arbiter** — Test validation
+- **atlas** — Integration testing
+
+**Specialized (8)**
+- **aegis** — Security review
+- **herald** — Release management
+- **scribe** — Documentation generation
+- **chronicler**, **session-analyst**, **braintrust-analyst** — Session analysis
+- **memory-extractor** — Learning extraction
+- **onboard** — Codebase onboarding
+
+### 66 Hooks (Automatic Helpers)
+
+Hooks run in the background at specific moments — you don't call them directly.
+
+**When you start a session:**
+- Loads your continuity ledger (where you left off)
+- Registers your session in the database
+- Recalls relevant memories from past work
+
+**Before Claude reads a file:**
+- Checks if a summary already exists (95% token savings)
+- Routes searches to structural tools instead of text grep
+- Claims the file (prevents conflicts if multiple terminals open)
+
+**After you edit a file:**
+- Runs type checking and linting automatically
+- Updates code indexes
+- Tracks which files changed (for testing later)
+
+**Before running out of tokens:**
+- Automatically creates a handoff document
+- Saves state so you can resume later
+- Re-indexes modified code
+
+**After your session ends:**
+- Detects stale heartbeat (you closed Claude)
+- Spawns background analysis to extract learnings
+- Stores memories for future recall
+
+### 12 Rules (System Policies)
+
+Rules keep Claude consistent and safe:
+
+- **Evidence-based claims** — No "this is faster" without benchmarks
+- **Read before write** — Always check existing code before changes
+- **Minimal comments** — Code should be self-explanatory
+- **Security-first** — Never commit secrets, always validate input
+- **Git safety** — Confirm before destructive operations
+- **Delegation** — Use agents for complex tasks to preserve main context
+
+---
+
+## Common Use Cases
+
+### "I Need to Understand This Codebase"
+
+```
+> /explore deep --focus "authentication"
+
+Spawns scout agent:
+  1. Analyzes file structure
+  2. Traces authentication flow
+  3. Identifies entry points
+  4. Maps dependencies
+  5. Creates summary document
+
+Result: Structured understanding in ~5 minutes
+```
+
+### "I Have a Vague Idea, Need Help Clarifying"
+
+```
+> "I want to improve our user onboarding, not sure how"
+
+Triggers /discovery-interview:
+  → Asks clarifying questions
+  → Identifies constraints
+  → Proposes options with trade-offs
+  → Creates implementation plan
+
+Result: Spec document ready for /build
+```
+
+### "This Is Broken, Help Me Fix It"
+
+```
+> /fix bug "users can't upload files over 10MB"
+
+Workflow:
+  1. sleuth investigates → finds timeout + size limit
+  2. premortem analyzes → risk: breaking existing uploads
+  3. kraken implements → chunked upload + progress bar
+  4. arbiter tests → integration test for large files
+  5. commit creates → descriptive commit message
+
+Result: Fixed, tested, documented
+```
+
+### "Build This Feature for Me"
+
+```
+> /build greenfield "user dashboard with activity feed"
+
+Workflow:
+  1. discovery clarifies → real-time or polling? filters?
+  2. plan designs → API schema, UI components, database
+  3. validate checks → performance, security, edge cases
+  4. kraken implements → TDD: tests first, then code
+  5. commit + PR → ready for review
+
+Result: Complete feature with tests and documentation
+```
+
+### "What Could Go Wrong?"
+
+```
+> /premortem thoughts/shared/plans/user-dashboard.md
+
+Output:
+  🐯 TIGERS (Clear Threats):
+    [HIGH] Real-time updates could spike database load
+    [MEDIUM] No pagination → memory issues with long feeds
+    [LOW] Time zones not handled in activity timestamps
+
+  🐘 ELEPHANTS (Unspoken Concerns):
+    - Team hasn't worked with WebSockets before
+    - No monitoring for real-time connection failures
+    - Unclear how to test real-time features
+
+Action: Blocks until you accept risks or mitigate
+```
+
+### "Research This Topic for Me"
+
+```
+> "Research how other SaaS apps handle webhook retries"
+
+Spawns oracle agent:
+  → Searches web for patterns
+  → Finds library documentation
+  → Analyzes GitHub examples
+  → Synthesizes recommendations
+
+Result: Structured findings with sources
+```
+
+---
+
+## Components Explained Simply
+
+### Skills (112)
+
+**What they are:** Pre-built workflows you trigger by describing what you want
+
+**How you use them:**
+- Natural language: "Fix this bug"
+- Direct command: `/fix bug "description"`
+- Workflow: `/workflow` asks what you want to do, routes you
+
+**Examples:**
+- `create_handoff` — Save your session state before ending
+- `premortem` — Risk analysis (TIGERS & ELEPHANTS)
+- `tldr-code` — Analyze code structure (95% token savings)
+- `perplexity-search` — AI-powered web search
+- `qlty-check` — Run 70+ linters and auto-fix issues
+
+**Do I need to code?** No. Skills work via natural language.
+
+### Agents (32)
+
+**What they are:** Specialized AI assistants Claude delegates work to
+
+**How you use them:**
+- Automatic: Workflows spawn them (you don't manage)
+- Manual: `/agent scout "find authentication code"`
+
+**Why they help:**
+- **Preserve context** — Agent does research, returns summary
+- **Parallel work** — Spawn multiple agents at once
+- **Specialization** — Each agent has a focused role and detailed prompt
+
+**Examples:**
+- `scout` explores codebases without reading every file
+- `oracle` researches external topics (web, docs, APIs)
+- `sleuth` investigates bugs with root cause analysis
+- `kraken` implements features with test-driven development
+
+**Do I need to code?** No. Agents work on your behalf.
+
+### Hooks (66)
+
+**What they are:** Background helpers that run automatically at specific moments
+
+**How you use them:**
+- You don't — they're automatic
+- They activate on events like "session start" or "before file read"
+
+**Examples:**
+- **tldr-read-enforcer** — Returns code summaries instead of full files (token savings)
+- **smart-search-router** — Routes text searches to structural analysis tools
+- **post-edit-diagnostics** — Runs type checking after you edit code
+- **memory-awareness** — Surfaces relevant learnings from past sessions
+
+**Do I need to code?** No. Hooks work invisibly.
+
+### Rules (12)
+
+**What they are:** Guidelines that keep Claude consistent
+
+**Examples:**
+- Don't claim something is "faster" without benchmarks
+- Ask before deleting files or running destructive git commands
+- Use agents for complex tasks to keep main context clean
+- Read files before editing them
+
+**Do I need to code?** No. Rules are policy, not code.
+
+---
+
+## Common Questions
+
+### Do I Need to Code?
+
+**Short answer:** No.
+
+**Longer answer:**
+- **Most features** work through natural language (research, planning, analysis)
+- **Code analysis** works on codebases you provide — you don't write the analysis code
+- **Workflows** trigger via commands like `/fix` or `/build`
+- **Advanced features** (hooks, custom agents) require coding, but are optional
+
+If you can describe what you want, Continuous Claude can do it.
+
+### What If Something Breaks?
+
+**Common issues:**
+
+| Problem | Solution |
+|---------|----------|
+| "Docker not running" | Start Docker Desktop |
+| "Database connection failed" | Run `docker ps` to check containers, restart with wizard |
+| "Skill not found" | Re-run wizard step 6 to reinstall skills |
+| "Agent failed to spawn" | Check `~/.claude/agents/` exists, verify settings.json |
+
+**Troubleshooting:**
+
+```bash
+# Check Docker containers
+docker ps
+
+# Restart database
+cd continuous-claude/opc
+docker-compose down
+docker-compose up -d
+
+# Reinstall components
+uv run python -m scripts.setup.wizard
+# Select the step you want to re-run
+```
+
+**Get help:**
+- [GitHub Issues](https://github.com/parcadei/continuous-claude/issues) — file a bug report
+- [Discussions](https://github.com/parcadei/continuous-claude/discussions) — ask questions
+- [Documentation](https://github.com/parcadei/continuous-claude/tree/main/docs) — detailed guides
+
+### How Do I Uninstall?
+
+```bash
+cd continuous-claude/opc
+uv run python -m scripts.setup.wizard --uninstall
+```
+
+This will:
+1. Archive your current setup (timestamped, nothing deleted)
+2. Restore your pre-installation backup
+3. Preserve your data:
+   - Command history
+   - API keys
+   - MCP servers
+   - Project configurations
+4. Remove Continuous Claude components (hooks, skills, agents, rules)
+
+Your Claude Code setup returns to exactly how it was before installation.
+
+### Do I Need API Keys?
+
+**Optional API keys** (features work without them):
+
+| Service | What It Does | Cost |
+|---------|--------------|------|
+| [Perplexity](https://www.perplexity.ai/settings/api) | AI-powered web search | $5/mo or pay-per-use |
+| [Nia](https://trynia.ai) | Library documentation search | Free tier available |
+| [Braintrust](https://braintrust.dev) | Session tracing and debugging | Free tier available |
+
+**Core features work without any keys:**
+- Continuity system (ledgers, handoffs, memory)
+- Code analysis (95% token savings)
+- All workflows (/build, /fix, /tdd, /refactor)
+- Local agents (scout, kraken, sleuth)
+- Git operations
+
+API keys unlock optional research features, not core functionality.
+
+### What About Privacy?
+
+**Data stored locally:**
+- Continuity ledgers (Markdown files in `thoughts/`)
+- Handoffs (YAML files in `thoughts/shared/`)
+- Code analysis cache (`.tldr/` directory)
+- PostgreSQL database (Docker container on your machine)
+
+**Data sent to Anthropic:**
+- Your prompts and Claude's responses (standard Claude usage)
+- Code you ask Claude to analyze (only what you share)
+
+**Data sent to third-party APIs (if you use them):**
+- Perplexity: Search queries only
+- Nia: Library names for documentation lookup
+- Braintrust: Session traces for debugging (opt-in)
+
+**No data leaves your machine** except what you explicitly share with Claude or optional third-party APIs.
+
+### Can I Use This with Existing Projects?
+
+**Yes.** After installation:
+
+```bash
+# Navigate to your project
+cd ~/my-project
+
+# Start Claude
+claude
+
+# Run onboarding
+> /onboard
+```
+
+The onboard agent will:
+1. Analyze your codebase structure
+2. Detect languages and frameworks
+3. Create an initial continuity ledger
+4. Build a semantic index for code search
+
+Then you can use all features (`/build`, `/fix`, etc.) with full context about your project.
+
+### How Does It Compare to X?
+
+**vs. GitHub Copilot:**
+- Copilot autocompletes as you type (editor-focused)
+- Continuous Claude orchestrates workflows (task-focused)
+- Use both together — they solve different problems
+
+**vs. Cursor:**
+- Cursor is an IDE with AI built in
+- Continuous Claude extends Claude Code (works in any terminal)
+- Similar multi-agent concepts, different execution
+
+**vs. Vanilla Claude Code:**
+- Claude Code gives you Claude in the terminal
+- Continuous Claude adds memory, agents, and workflows
+- Like upgrading from a chat interface to a development environment
+
+---
+
+## For Developers
+
+<details>
+<summary>Click to expand technical architecture, code analysis, and advanced features</summary>
+
+### Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -294,7 +692,7 @@ claude
 │                                                                     │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
 │  │   Skills    │    │   Agents    │    │    Hooks    │             │
-│  │   (109)     │───▶│    (32)     │◀───│    (30)     │             │
+│  │   (112)     │───▶│    (32)     │◀───│    (66)     │             │
 │  └─────────────┘    └─────────────┘    └─────────────┘             │
 │         │                  │                  │                     │
 │         ▼                  ▼                  ▼                     │
@@ -313,521 +711,112 @@ claude
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow: Session Lifecycle
+### The 5-Layer Code Analysis Stack
 
-```
-SessionStart                    Working                      SessionEnd
-    │                              │                             │
-    ▼                              ▼                             ▼
-┌─────────┐                  ┌─────────┐                   ┌─────────┐
-│  Load   │                  │  Track  │                   │  Save   │
-│ context │─────────────────▶│ changes │──────────────────▶│  state  │
-└─────────┘                  └─────────┘                   └─────────┘
-    │                              │                             │
-    ├── Continuity ledger          ├── File claims               ├── Handoff
-    ├── Memory recall              ├── TLDR indexing             ├── Learnings
-    └── Symbol index               └── Blackboard                └── Outcome
-                                         │
-                                         ▼
-                                    ┌─────────┐
-                                    │ /clear  │
-                                    │ Fresh   │
-                                    │ context │
-                                    └─────────┘
-```
+**Problem:** Reading a 1,000-line file costs ~23,000 tokens and provides mostly irrelevant details.
 
-### The Continuity Loop (Detailed)
+**Solution:** Extract 5 layers of structural information totaling ~1,200 tokens.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            THE CONTINUITY LOOP                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-  1. SESSION START                     2. WORKING
-  ┌────────────────────┐               ┌────────────────────┐
-  │                    │               │                    │
-  │  Ledger loaded ────┼──▶ Context    │  PostToolUse ──────┼──▶ Index handoffs
-  │  Handoff loaded    │               │  UserPrompt ───────┼──▶ Skill hints
-  │  Memory recalled   │               │  Edit tracking ────┼──▶ Dirty flag++
-  │  TLDR cache warmed │               │  SubagentStop ─────┼──▶ Agent reports
-  │                    │               │                    │
-  └────────────────────┘               └────────────────────┘
-           │                                    │
-           │                                    ▼
-           │                           ┌────────────────────┐
-           │                           │ 3. PRE-COMPACT     │
-           │                           │                    │
-           │                           │  Auto-handoff ─────┼──▶ thoughts/shared/
-           │                           │  (YAML format)     │    handoffs/*.yaml
-           │                           │  Dirty > 20? ──────┼──▶ TLDR re-index
-           │                           │                    │
-           │                           └────────────────────┘
-           │                                    │
-           │                                    ▼
-           │                           ┌────────────────────┐
-           │                           │ 4. SESSION END     │
-           │                           │                    │
-           │                           │  Stale heartbeat ──┼──▶ Daemon wakes
-           │                           │  Daemon spawns ────┼──▶ Headless Claude
-           │                           │  Thinking blocks ──┼──▶ archival_memory
-           │                           │                    │
-           │                           └────────────────────┘
-           │                                    │
-           │                                    │
-           └──────────────◀────── /clear ◀──────┘
-                          Fresh context + state preserved
-```
-
-### Workflow Chains
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           META-SKILL WORKFLOWS                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-  /fix bug                              /build greenfield
-  ─────────                             ─────────────────
-  ┌──────────┐  ┌──────────┐            ┌──────────┐  ┌──────────┐
-  │  sleuth  │─▶│ premortem│            │discovery │─▶│plan-agent│
-  │(diagnose)│  │  (risk)  │            │(clarify) │  │ (design) │
-  └──────────┘  └────┬─────┘            └──────────┘  └────┬─────┘
-                     │                                      │
-                     ▼                                      ▼
-              ┌──────────┐                          ┌──────────┐
-              │  kraken  │                          │ validate │
-              │  (fix)   │                          │ (check)  │
-              └────┬─────┘                          └────┬─────┘
-                   │                                      │
-                   ▼                                      ▼
-              ┌──────────┐                          ┌──────────┐
-              │  arbiter │                          │  kraken  │
-              │ (test)   │                          │(implement│
-              └────┬─────┘                          └────┬─────┘
-                   │                                      │
-                   ▼                                      ▼
-              ┌──────────┐                          ┌──────────┐
-              │  commit  │                          │  commit  │
-              └──────────┘                          └──────────┘
-
-
-  /tdd                                  /refactor
-  ────                                  ─────────
-  ┌──────────┐  ┌──────────┐            ┌──────────┐  ┌──────────┐
-  │plan-agent│─▶│  arbiter │            │ phoenix  │─▶│  warden  │
-  │ (design) │  │(tests 🔴)│            │(analyze) │  │ (review) │
-  └──────────┘  └────┬─────┘            └──────────┘  └────┬─────┘
-                     │                                      │
-                     ▼                                      ▼
-              ┌──────────┐                          ┌──────────┐
-              │  kraken  │                          │  kraken  │
-              │(code 🟢) │                          │(transform│
-              └────┬─────┘                          └────┬─────┘
-                   │                                      │
-                   ▼                                      ▼
-              ┌──────────┐                          ┌──────────┐
-              │  arbiter │                          │  judge   │
-              │(verify ✓)│                          │ (review) │
-              └──────────┘                          └──────────┘
-```
-
-### Data Layer Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DATA LAYER ARCHITECTURE                           │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  TLDR 5-LAYER CODE ANALYSIS              SEMANTIC INDEX                     │
-│  ┌────────────────────────┐              ┌────────────────────────┐         │
-│  │ L1: AST (~500 tok)     │              │ BGE-large-en-v1.5      │         │
-│  │     └── Functions,     │              │ ├── All 5 layers       │         │
-│  │         classes, sigs  │              │ ├── 10 lines context   │         │
-│  │                        │              │ └── FAISS index        │         │
-│  │ L2: Call Graph (+440)  │              │                        │         │
-│  │     └── Cross-file     │──────────────│ Query: "auth logic"    │         │
-│  │         dependencies   │              │ Returns: ranked funcs  │         │
-│  │                        │              └────────────────────────┘         │
-│  │ L3: CFG (+110 tok)     │                                                 │
-│  │     └── Control flow   │                                                 │
-│  │                        │              MEMORY (PostgreSQL+pgvector)       │
-│  │ L4: DFG (+130 tok)     │              ┌────────────────────────┐         │
-│  │     └── Data flow      │              │ sessions (heartbeat)   │         │
-│  │                        │              │ file_claims (locks)    │         │
-│  │ L5: PDG (+150 tok)     │              │ archival_memory (BGE)  │         │
-│  │     └── Slicing        │              │ handoffs (embeddings)  │         │
-│  └────────────────────────┘              └────────────────────────┘         │
-│         ~1,200 tokens                                                       │
-│         vs 23,000 raw                                                       │
-│         = 95% savings                    FILE SYSTEM                        │
-│                                          ┌────────────────────────┐         │
-│                                          │ thoughts/              │         │
-│                                          │ ├── ledgers/           │         │
-│                                          │ │   └── CONTINUITY_*.md│         │
-│                                          │ └── shared/            │         │
-│                                          │     ├── handoffs/*.yaml│         │
-│                                          │     └── plans/*.md     │         │
-│                                          │                        │         │
-│                                          │ .tldr/                 │         │
-│                                          │ └── (daemon cache)     │         │
-│                                          └────────────────────────┘         │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Core Systems
-
-### Skills System
-
-Skills are modular capabilities triggered by natural language. Located in `.claude/skills/`.
-
-#### Meta-Skills (Workflow Orchestrators)
-
-| Meta-Skill | Chain | Use When |
-|------------|-------|----------|
-| `/workflow` | Router → appropriate workflow | Don't know where to start |
-| `/build` | discovery → plan → validate → implement → commit | Building features |
-| `/fix` | sleuth → premortem → kraken → test → commit | Fixing bugs |
-| `/tdd` | plan → arbiter (tests) → kraken (implement) → arbiter | Test-first development |
-| `/refactor` | phoenix → plan → kraken → reviewer → arbiter | Safe code transformation |
-| `/review` | parallel specialized reviews → synthesis | Code review |
-| `/explore` | scout (quick/deep/architecture) | Understand codebase |
-| `/security` | vulnerability scan → verification | Security audits |
-| `/release` | audit → E2E → review → changelog | Ship releases |
-
-#### Meta-Skill Reference
-
-Each meta-skill supports modes, scopes, and flags. Type the skill alone (e.g., `/build`) to get an interactive question flow.
-
-**`/build <mode> [options] [description]`**
-
-| Mode | Chain | Use For |
-|------|-------|---------|
-| `greenfield` | discovery → plan → validate → implement → commit → PR | New feature from scratch |
-| `brownfield` | onboard → research → plan → validate → implement | Feature in existing codebase |
-| `tdd` | plan → test-first → implement | Test-driven development |
-| `refactor` | impact analysis → plan → TDD → implement | Safe refactoring |
-
-| Option | Effect |
-|--------|--------|
-| `--skip-discovery` | Skip interview phase (have clear spec) |
-| `--skip-validate` | Skip plan validation |
-| `--skip-commit` | Don't auto-commit |
-| `--skip-pr` | Don't create PR description |
-| `--parallel` | Run research agents in parallel |
-
-**`/fix <scope> [options] [description]`**
-
-| Scope | Chain | Use For |
-|-------|-------|---------|
-| `bug` | debug → implement → test → commit | General bug fix |
-| `hook` | debug-hooks → hook-developer → implement → test | Hook issues |
-| `deps` | preflight → oracle → plan → implement → qlty | Dependency errors |
-| `pr-comments` | github-search → research → plan → implement → commit | PR feedback |
-
-| Option | Effect |
-|--------|--------|
-| `--no-test` | Skip regression test |
-| `--dry-run` | Diagnose only, don't fix |
-| `--no-commit` | Don't auto-commit |
-
-**`/explore <depth> [options]`**
-
-| Depth | Time | What It Does |
-|-------|------|--------------|
-| `quick` | ~1 min | tldr tree + structure overview |
-| `deep` | ~5 min | onboard + tldr + research + documentation |
-| `architecture` | ~3 min | tldr arch + call graph + layers |
-
-| Option | Effect |
-|--------|--------|
-| `--focus "area"` | Focus on specific area (e.g., `--focus "auth"`) |
-| `--output handoff` | Create handoff for implementation |
-| `--output doc` | Create documentation file |
-| `--entry "func"` | Start from specific entry point |
-
-**`/tdd`, `/refactor`, `/review`, `/security`, `/release`**
-
-These follow their defined chains without mode flags. Just run:
-```
-/tdd "implement retry logic"
-/refactor "extract auth module"
-/review                           # reviews current changes
-/security "authentication code"
-/release v1.2.0
-```
-
-#### Key Skills (High-Value Tools)
-
-**Planning & Risk**
-- **premortem**: TIGERS & ELEPHANTS risk analysis - use before any significant implementation
-- **discovery-interview**: Transform vague ideas into detailed specs
-
-**Context Management**
-- **create_handoff**: Capture session state for transfer
-- **resume_handoff**: Resume from handoff with context
-- **continuity_ledger**: Track state within session
-
-**Code Analysis (95% Token Savings)**
-- **tldr-code**: Call graph, CFG, DFG, slicing
-- **ast-grep-find**: Structural code search
-- **morph-search**: Fast text search (20x faster than grep)
-
-**Research**
-- **perplexity-search**: AI-powered web search
-- **nia-docs**: Library documentation search
-- **github-search**: Search GitHub code/issues/PRs
-
-**Quality**
-- **qlty-check**: 70+ linters, auto-fix
-- **braintrust-analyze**: Session analysis, replay, and debugging failed sessions
-
-**Math & Formal Proofs**
-- **math**: Unified computation (SymPy, Z3, Pint) — one entry point for all math
-- **prove**: Lean4 theorem proving with 5-phase workflow (Research → Design → Test → Implement → Verify)
-- **pint-compute**: Unit-aware arithmetic and conversions
-- **shapely-compute**: Computational geometry
-
-The `/prove` skill enables machine-verified proofs without learning Lean syntax. Used to create the first Lean formalization of Sylvester-Gallai theorem.
-
-#### The Thought Process
-
-```
-What do I want to do?
-├── Don't know → /workflow (guided router)
-├── Building → /build greenfield or brownfield
-├── Fixing → /fix bug
-├── Understanding → /explore
-├── Planning → premortem first, then plan-agent
-├── Researching → oracle or perplexity-search
-├── Reviewing → /review
-├── Proving → /prove (Lean4 formal verification)
-├── Computing → /math (SymPy, Z3, Pint)
-└── Shipping → /release
-```
-
-[See detailed skills breakdown →](docs/skills/)
-
----
-
-### Agents System
-
-Agents are specialized AI workers spawned via the Task tool. Located in `.claude/agents/`.
-
-#### Agent Categories (32 active)
-
-> **Note:** There are likely too many agents—consolidation is a v4 goal. Use what fits your workflow.
-
-**Orchestrators (2)**
-- **maestro**: Multi-agent coordination with patterns (Pipeline, Swarm, Jury)
-- **kraken**: TDD implementation agent with checkpoint/resume support
-
-**Planners (4)**
-- **architect**: Feature planning + API integration
-- **phoenix**: Refactoring + framework migration planning
-- **plan-agent**: Lightweight planning with research/MCP tools
-- **validate-agent**: Validate plans against best practices
-
-**Explorers (4)**
-- **scout**: Codebase exploration (use instead of Explore)
-- **oracle**: External research (web, docs, APIs)
-- **pathfinder**: External repository analysis
-- **research-codebase**: Document codebase as-is
-
-**Implementers (3)**
-- **kraken**: TDD implementation with strict test-first workflow
-- **spark**: Lightweight fixes and quick tweaks
-- **agentica-agent**: Build Python agents using Agentica SDK
-
-**Debuggers (3)**
-- **sleuth**: General bug investigation and root cause
-- **debug-agent**: Issue investigation via logs/code search
-- **profiler**: Performance profiling and race conditions
-
-**Validators (2)** - arbiter, atlas
-
-**Reviewers (6)** - critic, judge, surveyor, liaison, plan-reviewer, review-agent
-
-**Specialized (8)** - aegis, herald, scribe, chronicler, session-analyst, braintrust-analyst, memory-extractor, onboard
-
-#### Common Workflows
-
-| Workflow | Agent Chain |
-|----------|-------------|
-| Feature | architect → plan-reviewer → kraken → review-agent → arbiter |
-| Refactoring | phoenix → plan-reviewer → kraken → judge → arbiter |
-| Bug Fix | sleuth → spark/kraken → arbiter → scribe |
-
-[See detailed agent guide →](docs/agents/)
-
----
-
-### Hooks System
-
-Hooks intercept Claude Code at lifecycle points. Located in `.claude/hooks/`.
-
-#### Hook Events (30 hooks total)
-
-| Event | Key Hooks | Purpose |
-|-------|-----------|---------|
-| **SessionStart** | session-start-continuity, session-register, braintrust-tracing | Load context, register session |
-| **PreToolUse** | tldr-read-enforcer, smart-search-router, tldr-context-inject, file-claims | Token savings, search routing |
-| **PostToolUse** | post-edit-diagnostics, handoff-index, post-edit-notify | Validation, indexing |
-| **PreCompact** | pre-compact-continuity | Auto-save before compaction |
-| **UserPromptSubmit** | skill-activation-prompt, memory-awareness | Skill hints, memory recall |
-| **SubagentStop** | subagent-stop-continuity | Save agent state |
-| **SessionEnd** | session-end-cleanup, session-outcome | Cleanup, extract learnings |
-
-#### Key Hooks
-
-| Hook | Purpose |
-|------|---------|
-| **tldr-context-inject** | Adds code analysis to agent prompts |
-| **smart-search-router** | Routes grep to AST-grep when appropriate |
-| **post-edit-diagnostics** | Runs pyright/ruff after edits |
-| **memory-awareness** | Surfaces relevant learnings |
-
-[See all 30 hooks →](docs/hooks/)
-
----
-
-### TLDR Code Analysis
-
-TLDR provides token-efficient code summaries through 5 analysis layers.
-
-#### The 5-Layer Stack
-
-| Layer | Name | What it provides | Tokens |
+| Layer | Name | What It Provides | Tokens |
 |-------|------|------------------|--------|
-| **L1** | AST | Functions, classes, signatures | ~500 tokens |
-| **L2** | Call Graph | Who calls what (cross-file) | +440 tokens |
-| **L3** | CFG | Control flow, complexity | +110 tokens |
-| **L4** | DFG | Data flow, variable tracking | +130 tokens |
-| **L5** | PDG | Program slicing, impact analysis | +150 tokens |
+| **L1** | AST | Functions, classes, signatures | ~500 |
+| **L2** | Call Graph | Who calls what (cross-file) | +440 |
+| **L3** | CFG | Control flow, complexity | +110 |
+| **L4** | DFG | Data flow, variable tracking | +130 |
+| **L5** | PDG | Program slicing, impact analysis | +150 |
 
-**Total: ~1,200 tokens vs 23,000 raw = 95% savings**
+**Total: ~1,200 tokens vs. 23,000 raw = 95% savings**
 
-#### CLI Commands
+**CLI Examples:**
 
 ```bash
-# Structure analysis
-tldr tree src/                      # File tree
-tldr structure src/ --lang python   # Code structure (codemaps)
+# See what exists without reading files
+tldr tree src/ --ext .py
 
-# Search and extraction
-tldr search "process_data" src/     # Find code
-tldr context process_data --project src/ --depth 2  # LLM-ready context
+# Find code structurally, not textually
+tldr search "process_data" src/
 
-# Flow analysis
-tldr cfg src/main.py main           # Control flow graph
-tldr dfg src/main.py main           # Data flow graph
-tldr slice src/main.py main 42      # What affects line 42?
+# Get context for implementation
+tldr context process_data --project src/ --depth 2
 
-# Codebase analysis
-tldr impact process_data src/       # Who calls this function?
-tldr dead src/                      # Find unreachable code
-tldr arch src/                      # Detect architectural layers
+# Understand control flow
+tldr cfg src/processor.py process_data
 
-# Semantic search (natural language)
+# Impact analysis before refactoring
+tldr impact process_data src/ --depth 3
+
+# Find dead code for cleanup
+tldr dead src/ --entry main cli
+
+# Detect architectural layers
+tldr arch src/
+```
+
+### Semantic Index
+
+Beyond structural analysis, TLDR builds a semantic index:
+
+- **Natural language queries** — "where is error handling?" instead of grepping
+- **Auto-rebuild** — Hooks track file changes, index rebuilds when dirty
+- **Selective indexing** — `.tldrignore` controls what gets indexed
+
+```bash
+# Natural language search
 tldr daemon semantic "find authentication logic"
 ```
 
-#### Semantic Index
+The index uses all 5 layers plus 10 lines of surrounding code — not just docstrings.
 
-Beyond structural analysis, TLDR builds a **semantic index** of your codebase:
+### Memory System Architecture
 
-- **Natural language queries** — Ask "where is error handling?" instead of grepping
-- **Auto-rebuild** — Dirty flag hook tracks file changes; index rebuilds after N edits
-- **Selective indexing** — Use `.tldrignore` to control what gets indexed
-
-```bash
-# .tldrignore example
-__pycache__/
-*.test.py
-node_modules/
-.venv/
-```
-
-The semantic index uses all 5 layers plus 10 lines of surrounding code context—not just docstrings.
-
-#### Hook Integration
-
-TLDR is automatically integrated via hooks:
-
-- **tldr-read-enforcer**: Returns L1+L2+L3 instead of full file reads
-- **smart-search-router**: Routes Grep to `tldr search`
-- **post-tool-use-tracker**: Updates indexes when files change
-
-[See TLDR documentation →](opc/packages/tldr-code/)
-
----
-
-### Memory System
-
-Cross-session learning powered by PostgreSQL + pgvector.
-
-#### How It Works
+**How it works:**
 
 ```
 Session ends → Database detects stale heartbeat (>5 min)
             → Daemon spawns headless Claude (Sonnet)
             → Analyzes thinking blocks from session
             → Extracts learnings to archival_memory
-            → Next session recalls relevant learnings
+            → Next session recalls via semantic search
 ```
 
-The key insight: **thinking blocks contain the real reasoning**—not just what Claude did, but why. The daemon extracts this automatically.
+**Key insight:** Thinking blocks contain real reasoning (not just actions). The daemon extracts this automatically.
 
-#### Conversational Interface
-
-| What You Say | What Happens |
-|--------------|--------------|
-| "Remember that auth uses JWT" | Stores learning with context |
-| "Recall authentication patterns" | Searches memory, surfaces matches |
-| "What did we decide about X?" | Implicit recall via memory-awareness hook |
-
-#### Database Schema (4 tables)
+**Database schema (4 tables):**
 
 | Table | Purpose |
 |-------|---------|
-| **sessions** | Cross-terminal awareness |
-| **file_claims** | Cross-terminal file locking |
-| **archival_memory** | Long-term learnings with BGE embeddings |
-| **handoffs** | Session handoffs with embeddings |
+| `sessions` | Cross-terminal awareness (heartbeat tracking) |
+| `file_claims` | Cross-terminal file locking |
+| `archival_memory` | Long-term learnings with BGE embeddings (1024-dim) |
+| `handoffs` | Session handoffs with embeddings |
 
-#### Recall Commands
+**Recall examples:**
 
 ```bash
-# Recall learnings (hybrid text + vector search)
-cd opc && uv run python scripts/core/recall_learnings.py \
-    --query "authentication patterns"
+# Hybrid search (text + vector, RRF ranking)
+cd continuous-claude/opc
+uv run python scripts/core/recall_learnings.py --query "authentication patterns"
 
 # Store a learning explicitly
-cd opc && uv run python scripts/core/store_learning.py \
+cd continuous-claude/opc
+uv run python scripts/core/store_learning.py \
     --session-id "my-session" \
     --type WORKING_SOLUTION \
     --content "What I learned" \
+    --context "Relevant context" \
+    --tags "auth,jwt,security" \
     --confidence high
 ```
 
-#### Automatic Memory
-
-The **memory-awareness** hook surfaces relevant learnings when you send a message. You'll see `MEMORY MATCH` indicators—Claude can use these without you asking.
-
----
-
 ### Continuity System
 
-Preserve state across context clears and sessions.
+**Ledgers (within-session):** Track state during work
 
-#### Continuity Ledger
-
-Within-session state tracking. Location: `thoughts/ledgers/CONTINUITY_<topic>.md`
+Location: `thoughts/ledgers/CONTINUITY_<topic>.md`
 
 ```markdown
 # Session: feature-x
-Updated: 2026-01-08
+Updated: 2026-01-23
 
 ## Goal
 Implement feature X with proper error handling
@@ -843,20 +832,20 @@ Implement feature X with proper error handling
 - Need clarification on retry policy
 ```
 
-#### Handoffs
+**Handoffs (between-session):** Transfer knowledge between sessions
 
-Between-session knowledge transfer. Location: `thoughts/shared/handoffs/<session>/`
+Location: `thoughts/shared/handoffs/<session>/current.yaml`
 
 ```yaml
 ---
-date: 2026-01-08T15:26:01+0000
+date: 2026-01-23T15:26:01+0000
 session_name: feature-x
 status: complete
 ---
 
 # Handoff: Feature X Implementation
 
-## Task(s)
+## Tasks
 | Task | Status |
 |------|--------|
 | Design API | Completed |
@@ -868,357 +857,81 @@ status: complete
 2. Write integration tests
 ```
 
-#### Commands
+### Workflow Examples
 
-| Command | Effect |
-|---------|--------|
-| "save state" | Updates continuity ledger |
-| "done for today" / `/handoff` | Creates handoff document |
-| "resume work" | Loads latest handoff |
-
----
-
-### Math System
-
-Two capabilities: **computation** (SymPy, Z3, Pint) and **formal verification** (Lean4 + Mathlib).
-
-#### The Stack
-
-| Tool | Purpose | Example |
-|------|---------|---------|
-| **SymPy** | Symbolic math | Solve equations, integrals, matrix operations |
-| **Z3** | Constraint solving | Prove inequalities, SAT problems |
-| **Pint** | Unit conversion | Convert miles to km, dimensional analysis |
-| **Lean4** | Formal proofs | Machine-verified theorems |
-| **Mathlib** | 100K+ theorems | Pre-formalized lemmas to build on |
-| **Loogle** | Type-aware search | Find Mathlib lemmas by signature |
-
-#### Two Entry Points
-
-| Skill | Use When |
-|-------|----------|
-| `/math` | Computing, solving, calculating |
-| `/prove` | Formal verification, machine-checked proofs |
-
-#### /math Examples
-
-```bash
-# Solve equation
-"Solve x² - 4 = 0"  →  x = ±2
-
-# Compute eigenvalues
-"Eigenvalues of [[2,1],[1,2]]"  →  {1: 1, 3: 1}
-
-# Prove inequality
-"Is x² + y² ≥ 2xy always true?"  →  PROVED (equals (x-y)²)
-
-# Convert units
-"26.2 miles to km"  →  42.16 km
-```
-
-#### /prove - Formal Verification
-
-5-phase workflow for machine-verified proofs:
+**Test-Driven Development:**
 
 ```
-📚 RESEARCH → 🏗️ DESIGN → 🧪 TEST → ⚙️ IMPLEMENT → ✅ VERIFY
+> /tdd "implement retry logic with exponential backoff"
+
+Chain:
+  1. plan-agent → designs test cases
+  2. arbiter → writes failing tests (🔴)
+  3. kraken → implements until tests pass (🟢)
+  4. arbiter → verifies all tests pass (✓)
+  5. commit → descriptive commit message
 ```
 
-1. **Research**: Search Mathlib with Loogle, find proof strategy
-2. **Design**: Create skeleton with `sorry` placeholders
-3. **Test**: Search for counterexamples before proving
-4. **Implement**: Fill sorries with compiler-in-the-loop feedback
-5. **Verify**: Audit axioms, confirm zero sorries
+**Safe Refactoring:**
 
 ```
-/prove every group homomorphism preserves identity
-/prove continuous functions on compact sets are uniformly continuous
+> /refactor "extract auth module"
+
+Chain:
+  1. phoenix → analyzes dependencies
+  2. plan-reviewer → validates approach
+  3. kraken → transforms code (TDD)
+  4. judge → reviews changes
+  5. arbiter → runs full test suite
 ```
 
-**Achievement**: Used to create the first Lean formalization of the Sylvester-Gallai theorem.
-
-#### Prerequisites (Optional)
-
-Math features require installation via wizard step 9:
-
-```bash
-# Installed automatically by wizard
-uv pip install sympy z3-solver pint shapely
-
-# Lean4 (for /prove)
-curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
-```
-
----
-
-## Workflows
-
-### /workflow - Goal-Based Router
+**Formal Verification:**
 
 ```
-> /workflow
+> /prove "every group homomorphism preserves identity"
 
-? What's your goal?
-  ○ Research - Understand codebase/docs
-  ○ Plan - Design implementation approach
-  ○ Build - Implement features
-  ○ Fix - Investigate and resolve issues
+5-Phase Workflow:
+  📚 RESEARCH → Find Mathlib lemmas, proof strategies
+  🏗️ DESIGN → Create skeleton with sorry placeholders
+  🧪 TEST → Search for counterexamples
+  ⚙️ IMPLEMENT → Fill sorries with compiler feedback
+  ✅ VERIFY → Audit axioms, confirm zero sorries
 ```
 
-### /fix - Bug Resolution
+### Hook Integration Points
 
-```bash
-/fix bug "login fails silently"
-```
-
-**Chain:** sleuth → [checkpoint] → [premortem] → kraken → test → commit
-
-| Scope | What it does |
-|-------|--------------|
-| `bug` | General bug investigation |
-| `hook` | Hook-specific debugging |
-| `deps` | Dependency issues |
-| `pr-comments` | Address PR feedback |
-
-### /build - Feature Development
-
-```bash
-/build greenfield "user dashboard"
-```
-
-**Chain:** discovery → plan → validate → implement → commit → PR
-
-| Mode | What it does |
-|------|--------------|
-| `greenfield` | New feature from scratch |
-| `brownfield` | Modify existing codebase |
-| `tdd` | Test-first development |
-| `refactor` | Safe code transformation |
-
-### /premortem - Risk Analysis
-
-```bash
-/premortem deep thoughts/shared/plans/feature-x.md
-```
-
-**Output:**
-- **TIGERS**: Clear threats (HIGH/MEDIUM/LOW severity)
-- **ELEPHANTS**: Unspoken concerns
-
-Blocks on HIGH severity until user accepts/mitigates risks.
-
----
-
-## Installation
-
-### Full Installation (Recommended)
-
-```bash
-# Clone
-git clone https://github.com/parcadei/continuous-claude.git
-cd continuous-claude/opc
-
-# Run the setup wizard
-uv run python -m scripts.setup.wizard
-```
-
-The wizard walks you through all configuration options interactively.
-
-## Updating
-
-Pull latest changes and sync your installation:
-
-```bash
-cd continuous-claude/opc
-uv run python -m scripts.setup.update
-```
-
-This will:
-- Pull latest from GitHub
-- Update hooks, skills, rules, agents
-- Upgrade TLDR if installed
-- Rebuild TypeScript hooks if changed
-
-### What Gets Installed
-
-| Component | Location |
-|-----------|----------|
-| Agents (32) | ~/.claude/agents/ |
-| Skills (109) | ~/.claude/skills/ |
-| Hooks (30) | ~/.claude/hooks/ |
-| Rules | ~/.claude/rules/ |
-| Scripts | ~/.claude/scripts/ |
-| PostgreSQL | Docker container |
-
-### Installation Mode: Copy vs Symlink
-
-The wizard offers two installation modes:
-
-| Mode | How It Works | Best For |
-|------|--------------|----------|
-| **Copy** (default) | Copies files from repo to `~/.claude/` | End users, stable setup |
-| **Symlink** | Creates symlinks to repo files | Contributors, development |
-
-#### Copy Mode (Default)
-
-Files are copied from `continuous-claude/.claude/` to `~/.claude/`. Changes you make in `~/.claude/` are **local only** and will be overwritten on next update.
-
-```text
-continuous-claude/.claude/  ──COPY──>  ~/.claude/
-     (source)                          (user config)
-```
-
-**Pros:** Stable, isolated from repo changes
-**Cons:** Local changes lost on update, manual sync needed
-
-#### Symlink Mode (Recommended for Contributors)
-
-Creates symlinks so `~/.claude/` points directly to repo files. Changes in either location affect the same files.
-
-```text
-~/.claude/rules  ──SYMLINK──>  continuous-claude/.claude/rules
-~/.claude/skills ──SYMLINK──>  continuous-claude/.claude/skills
-~/.claude/hooks  ──SYMLINK──>  continuous-claude/.claude/hooks
-~/.claude/agents ──SYMLINK──>  continuous-claude/.claude/agents
-```
-
-**Pros:**
-- Changes auto-sync to repo (can `git commit` improvements)
-- No re-installation needed after `git pull`
-- Contribute back easily
-
-**Cons:**
-- Breaking changes in repo affect your setup immediately
-- Need to manage git workflow
-
-#### Switching to Symlink Mode
-
-If you installed with copy mode and want to switch:
-
-```bash
-# Backup current config
-mkdir -p ~/.claude/backups/$(date +%Y%m%d)
-cp -r ~/.claude/{rules,skills,hooks,agents} ~/.claude/backups/$(date +%Y%m%d)/
-
-# Verify backup succeeded before proceeding
-ls -la ~/.claude/backups/$(date +%Y%m%d)/
-
-# Remove copies (only after verifying backup above)
-rm -rf ~/.claude/{rules,skills,hooks,agents}
-
-# Create symlinks (adjust path to your repo location)
-REPO="$HOME/continuous-claude"  # or wherever you cloned
-ln -s "$REPO/.claude/rules" ~/.claude/rules
-ln -s "$REPO/.claude/skills" ~/.claude/skills
-ln -s "$REPO/.claude/hooks" ~/.claude/hooks
-ln -s "$REPO/.claude/agents" ~/.claude/agents
-
-# Verify
-ls -la ~/.claude | grep -E "rules|skills|hooks|agents"
-```
-
-**Windows users:** Use PowerShell (as Administrator or with Developer Mode enabled):
-
-```powershell
-# Enable Developer Mode first (Settings → Privacy & security → For developers)
-# Or run PowerShell as Administrator
-
-# Backup current config
-$BackupDir = "$HOME\.claude\backups\$(Get-Date -Format 'yyyyMMdd')"
-New-Item -ItemType Directory -Path $BackupDir -Force
-Copy-Item -Recurse "$HOME\.claude\rules","$HOME\.claude\skills","$HOME\.claude\hooks","$HOME\.claude\agents" $BackupDir
-
-# Verify backup succeeded before proceeding
-Get-ChildItem $BackupDir
-
-# Remove copies (only after verifying backup above)
-Remove-Item -Recurse "$HOME\.claude\rules","$HOME\.claude\skills","$HOME\.claude\hooks","$HOME\.claude\agents"
-
-# Create symlinks (adjust path to your repo location)
-$REPO = "$HOME\continuous-claude"  # or wherever you cloned
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\rules" -Target "$REPO\.claude\rules"
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills" -Target "$REPO\.claude\skills"
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\hooks" -Target "$REPO\.claude\hooks"
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\agents" -Target "$REPO\.claude\agents"
-
-# Verify
-Get-ChildItem "$HOME\.claude" | Where-Object { $_.LinkType -eq "SymbolicLink" }
-```
-
-### For Brownfield Projects
-
-After installation, start Claude and run:
-```
-> /onboard
-```
-
-This analyzes the codebase and creates an initial continuity ledger.
-
----
-
-## Configuration
-
-### .claude/settings.json
-
-Central configuration for hooks, tools, and workflows.
-
-```json
-{
-  "hooks": {
-    "SessionStart": [...],
-    "PreToolUse": [...],
-    "PostToolUse": [...],
-    "UserPromptSubmit": [...]
-  }
-}
-```
-
-### .claude/skills/skill-rules.json
-
-Skill activation triggers.
-
-```json
-{
-  "rules": [
-    {
-      "skill": "fix",
-      "keywords": ["fix this", "broken", "not working"],
-      "intentPatterns": ["fix.*(bug|issue|error)"]
-    }
-  ]
-}
-```
+| Event | Key Hooks | What They Do |
+|-------|-----------|--------------|
+| **SessionStart** | session-start-continuity, session-register | Load ledger, register in DB |
+| **PreToolUse** | tldr-read-enforcer, smart-search-router | Token savings, route searches |
+| **PostToolUse** | post-edit-diagnostics, handoff-index | Type check, update indexes |
+| **PreCompact** | pre-compact-continuity | Auto-save before context clears |
+| **UserPromptSubmit** | skill-activation-prompt, memory-awareness | Suggest skills, recall learnings |
+| **SubagentStop** | subagent-stop-continuity | Save agent state |
+| **SessionEnd** | session-end-cleanup, session-outcome | Extract learnings, cleanup |
 
 ### Environment Variables
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
+| `CONTINUOUS_CLAUDE_DB_URL` | PostgreSQL connection | Yes (wizard sets) |
+| `CLAUDE_OPC_DIR` | Path to opc/ directory | Yes (wizard sets) |
+| `CLAUDE_PROJECT_DIR` | Current project root | Yes (hook sets) |
 | `BRAINTRUST_API_KEY` | Session tracing | No |
 | `PERPLEXITY_API_KEY` | Web search | No |
 | `NIA_API_KEY` | Documentation search | No |
-| `CLAUDE_OPC_DIR` | Path to CC's opc/ directory (set by wizard) | Auto |
-| `CLAUDE_PROJECT_DIR` | Current project directory (set by SessionStart hook) | Auto |
 
-Services without API keys still work:
-- Continuity system (ledgers, handoffs)
-- TLDR code analysis
-- Local git operations
-- TDD workflow
-
----
-
-## Directory Structure
+### Directory Structure
 
 ```
 continuous-claude/
 ├── .claude/
 │   ├── agents/           # 32 specialized AI agents
-│   ├── hooks/            # 30 lifecycle hooks
+│   ├── hooks/            # 66 lifecycle hooks
 │   │   ├── src/          # TypeScript source
 │   │   └── dist/         # Compiled JavaScript
-│   ├── skills/           # 109 modular capabilities
-│   ├── rules/            # System policies
+│   ├── skills/           # 112 modular capabilities
+│   ├── rules/            # 12 system policies
 │   ├── scripts/          # Python utilities
 │   └── settings.json     # Hook configuration
 ├── opc/
@@ -1237,16 +950,85 @@ continuous-claude/
 └── docs/                 # Documentation
 ```
 
----
+### Remote Database Setup
 
-## Contributing
+For production or team setups, use a remote PostgreSQL instance:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+```bash
+# 1. Enable pgvector extension (requires superuser)
+psql -h hostname -U user -d continuous_claude
+CREATE EXTENSION IF NOT EXISTS vector;
 
-- Adding new skills
+# 2. Apply schema
+psql -h hostname -U user -d continuous_claude -f docker/init-schema.sql
+
+# 3. Configure connection
+# In ~/.claude/settings.json:
+{
+  "env": {
+    "CONTINUOUS_CLAUDE_DB_URL": "postgresql://user:password@hostname:5432/continuous_claude"
+  }
+}
+```
+
+**Managed PostgreSQL tips:**
+- **AWS RDS:** Add `vector` to `shared_preload_libraries` in Parameter Group
+- **Supabase:** Enable via Database Extensions page
+- **Azure:** Use Extensions pane to enable pgvector
+
+### Installation Modes
+
+| Mode | How It Works | Best For |
+|------|--------------|----------|
+| **Copy** (default) | Copies files to `~/.claude/` | End users, stable setup |
+| **Symlink** | Links `~/.claude/` to repo | Contributors, development |
+
+**Switching to symlink mode:**
+
+```bash
+# Backup current config
+mkdir -p ~/.claude/backups/$(date +%Y%m%d)
+cp -r ~/.claude/{rules,skills,hooks,agents} ~/.claude/backups/$(date +%Y%m%d)/
+
+# Remove copies
+rm -rf ~/.claude/{rules,skills,hooks,agents}
+
+# Create symlinks
+REPO="$HOME/continuous-claude"
+ln -s "$REPO/.claude/rules" ~/.claude/rules
+ln -s "$REPO/.claude/skills" ~/.claude/skills
+ln -s "$REPO/.claude/hooks" ~/.claude/hooks
+ln -s "$REPO/.claude/agents" ~/.claude/agents
+
+# Verify
+ls -la ~/.claude | grep -E "rules|skills|hooks|agents"
+```
+
+### Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Adding skills
 - Creating agents
 - Developing hooks
 - Extending TLDR
+- Testing workflows
+
+</details>
+
+---
+
+## What's Next?
+
+After installation, try these in order:
+
+1. **First workflow:** `/workflow` → Pick "Research" → "Understand codebase"
+2. **Save state:** "Done for today" → Creates handoff automatically
+3. **Resume:** Next session, "Resume work" → Loads handoff
+4. **Build something:** `/build greenfield "describe feature"`
+5. **Fix something:** `/fix bug "describe problem"`
+6. **Risk analysis:** `/premortem` → See what could go wrong before implementing
+
+The system learns from each session. The more you use it, the smarter it gets.
 
 ---
 
@@ -1254,28 +1036,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
 ### Patterns & Architecture
 - **[@numman-ali](https://github.com/numman-ali)** - Continuity ledger pattern
-- **[Anthropic](https://anthropic.com)** - Claude Code and "Code Execution with MCP"
+- **[Anthropic](https://anthropic.com)** - Claude Code
 - **[obra/superpowers](https://github.com/obra/superpowers)** - Agent orchestration patterns
 - **[EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin)** - Compound engineering workflow
-- **[yoloshii/mcp-code-execution-enhanced](https://github.com/yoloshii/mcp-code-execution-enhanced)** - Enhanced MCP execution
-- **[HumanLayer](https://github.com/humanlayer/humanlayer)** - Agent patterns
 
 ### Tools & Services
 - **[uv](https://github.com/astral-sh/uv)** - Python packaging
 - **[tree-sitter](https://tree-sitter.github.io/)** - Code parsing
-- **[Braintrust](https://braintrust.dev)** - LLM evaluation, logging, and session tracing
-- **[qlty](https://github.com/qltysh/qlty)** - Universal code quality CLI (70+ linters)
-- **[ast-grep](https://github.com/ast-grep/ast-grep)** - AST-based code search and refactoring
+- **[Braintrust](https://braintrust.dev)** - LLM tracing and evaluation
+- **[qlty](https://github.com/qltysh/qlty)** - Universal code quality (70+ linters)
+- **[ast-grep](https://github.com/ast-grep/ast-grep)** - AST-based code search
 - **[Nia](https://trynia.ai)** - Library documentation search
-- **[Morph](https://www.morphllm.com)** - WarpGrep fast code search
+- **[Morph](https://www.morphllm.com)** - Fast code search
 - **[Firecrawl](https://www.firecrawl.dev)** - Web scraping API
-- **[RepoPrompt](https://repoprompt.com)** - Token-efficient codebase maps
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=parcadei/Continuous-Claude-v2&type=timeline)](https://star-history.com/#parcadei/Continuous-Claude-v2&Date)
 
 ---
 
@@ -1285,4 +1058,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
 ---
 
-**Continuous Claude**: Not just a coding assistant—a persistent, learning, multi-agent development environment that gets smarter with every session.
+**Continuous Claude**: Not just a coding assistant — a persistent, learning, multi-agent development environment that gets smarter with every session.
