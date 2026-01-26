@@ -175,8 +175,9 @@ STEP 3: Configure (Optional)
 # Custom LMStudio endpoint (if not using default port)
 export LMSTUDIO_BASE_URL=http://127.0.0.1:5000
 
-# Add to your shell profile for persistence:
-echo 'export LMSTUDIO_BASE_URL=http://127.0.0.1:1234' >> ~/.zshrc
+# Add to your shell profile for persistence (.zshrc, .bashrc, or config.fish):
+# For zsh/bash: echo 'export LMSTUDIO_BASE_URL=http://127.0.0.1:1234' >> ~/.zshrc
+# For fish:     set -gx LMSTUDIO_BASE_URL http://127.0.0.1:1234 (add to config.fish)
 
 
 HOW IT WORKS

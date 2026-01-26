@@ -506,6 +506,25 @@ def generate_env_file(config: dict[str, Any], env_path: Path) -> None:
     env_path.write_text("\n".join(lines))
 
 
+def get_shell_config() -> tuple[Path | None, str]:
+    """Get the shell config path and type based on current SHELL.
+
+    Returns:
+        tuple: (config_path, shell_type)
+    """
+    shell = os.environ.get("SHELL", "").lower()
+
+    if "zsh" in shell:
+        return Path.home() / ".zshrc", "zsh"
+    if "fish" in shell:
+        # Standard location for fish config
+        return Path.home() / ".config" / "fish" / "config.fish", "fish"
+    if "bash" in shell:
+        return Path.home() / ".bashrc", "bash"
+
+    return None, "unknown"
+
+
 async def run_setup_wizard() -> None:
     """Run the interactive setup wizard.
 
@@ -838,17 +857,16 @@ async def run_setup_wizard() -> None:
 
     # Set CLAUDE_OPC_DIR environment variable for skills to find scripts
     console.print("  Setting CLAUDE_OPC_DIR environment variable...")
-    shell_config = None
-    shell = os.environ.get("SHELL", "")
-    if "zsh" in shell:
-        shell_config = Path.home() / ".zshrc"
-    elif "bash" in shell:
-        shell_config = Path.home() / ".bashrc"
+    shell_config, shell_type = get_shell_config()
 
     opc_dir = _project_root  # Use script location, not cwd (robust if invoked from elsewhere)
     if shell_config and shell_config.exists():
         content = shell_config.read_text()
-        export_line = f'export CLAUDE_OPC_DIR="{opc_dir}"'
+        if shell_type == "fish":
+            export_line = f'set -gx CLAUDE_OPC_DIR "{opc_dir}"'
+        else:
+            export_line = f'export CLAUDE_OPC_DIR="{opc_dir}"'
+
         if "CLAUDE_OPC_DIR" not in content:
             with open(shell_config, "a") as f:
                 f.write(f"\n# Continuous-Claude OPC directory (for skills to find scripts)\n{export_line}\n")
@@ -1207,18 +1225,15 @@ async def run_setup_wizard() -> None:
 
             # Set LOOGLE_HOME environment variable
             console.print("  Setting LOOGLE_HOME environment variable...")
-            shell_config = None
-            shell = os.environ.get("SHELL", "")
-            if "zsh" in shell:
-                shell_config = Path.home() / ".zshrc"
-            elif "bash" in shell:
-                shell_config = Path.home() / ".bashrc"
-            elif sys.platform == "win32":
-                shell_config = None  # Windows uses different mechanism
+            shell_config, shell_type = get_shell_config()
 
             if shell_config and shell_config.exists():
                 content = shell_config.read_text()
-                export_line = f'export LOOGLE_HOME="{loogle_home}"'
+                if shell_type == "fish":
+                    export_line = f'set -gx LOOGLE_HOME "{loogle_home}"'
+                else:
+                    export_line = f'export LOOGLE_HOME="{loogle_home}"'
+
                 if "LOOGLE_HOME" not in content:
                     with open(shell_config, "a") as f:
                         f.write(f"\n# Loogle (Lean 4 type search)\n{export_line}\n")
@@ -1259,6 +1274,21 @@ async def run_setup_wizard() -> None:
     else:
         console.print("  Skipped Loogle installation")
         console.print("  [dim]Install later by re-running the wizard[/dim]")
+
+    # Verification step
+    opc_dir_env = os.environ.get("CLAUDE_OPC_DIR")
+    if not opc_dir_env:
+        console.print("\n[yellow]WARNING: CLAUDE_OPC_DIR is not set in your current shell session.[/yellow]")
+        console.print("Core features like memory and learnings may not function correctly until set.")
+        console.print("\nTo fix this:")
+
+        shell_config, _ = get_shell_config()
+        if shell_config:
+            console.print(f"  1. Run: [bold]source {shell_config}[/bold]")
+        else:
+            console.print("  1. Restart your terminal session")
+
+        console.print("  2. Then start Claude Code")
 
     # Done!
     console.print("\n" + "=" * 60)
