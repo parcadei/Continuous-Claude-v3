@@ -85,7 +85,9 @@ archive/
 cache/
 image-cache/
 plans/
-plugins/
+# Ignore plugins except braintrust-tracing (cross-platform support)
+.claude/plugins/*
+!.claude/plugins/braintrust-tracing/
 session-env/
 telemetry/
 tldr/

@@ -99,11 +99,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/hooks/persist-project-dir.sh"
+            "command": "node $HOME/.claude/hooks/run-hook.mjs persist-project-dir"
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/session_start.sh"
+            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/session_start.mjs"
           },
           {
             "type": "command",
@@ -117,7 +117,7 @@
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/hooks/session-start-tree-daemon.sh",
+            "command": "node $HOME/.claude/hooks/run-hook.mjs session-start-tree-daemon",
             "timeout": 15
           }
         ]
@@ -176,7 +176,7 @@
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/user_prompt_submit.sh"
+            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/user_prompt_submit.mjs"
           }
         ]
       }
@@ -231,7 +231,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/post_tool_use.sh"
+            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/post_tool_use.mjs"
           }
         ]
       },
@@ -265,7 +265,7 @@
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh"
+            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/stop_hook.mjs"
           },
           {
             "type": "command",
@@ -287,7 +287,7 @@
           },
           {
             "type": "command",
-            "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/session_end.sh"
+            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/session_end.mjs"
           }
         ]
       }
