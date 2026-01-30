@@ -241,7 +241,8 @@ def run_update() -> None:
     # Define what to check: (source_subdir, installed_path, extensions)
     # Note: scripts subdirs are listed explicitly to avoid duplicate scanning
     checks = [
-        ("hooks/src", claude_dir / "hooks" / "src", {".ts"}),
+        ("hooks", claude_dir / "hooks", {".py", ".sh"}),  # Python/shell hooks
+        ("hooks/src", claude_dir / "hooks" / "src", {".ts"}),  # TypeScript hooks
         ("skills", claude_dir / "skills", {".md"}),
         ("rules", claude_dir / "rules", {".md"}),
         ("agents", claude_dir / "agents", {".md", ".yaml", ".yml"}),
