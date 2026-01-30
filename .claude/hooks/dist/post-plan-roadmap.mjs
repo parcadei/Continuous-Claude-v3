@@ -117,48 +117,216 @@ function generateRoadmap(sections) {
   if (sections.sessions.length > 0) {
     for (const session of sections.sessions.slice(0, 5)) {
       lines.push(`### ${session.date}: ${session.title}`);
-      for (const decision of session.decisions) {
-        lines.push(`- ${decision}`);
+      if (session.summary) {
+        lines.push(`**Summary:** ${session.summary}`);
+        lines.push("");
       }
-      lines.push("");
+      if (session.decisions.length > 0) {
+        lines.push("**Key Decisions:**");
+        for (const decision of session.decisions) {
+          lines.push(`- ${decision}`);
+        }
+        lines.push("");
+      }
+      if (session.steps && session.steps.length > 0) {
+        lines.push("**Implementation:**");
+        for (const step of session.steps) {
+          lines.push(`- ${step}`);
+        }
+        lines.push("");
+      }
+      if (session.files && session.files.length > 0) {
+        lines.push(`**Files:** ${session.files.join(", ")}`);
+        lines.push("");
+      }
+      if (session.verification && session.verification.length > 0) {
+        lines.push(`**Verification:** ${session.verification[0]}`);
+        lines.push("");
+      }
     }
   } else {
     lines.push("_No planning sessions recorded._");
   }
   return lines.join("\n");
 }
-function extractPlanInfo(planContent) {
-  const result = {
-    title: "Planning Session",
-    decisions: [],
-    approach: "",
-    affectedFiles: []
-  };
-  const lines = planContent.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (line.startsWith("# ")) {
-      result.title = line.slice(2).trim();
-    }
-    if (line.toLowerCase().includes("decision") || line.toLowerCase().includes("approach")) {
-      if (line.startsWith("- ")) {
-        result.decisions.push(line.slice(2).trim());
-      } else if (i + 1 < lines.length && lines[i + 1].trim().startsWith("- ")) {
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim().startsWith("- ")) {
-          result.decisions.push(lines[j].trim().slice(2));
-          j++;
-        }
+var CAPTURE_KEYWORDS = [
+  // Decisions
+  "decision",
+  "decided",
+  "approach",
+  "strategy",
+  "chose",
+  "selected",
+  // Goals
+  "goal",
+  "objective",
+  "purpose",
+  "target",
+  "aim",
+  // Implementation
+  "implement",
+  "create",
+  "add",
+  "modify",
+  "update",
+  "fix",
+  "build",
+  "step",
+  "action",
+  "task",
+  "change",
+  // Verification
+  "verify",
+  "test",
+  "check",
+  "confirm",
+  "validate",
+  "ensure",
+  // Risks
+  "risk",
+  "edge case",
+  "caveat",
+  "limitation",
+  "warning",
+  "note",
+  // Analysis
+  "problem",
+  "issue",
+  "cause",
+  "root cause",
+  "reason",
+  "why"
+];
+function parseSections(content) {
+  const sections = {};
+  const lines = content.split("\n");
+  let currentSection = "_intro";
+  let sectionContent = [];
+  for (const line of lines) {
+    const h2Match = line.match(/^##\s+(.+)$/);
+    if (h2Match) {
+      if (sectionContent.length > 0) {
+        sections[currentSection] = sectionContent.join("\n");
       }
-    }
-    if (line.toLowerCase().includes("file") && line.includes(":")) {
-      const fileMatch = line.match(/`([^`]+)`/g);
-      if (fileMatch) {
-        result.affectedFiles.push(...fileMatch.map((f) => f.replace(/`/g, "")));
-      }
+      currentSection = h2Match[1].trim().toLowerCase();
+      sectionContent = [];
+    } else {
+      sectionContent.push(line);
     }
   }
-  return result;
+  if (sectionContent.length > 0) {
+    sections[currentSection] = sectionContent.join("\n");
+  }
+  return sections;
+}
+function extractBullets(content, keywords) {
+  const bullets = [];
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("-") && !trimmed.startsWith("*") && !trimmed.match(/^\d+\./)) {
+      continue;
+    }
+    const bulletText = trimmed.replace(/^[-*]\s*/, "").replace(/^\d+\.\s*/, "").trim();
+    if (!bulletText) continue;
+    let cleanText = bulletText.replace(/^\[[ x]\]\s*/i, "");
+    cleanText = cleanText.replace(/^\*\*([^*]+)\*\*:?\s*/, "$1: ").replace(/^`([^`]+)`\s*[-–]\s*/, "").replace(/^\*([^*]+)\*:?\s*/g, "$1 ").replace(/::\s*\*/g, ": ").replace(/\*\s+/g, " ").replace(/\s+/g, " ").trim();
+    if (cleanText.length < 15) continue;
+    if (cleanText.startsWith("|") || cleanText.startsWith("```")) continue;
+    if (cleanText.match(/^`[^`]+`$/) || cleanText.match(/^[A-Za-z_]+\.[a-z]+$/)) continue;
+    if (cleanText.match(/\{[^}]+\}/) && cleanText.length < 50) continue;
+    if (keywords) {
+      const lower = cleanText.toLowerCase();
+      if (keywords.some((kw) => lower.includes(kw))) {
+        bullets.push(cleanText);
+      }
+    } else {
+      bullets.push(cleanText);
+    }
+  }
+  return bullets;
+}
+function extractFirstParagraph(content) {
+  const lines = content.split("\n");
+  const paragraphLines = [];
+  let foundStart = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!foundStart) {
+      if (trimmed.startsWith("#") || !trimmed) continue;
+      foundStart = true;
+    }
+    if (foundStart && (!trimmed || trimmed.startsWith("#"))) {
+      if (paragraphLines.length > 0) break;
+      continue;
+    }
+    paragraphLines.push(trimmed);
+  }
+  const summary = paragraphLines.join(" ").slice(0, 300);
+  return summary.length === 300 ? summary + "..." : summary;
+}
+function extractFilesFromContent(content) {
+  const files = [];
+  const backtickMatches = content.match(/`([^`]+\.[a-z]{2,4})`/gi) || [];
+  for (const match of backtickMatches) {
+    const file = match.replace(/`/g, "");
+    if (file.includes("/") || file.includes("\\") || file.match(/\.\w{2,4}$/)) {
+      files.push(file);
+    }
+  }
+  const tableMatches = content.match(/\|\s*`?([^|`]+\.[a-z]{2,4})`?\s*\|/gi) || [];
+  for (const match of tableMatches) {
+    const file = match.replace(/[|`\s]/g, "");
+    if (file.match(/\.\w{2,4}$/)) {
+      files.push(file);
+    }
+  }
+  return [...new Set(files)];
+}
+function extractPlanInfo(planContent, filePath) {
+  const sections = parseSections(planContent);
+  let title = "Planning Session";
+  const titleMatch = planContent.match(/^#\s+(?:Plan:\s*)?(.+)/m);
+  if (titleMatch && titleMatch[1].trim() !== "Planning Session") {
+    title = titleMatch[1].trim();
+  } else if (filePath) {
+    const basename = filePath.replace(/\\/g, "/").split("/").pop()?.replace(".md", "") || "";
+    if (basename && !basename.match(/^plan[-_]?\d*$/i)) {
+      title = basename.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    }
+  }
+  let summary = "";
+  const summarySection = sections["summary"] || sections["problem summary"] || sections["purpose"] || sections["overview"];
+  if (summarySection) {
+    summary = extractFirstParagraph(summarySection);
+  } else if (sections["_intro"]) {
+    summary = extractFirstParagraph(sections["_intro"]);
+  }
+  const decisionSection = sections["decisions"] || sections["key decisions"] || sections["approach"] || "";
+  let decisions = extractBullets(decisionSection);
+  if (decisions.length === 0) {
+    decisions = extractBullets(planContent, CAPTURE_KEYWORDS);
+  }
+  const implSection = sections["implementation plan"] || sections["implementation"] || sections["steps"] || sections["plan"] || "";
+  let steps = extractBullets(implSection);
+  if (steps.length === 0 && sections["step 1"]) {
+    steps = Object.keys(sections).filter((k) => k.match(/^step \d/)).map((k) => sections[k].split("\n")[0]?.trim() || k).filter(Boolean);
+  }
+  const verifySection = sections["verification"] || sections["verification plan"] || sections["testing"] || sections["test plan"] || "";
+  const verification = extractBullets(verifySection);
+  const filesSection = sections["files to modify"] || sections["files"] || sections["affected files"] || "";
+  let affectedFiles = extractFilesFromContent(filesSection);
+  if (affectedFiles.length === 0) {
+    affectedFiles = extractFilesFromContent(planContent);
+  }
+  return {
+    title,
+    summary: summary.slice(0, 500),
+    decisions: decisions.slice(0, 10),
+    steps: steps.slice(0, 8),
+    verification: verification.slice(0, 5),
+    affectedFiles: affectedFiles.slice(0, 10)
+  };
 }
 async function main() {
   const input = await readStdin();
@@ -179,7 +347,9 @@ async function main() {
   }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const roadmapPath = path.join(projectDir, "ROADMAP.md");
-  const planDir = path.join(projectDir, ".claude", "plans");
+  const planDirNested = path.join(projectDir, ".claude", "plans");
+  const planDirDirect = path.join(projectDir, "plans");
+  const planDir = fs.existsSync(planDirNested) ? planDirNested : fs.existsSync(planDirDirect) ? planDirDirect : planDirNested;
   let planContent = "";
   if (fs.existsSync(planDir)) {
     const planFiles = fs.readdirSync(planDir).filter((f) => f.endsWith(".md")).sort((a, b) => {
@@ -207,7 +377,18 @@ async function main() {
       sessions: []
     };
   }
-  const planInfo = extractPlanInfo(planContent);
+  let latestPlanPath;
+  if (fs.existsSync(planDir)) {
+    const planFiles = fs.readdirSync(planDir).filter((f) => f.endsWith(".md")).sort((a, b) => {
+      const statA = fs.statSync(path.join(planDir, a));
+      const statB = fs.statSync(path.join(planDir, b));
+      return statB.mtime.getTime() - statA.mtime.getTime();
+    });
+    if (planFiles.length > 0) {
+      latestPlanPath = path.join(planDir, planFiles[0]);
+    }
+  }
+  const planInfo = extractPlanInfo(planContent, latestPlanPath);
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   if (planInfo.title && planInfo.title !== "Planning Session") {
     if (sections.current && sections.current.title !== planInfo.title) {
@@ -225,7 +406,11 @@ async function main() {
   const newSession = {
     date: today,
     title: planInfo.title,
-    decisions: planInfo.decisions.slice(0, 5)
+    summary: planInfo.summary || void 0,
+    decisions: planInfo.decisions.slice(0, 5),
+    steps: planInfo.steps.length > 0 ? planInfo.steps.slice(0, 5) : void 0,
+    verification: planInfo.verification.length > 0 ? planInfo.verification.slice(0, 3) : void 0,
+    files: planInfo.affectedFiles.length > 0 ? planInfo.affectedFiles.slice(0, 8) : void 0
   };
   const existingToday = sections.sessions.findIndex((s) => s.date === today);
   if (existingToday >= 0) {
@@ -238,15 +423,20 @@ async function main() {
   fs.mkdirSync(path.dirname(roadmapPath), { recursive: true });
   fs.writeFileSync(roadmapPath, newContent, "utf-8");
   console.error(`\u2713 ROADMAP.md updated: ${planInfo.title}`);
+  const stats = [
+    `Goal: ${planInfo.title}`,
+    `Decisions: ${planInfo.decisions.length}`,
+    `Steps: ${planInfo.steps.length}`,
+    `Files: ${planInfo.affectedFiles.length}`
+  ].join(" | ");
   const output = {
     result: "continue",
-    message: `\u{1F4CB} ROADMAP.md updated with planning session: ${planInfo.title}`,
+    message: `\u{1F4CB} ROADMAP.md updated: ${planInfo.title}`,
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
       additionalContext: `Planning session recorded:
-- Goal: ${planInfo.title}
-- Decisions: ${planInfo.decisions.length}
-- ROADMAP.md: ${roadmapPath}`
+${stats}
+ROADMAP: ${roadmapPath}`
     }
   };
   console.log(JSON.stringify(output));
