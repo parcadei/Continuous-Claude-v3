@@ -161,3 +161,10 @@ export type {
   MemoryClientOptions,
   UsageRecord,
 } from './memory-client.js';
+
+// Output helpers
+export {
+  outputContinue,
+  outputWithMessage,
+  outputBlock,
+} from './output.js';

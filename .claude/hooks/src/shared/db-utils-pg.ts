@@ -58,8 +58,8 @@ import asyncio
 import json
 
 # Add opc to path for imports
-sys.path.insert(0, '${opcDir}')
-os.chdir('${opcDir}')
+sys.path.insert(0, '${opcDir.replace(/\\/g, '/')}')
+os.chdir('${opcDir.replace(/\\/g, '/')}')
 
 ${pythonCode}
 `;
@@ -68,7 +68,7 @@ ${pythonCode}
     const result = spawnSync('uv', ['run', 'python', '-c', wrappedCode, ...args], {
       encoding: 'utf-8',
       maxBuffer: 1024 * 1024,
-      timeout: 15000,  // 15 second timeout (raised from 5s for slow machines)
+      timeout: 3000,  // 3 second timeout (reduced for faster startup)
       cwd: opcDir,
       env: {
         ...process.env,
