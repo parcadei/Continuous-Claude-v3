@@ -16,6 +16,7 @@
  */
 
 import { readFileSync } from 'fs';
+import { outputContinue } from './shared/output.js';
 
 interface ComplexitySignal {
   name: string;
@@ -147,6 +148,7 @@ async function main() {
   try {
     const rawInput = readStdin();
     if (!rawInput.trim()) {
+      outputContinue();
       return;
     }
 
@@ -154,10 +156,12 @@ async function main() {
     try {
       input = JSON.parse(rawInput);
     } catch {
+      outputContinue();
       return;
     }
 
     if (!input.prompt || typeof input.prompt !== 'string') {
+      outputContinue();
       return;
     }
 
@@ -165,16 +169,19 @@ async function main() {
 
     // Skip very short prompts
     if (prompt.length < 50) {
+      outputContinue();
       return;
     }
 
     // Skip if already invoking maestro
     if (/\b(maestro|orchestrat)/i.test(prompt)) {
+      outputContinue();
       return;
     }
 
     // Skip simple questions
     if (/^(what|how|why|where|when|can you|could you|is there)\s/i.test(prompt) && prompt.length < 100) {
+      outputContinue();
       return;
     }
 
@@ -186,10 +193,13 @@ async function main() {
 
     if (adjustedScore >= COMPLEXITY_THRESHOLD && signals.length >= 2) {
       makeSuggestionOutput(adjustedScore, signals, Math.max(phases, 2));
+    } else {
+      outputContinue();
     }
 
   } catch (err) {
     // Fail silently - don't block user prompt
+    outputContinue();
   }
 }
 

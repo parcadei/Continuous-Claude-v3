@@ -18,6 +18,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { outputContinue } from './shared/output.js';
 
 interface Guardrail {
   name: string;
@@ -177,7 +178,7 @@ async function main() {
   try {
     const rawInput = readStdin();
     if (!rawInput.trim()) {
-      console.log(JSON.stringify({ result: 'continue' }));
+      outputContinue();
       return;
     }
 
@@ -185,12 +186,12 @@ async function main() {
     try {
       input = JSON.parse(rawInput);
     } catch {
-      console.log(JSON.stringify({ result: 'continue' }));
+      outputContinue();
       return;
     }
 
     if (!input.prompt || typeof input.prompt !== 'string') {
-      console.log(JSON.stringify({ result: 'continue' }));
+      outputContinue();
       return;
     }
 
@@ -202,9 +203,11 @@ async function main() {
       return;
     }
 
-    // No output needed when no guardrail triggered
+    // No guardrail triggered - output continue
+    outputContinue();
   } catch (err) {
     console.error('guardrail-enforcer error:', err);
+    outputContinue();
   }
 }
 

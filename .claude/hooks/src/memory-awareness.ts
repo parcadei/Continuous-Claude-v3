@@ -15,6 +15,7 @@ import { readFileSync, existsSync } from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { getOpcDir } from './shared/opc-path.js';
+import { outputContinue } from './shared/output.js';
 
 interface UserPromptSubmitInput {
   session_id: string;
@@ -37,6 +38,18 @@ interface MemoryMatch {
 
 function readStdin(): string {
   return readFileSync(0, 'utf-8');
+}
+
+/**
+ * Check if we're running in ~/.claude (infrastructure directory).
+ * Skip all DB operations in this directory to prevent hangs.
+ */
+function isInfrastructureDir(projectDir: string): boolean {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  if (!homeDir) return false;
+  const claudeDir = homeDir.replace(/\\/g, '/') + '/.claude';
+  const normalizedProject = (projectDir || '').replace(/\\/g, '/');
+  return normalizedProject === claudeDir || normalizedProject.endsWith('/.claude');
 }
 
 /**
@@ -121,7 +134,8 @@ function checkLocalMemory(intent: string, projectDir: string): MemoryMatch | nul
     ], {
       encoding: 'utf-8',
       cwd: path.join(homeDir, '.claude', 'scripts', 'core', 'core'),
-      timeout: 3000  // 3s timeout for local check
+      timeout: 2000,
+      killSignal: 'SIGKILL',
     });
 
     if (result.status !== 0 || !result.stdout) return null;
@@ -178,7 +192,8 @@ function checkMemoryRelevance(intent: string, projectDir: string): MemoryMatch |
       ...process.env,
       PYTHONPATH: opcDir
     },
-    timeout: 5000
+    timeout: 2000,
+    killSignal: 'SIGKILL',
   });
 
   if (result.status !== 0 || !result.stdout) {
@@ -227,18 +242,27 @@ async function main() {
   const input: UserPromptSubmitInput = JSON.parse(readStdin());
   const projectDir = process.env.CLAUDE_PROJECT_DIR || input.cwd;
 
+  // Guard: Skip in ~/.claude (infrastructure directory) to prevent DB hangs
+  if (isInfrastructureDir(projectDir)) {
+    outputContinue();
+    return;
+  }
+
   // Skip for subagents - they don't need memory recall (saves tokens)
   if (process.env.CLAUDE_AGENT_ID) {
+    outputContinue();
     return;
   }
 
   // Skip very short prompts (greetings, commands)
   if (input.prompt.length < 15) {
+    outputContinue();
     return;
   }
 
   // Skip if prompt is just a slash command
   if (input.prompt.trim().startsWith('/')) {
+    outputContinue();
     return;
   }
 
@@ -247,6 +271,7 @@ async function main() {
 
   // Skip if no meaningful intent
   if (intent.length < 3) {
+    outputContinue();
     return;
   }
 
@@ -267,9 +292,12 @@ async function main() {
         additionalContext: claudeContext
       }
     }));
+  } else {
+    outputContinue();
   }
 }
 
 main().catch(() => {
   // Silent fail - don't block user prompts
+  outputContinue();
 });

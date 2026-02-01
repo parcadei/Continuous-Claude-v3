@@ -1,19 +1,28 @@
 /**
- * SessionStart Hook - Ensures PostgreSQL Docker container is running.
+ * SessionStart Hook - Ensures PostgreSQL Docker container and daemons are running.
  *
  * This hook:
  * 1. Checks if continuous-claude-postgres container is running
  * 2. If not, starts it via docker compose
  * 3. Waits for it to be healthy before continuing
+ * 4. Spawns tree_daemon for current project (if not running)
+ * 5. Spawns memory_daemon globally (if not running)
  *
  * Part of the memory system infrastructure.
  */
 
-import { execSync, spawnSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { execSync, spawn } from 'child_process';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import type { SessionStartInput, HookOutput } from './shared/types.js';
+
+/**
+ * Async sleep using setTimeout (non-blocking)
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 const CONTAINER_NAME = 'continuous-claude-postgres';
 const DOCKER_DIR = join(homedir(), '.claude', 'docker');
@@ -89,9 +98,9 @@ function startContainer(): { success: boolean; message: string } {
 }
 
 /**
- * Wait for container to be healthy
+ * Wait for container to be healthy (async, non-blocking)
  */
-function waitForHealthy(): boolean {
+async function waitForHealthy(): Promise<boolean> {
   const startTime = Date.now();
   const maxWaitMs = MAX_WAIT_SECONDS * 1000;
 
@@ -105,15 +114,12 @@ function waitForHealthy(): boolean {
         return true;
       }
     } catch {
-      // Container might not have health check configured, check if running
       if (isContainerRunning()) {
-        // Wait a bit for postgres to initialize
-        spawnSync('sleep', ['2'], { stdio: 'pipe' });
+        await sleep(2000);
         return true;
       }
     }
-    // Wait 1 second before checking again
-    spawnSync('sleep', ['1'], { stdio: 'pipe' });
+    await sleep(1000);
   }
   return false;
 }
@@ -121,7 +127,7 @@ function waitForHealthy(): boolean {
 /**
  * Main entry point
  */
-export function main(): void {
+export async function main(): Promise<void> {
   let input: SessionStartInput;
   try {
     const stdinContent = readFileSync(0, 'utf-8');
@@ -129,6 +135,18 @@ export function main(): void {
   } catch {
     console.log(JSON.stringify({ result: 'continue' }));
     return;
+  }
+
+  // Guard: Skip Docker operations in ~/.claude (infrastructure directory)
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  const cwd = input.cwd || process.cwd();
+  if (homeDir) {
+    const claudeDir = homeDir.replace(/\\/g, '/') + '/.claude';
+    const normalizedCwd = cwd.replace(/\\/g, '/');
+    if (normalizedCwd === claudeDir || normalizedCwd.endsWith('/.claude')) {
+      console.log(JSON.stringify({ result: 'continue' }));
+      return;
+    }
   }
 
   // Check if Docker is available
@@ -159,7 +177,7 @@ export function main(): void {
   }
 
   // Wait for container to be healthy
-  const healthy = waitForHealthy();
+  const healthy = await waitForHealthy();
   if (!healthy) {
     const output: HookOutput = {
       result: 'continue',
@@ -178,4 +196,6 @@ export function main(): void {
 }
 
 // Run main if this is the entry point
-main();
+main().catch(() => {
+  console.log(JSON.stringify({ result: 'continue' }));
+});

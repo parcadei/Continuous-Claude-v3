@@ -6,6 +6,7 @@ import { tmpdir } from 'os';
 
 // Import shared resource reader (Phase 4 module)
 import { readResourceState, ResourceState } from './shared/resource-reader.js';
+import { outputContinue } from './shared/output.js';
 
 // Import validation module for false-positive reduction
 import {
@@ -159,6 +160,16 @@ interface MatchedSkill {
  * Cross-platform: Uses spawnSync with cwd option (works on Windows/macOS/Linux).
  */
 function runPatternInference(prompt: string, projectDir: string): PatternInference | null {
+    // Defense in depth: Skip in ~/.claude (infrastructure directory)
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    if (homeDir) {
+        const claudeDir = homeDir.replace(/\\/g, '/') + '/.claude';
+        const normalizedProject = projectDir.replace(/\\/g, '/');
+        if (normalizedProject === claudeDir || normalizedProject.endsWith('/.claude')) {
+            return null;
+        }
+    }
+
     try {
         const scriptPath = join(projectDir, 'scripts', 'agentica_patterns', 'pattern_inference.py');
         if (!existsSync(scriptPath)) {
@@ -189,9 +200,10 @@ print(json.dumps(output))
         // Cross-platform: use spawnSync with cwd instead of shell cd && command
         const result = spawnSync('uv', ['run', 'python', '-c', pythonCode], {
             encoding: 'utf-8',
-            timeout: 5000,
+            timeout: 2000,
             cwd: projectDir,
             stdio: ['pipe', 'pipe', 'pipe'],
+            killSignal: 'SIGKILL',
         });
 
         if (result.status !== 0 || !result.stdout) {
@@ -293,18 +305,31 @@ async function main() {
             data = JSON.parse(input);
         } catch {
             // Malformed JSON - exit silently
+            outputContinue();
             process.exit(0);
         }
 
         // Early validation - prompt is required
         if (!data.prompt || typeof data.prompt !== 'string') {
+            outputContinue();
             process.exit(0);
         }
+
+        // Guard: Skip in ~/.claude (infrastructure directory)
+        const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+        if (homeDir) {
+            const claudeDir = homeDir.replace(/\\/g, '/') + '/.claude';
+            const normalizedCwd = (data.cwd || '').replace(/\\/g, '/');
+            if (normalizedCwd === claudeDir || normalizedCwd.endsWith('/.claude')) {
+                outputContinue();
+                process.exit(0);
+            }
+        }
+
         const prompt = data.prompt.toLowerCase();
 
         // Load skill rules (try project first, then global)
         const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '';
         const projectRulesPath = join(projectDir, '.claude', 'skills', 'skill-rules.json');
         const globalRulesPath = join(homeDir, '.claude', 'skills', 'skill-rules.json');
 
@@ -315,6 +340,7 @@ async function main() {
             rulesPath = globalRulesPath;
         } else {
             // No rules file found, exit silently
+            outputContinue();
             process.exit(0);
         }
         const rules: SkillRules = JSON.parse(readFileSync(rulesPath, 'utf-8'));
@@ -344,6 +370,7 @@ Do NOT skip this step. The skill provides:
 `;
             // Output directly - this gets injected into Claude's context
             console.log(autoInvokeMessage);
+            outputContinue();
             process.exit(0);
         }
 
@@ -651,14 +678,17 @@ Do NOT skip this step. The skill provides:
             }
         }
 
+        outputContinue();
         process.exit(0);
     } catch (err) {
         console.error('Error in skill-activation-prompt hook:', err);
+        outputContinue();
         process.exit(1);
     }
 }
 
 main().catch(err => {
     console.error('Uncaught error:', err);
+    outputContinue();
     process.exit(1);
 });

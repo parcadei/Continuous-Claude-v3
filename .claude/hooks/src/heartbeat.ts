@@ -43,16 +43,15 @@ interface HookInput {
   prompt?: string;
 }
 
-async function main(): Promise<void> {
+function readStdin(): string {
+  return readFileSync(0, 'utf-8');
+}
+
+function main(): void {
   let input: HookInput = {};
 
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
-  }
-
   try {
-    const rawInput = Buffer.concat(chunks).toString('utf-8').trim();
+    const rawInput = readStdin().trim();
     if (rawInput) {
       input = JSON.parse(rawInput);
     }
@@ -97,7 +96,9 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({ result: 'continue' }));
 }
 
-main().catch((err) => {
+try {
+  main();
+} catch (err) {
   console.error('Heartbeat error:', err);
   console.log(JSON.stringify({ result: 'continue' }));
-});
+}

@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { outputContinue } from './shared/output.js';
 
 interface HookInput {
   prompt?: string;
@@ -137,6 +138,7 @@ async function main() {
   try {
     const rawInput = readStdin();
     if (!rawInput.trim()) {
+      outputContinue();
       return;
     }
 
@@ -144,10 +146,12 @@ async function main() {
     try {
       input = JSON.parse(rawInput);
     } catch {
+      outputContinue();
       return;
     }
 
     if (!input.prompt || typeof input.prompt !== 'string') {
+      outputContinue();
       return;
     }
 
@@ -165,6 +169,7 @@ Maestro orchestration mode disabled.
 Returning to normal operation.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+      outputContinue();
       return;
     }
 
@@ -234,6 +239,7 @@ Say "recon complete" when done exploring.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
       }
+      outputContinue();
       return;
     }
 
@@ -264,6 +270,7 @@ Use AskUserQuestion with INFORMED questions based on recon:
 Task tool BLOCKED until interview complete.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+        outputContinue();
         return;
       }
 
@@ -288,6 +295,7 @@ Present orchestration plan to user.
 Task tool still BLOCKED until plan approved.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+        outputContinue();
         return;
       }
 
@@ -310,6 +318,7 @@ Task tool still BLOCKED until plan approved.
 You may spawn agents to execute the plan.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+        outputContinue();
         return;
       }
 
@@ -338,13 +347,17 @@ Discovery answers received.
 Task tool still BLOCKED until plan approved.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+          outputContinue();
           return;
         }
       }
     }
 
+    // No state transition - output continue
+    outputContinue();
   } catch (err) {
     // Fail silently
+    outputContinue();
   }
 }
 

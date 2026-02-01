@@ -788,4 +788,7 @@ async function readStdin(): Promise<string> {
   });
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  console.log(JSON.stringify({ result: 'continue' }));
+});
