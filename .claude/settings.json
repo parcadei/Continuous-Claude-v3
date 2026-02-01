@@ -1,7 +1,9 @@
 {
   "env": {
     "CONTINUOUS_CLAUDE_COORDINATION": "true",
-    "ENABLE_TOOL_SEARCH": "auto:5"
+    "ENABLE_TOOL_SEARCH": "auto:5",
+    "CLAUDE_OPC_DIR": "C:/Users/david.hayes/continuous-claude/opc",
+    "DATABASE_URL": "postgresql://claude:claude_dev@localhost:5434/continuous_claude"
   },
   "hooks": {
     "PreToolUse": [
