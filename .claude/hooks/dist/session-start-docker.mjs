@@ -1,8 +1,11 @@
 // src/session-start-docker.ts
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 var CONTAINER_NAME = "continuous-claude-postgres";
 var DOCKER_DIR = join(homedir(), ".claude", "docker");
 var MAX_WAIT_SECONDS = 30;
@@ -57,7 +60,7 @@ function startContainer() {
     return { success: false, message: error.message };
   }
 }
-function waitForHealthy() {
+async function waitForHealthy() {
   const startTime = Date.now();
   const maxWaitMs = MAX_WAIT_SECONDS * 1e3;
   while (Date.now() - startTime < maxWaitMs) {
@@ -71,15 +74,15 @@ function waitForHealthy() {
       }
     } catch {
       if (isContainerRunning()) {
-        spawnSync("sleep", ["2"], { stdio: "pipe" });
+        await sleep(2e3);
         return true;
       }
     }
-    spawnSync("sleep", ["1"], { stdio: "pipe" });
+    await sleep(1e3);
   }
   return false;
 }
-function main() {
+async function main() {
   let input;
   try {
     const stdinContent = readFileSync(0, "utf-8");
@@ -87,6 +90,16 @@ function main() {
   } catch {
     console.log(JSON.stringify({ result: "continue" }));
     return;
+  }
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const cwd = input.cwd || process.cwd();
+  if (homeDir) {
+    const claudeDir = homeDir.replace(/\\/g, "/") + "/.claude";
+    const normalizedCwd = cwd.replace(/\\/g, "/");
+    if (normalizedCwd === claudeDir || normalizedCwd.endsWith("/.claude")) {
+      console.log(JSON.stringify({ result: "continue" }));
+      return;
+    }
   }
   if (!isDockerAvailable()) {
     const output2 = {
@@ -109,7 +122,7 @@ function main() {
     console.log(JSON.stringify(output2));
     return;
   }
-  const healthy = waitForHealthy();
+  const healthy = await waitForHealthy();
   if (!healthy) {
     const output2 = {
       result: "continue",
@@ -124,7 +137,9 @@ function main() {
   };
   console.log(JSON.stringify(output));
 }
-main();
+main().catch(() => {
+  console.log(JSON.stringify({ result: "continue" }));
+});
 export {
   main
 };

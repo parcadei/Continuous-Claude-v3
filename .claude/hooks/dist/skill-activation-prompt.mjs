@@ -42,6 +42,11 @@ function readResourceState() {
   }
 }
 
+// src/shared/output.ts
+function outputContinue() {
+  console.log(JSON.stringify({ result: "continue" }));
+}
+
 // src/skill-validation-prompt.ts
 var AMBIGUOUS_KEYWORDS = /* @__PURE__ */ new Set([
   "commit",
@@ -207,6 +212,14 @@ function checkWorkflowTriggers(prompt) {
   return null;
 }
 function runPatternInference(prompt, projectDir) {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  if (homeDir) {
+    const claudeDir = homeDir.replace(/\\/g, "/") + "/.claude";
+    const normalizedProject = projectDir.replace(/\\/g, "/");
+    if (normalizedProject === claudeDir || normalizedProject.endsWith("/.claude")) {
+      return null;
+    }
+  }
   try {
     const scriptPath = join2(projectDir, "scripts", "agentica_patterns", "pattern_inference.py");
     if (!existsSync2(scriptPath)) {
@@ -233,9 +246,10 @@ print(json.dumps(output))
 `;
     const result = spawnSync("uv", ["run", "python", "-c", pythonCode], {
       encoding: "utf-8",
-      timeout: 5e3,
+      timeout: 2e3,
       cwd: projectDir,
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      killSignal: "SIGKILL"
     });
     if (result.status !== 0 || !result.stdout) {
       return null;
@@ -321,14 +335,24 @@ async function main() {
     try {
       data = JSON.parse(input);
     } catch {
+      outputContinue();
       process.exit(0);
     }
     if (!data.prompt || typeof data.prompt !== "string") {
+      outputContinue();
       process.exit(0);
+    }
+    const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+    if (homeDir) {
+      const claudeDir = homeDir.replace(/\\/g, "/") + "/.claude";
+      const normalizedCwd = (data.cwd || "").replace(/\\/g, "/");
+      if (normalizedCwd === claudeDir || normalizedCwd.endsWith("/.claude")) {
+        outputContinue();
+        process.exit(0);
+      }
     }
     const prompt = data.prompt.toLowerCase();
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    const homeDir = process.env.HOME || process.env.USERPROFILE || "";
     const projectRulesPath = join2(projectDir, ".claude", "skills", "skill-rules.json");
     const globalRulesPath = join2(homeDir, ".claude", "skills", "skill-rules.json");
     let rulesPath = "";
@@ -337,6 +361,7 @@ async function main() {
     } else if (existsSync2(globalRulesPath)) {
       rulesPath = globalRulesPath;
     } else {
+      outputContinue();
       process.exit(0);
     }
     const rules = JSON.parse(readFileSync2(rulesPath, "utf-8"));
@@ -362,6 +387,7 @@ Do NOT skip this step. The skill provides:
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `;
       console.log(autoInvokeMessage);
+      outputContinue();
       process.exit(0);
     }
     const patternInference = runPatternInference(data.prompt, projectDir);
@@ -598,13 +624,16 @@ Do NOT skip this step. The skill provides:
         console.log(resourceWarning);
       }
     }
+    outputContinue();
     process.exit(0);
   } catch (err) {
     console.error("Error in skill-activation-prompt hook:", err);
+    outputContinue();
     process.exit(1);
   }
 }
 main().catch((err) => {
   console.error("Uncaught error:", err);
+  outputContinue();
   process.exit(1);
 });

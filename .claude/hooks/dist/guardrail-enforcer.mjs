@@ -4,6 +4,13 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+
+// src/shared/output.ts
+function outputContinue() {
+  console.log(JSON.stringify({ result: "continue" }));
+}
+
+// src/guardrail-enforcer.ts
 var GUARDRAILS = [
   {
     name: "systematic-debugging",
@@ -123,18 +130,18 @@ async function main() {
   try {
     const rawInput = readStdin();
     if (!rawInput.trim()) {
-      console.log(JSON.stringify({ result: "continue" }));
+      outputContinue();
       return;
     }
     let input;
     try {
       input = JSON.parse(rawInput);
     } catch {
-      console.log(JSON.stringify({ result: "continue" }));
+      outputContinue();
       return;
     }
     if (!input.prompt || typeof input.prompt !== "string") {
-      console.log(JSON.stringify({ result: "continue" }));
+      outputContinue();
       return;
     }
     const triggeredGuardrail = checkGuardrails(input.prompt);
@@ -142,8 +149,10 @@ async function main() {
       console.log(makeBlockOutput(triggeredGuardrail));
       return;
     }
+    outputContinue();
   } catch (err) {
     console.error("guardrail-enforcer error:", err);
+    outputContinue();
   }
 }
 main();

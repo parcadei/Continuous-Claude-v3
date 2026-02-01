@@ -3,7 +3,6 @@
 // src/post-plan-roadmap.ts
 import * as fs from "fs";
 import * as path from "path";
-import { execSync } from "child_process";
 function parseRoadmap(content) {
   const result = {
     current: null,
@@ -350,20 +349,7 @@ function storePlanningLearnings(planInfo, projectDir) {
   const escapedContent = content.replace(/"/g, '\\"').replace(/\n/g, "\\n");
   const escapedContext = `planning: ${planInfo.title}`.replace(/"/g, '\\"');
   const isWindows = process.platform === "win32";
-  const cmd = isWindows ? [
-    `cd /d "${opcDir}"`,
-    `set PYTHONPATH=.`,
-    `uv run python scripts/core/store_learning.py`,
-    `--session-id "${sessionId}"`,
-    `--type ARCHITECTURAL_DECISION`,
-    `--content "${escapedContent}"`,
-    `--context "${escapedContext}"`,
-    `--tags "planning,decisions,architecture"`,
-    `--confidence high`,
-    `--scope GLOBAL`
-  ].join(" && ") : [
-    `cd "${opcDir}"`,
-    `PYTHONPATH=. uv run python scripts/core/store_learning.py`,
+  const pyArgs = [
     `--session-id "${sessionId}"`,
     `--type ARCHITECTURAL_DECISION`,
     `--content "${escapedContent}"`,
@@ -372,17 +358,7 @@ function storePlanningLearnings(planInfo, projectDir) {
     `--confidence high`,
     `--scope GLOBAL`
   ].join(" ");
-  try {
-    execSync(cmd, {
-      stdio: "pipe",
-      timeout: 1e4,
-      shell: isWindows ? "cmd.exe" : true
-    });
-    console.error(`\u2713 Stored ${decisions.length} planning decisions to memory`);
-  } catch (e) {
-    const err = e;
-    console.error(`Warning: Could not store planning learnings: ${err.message}`);
-  }
+  console.error(`\u2139 Skipping memory storage (slow) - ${decisions.length} decisions recorded in ROADMAP`);
 }
 async function main() {
   const input = await readStdin();

@@ -4,6 +4,13 @@
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+
+// src/shared/output.ts
+function outputContinue() {
+  console.log(JSON.stringify({ result: "continue" }));
+}
+
+// src/maestro-state-manager.ts
 var STATE_FILE = join(tmpdir(), "claude-maestro-state.json");
 var STATE_TTL = 60 * 60 * 1e3;
 function defaultState() {
@@ -94,15 +101,18 @@ async function main() {
   try {
     const rawInput = readStdin();
     if (!rawInput.trim()) {
+      outputContinue();
       return;
     }
     let input;
     try {
       input = JSON.parse(rawInput);
     } catch {
+      outputContinue();
       return;
     }
     if (!input.prompt || typeof input.prompt !== "string") {
+      outputContinue();
       return;
     }
     const prompt = input.prompt.trim();
@@ -117,6 +127,7 @@ Maestro orchestration mode disabled.
 Returning to normal operation.
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `);
+      outputContinue();
       return;
     }
     if (!state.active && matchesAny(prompt, ACTIVATION_PATTERNS)) {
@@ -180,6 +191,7 @@ Say "recon complete" when done exploring.
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `);
       }
+      outputContinue();
       return;
     }
     if (state.active) {
@@ -207,6 +219,7 @@ Use AskUserQuestion with INFORMED questions based on recon:
 Task tool BLOCKED until interview complete.
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `);
+        outputContinue();
         return;
       }
       if (state.reconComplete && !state.interviewComplete && matchesAny(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
@@ -229,6 +242,7 @@ Present orchestration plan to user.
 Task tool still BLOCKED until plan approved.
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `);
+        outputContinue();
         return;
       }
       if (state.interviewComplete && !state.planApproved && matchesAny(prompt, PLAN_APPROVAL_PATTERNS)) {
@@ -249,6 +263,7 @@ Task tool still BLOCKED until plan approved.
 You may spawn agents to execute the plan.
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `);
+        outputContinue();
         return;
       }
       if (!state.interviewComplete) {
@@ -271,11 +286,14 @@ Discovery answers received.
 Task tool still BLOCKED until plan approved.
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `);
+          outputContinue();
           return;
         }
       }
     }
+    outputContinue();
   } catch (err) {
+    outputContinue();
   }
 }
 main();

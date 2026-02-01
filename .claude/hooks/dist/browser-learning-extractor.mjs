@@ -19,7 +19,7 @@ function getOpcDir() {
   if (homeDir) {
     const globalClaude = join(homeDir, ".claude");
     const globalScripts = join(globalClaude, "scripts", "core");
-    if (existsSync(globalScripts)) {
+    if (existsSync(globalScripts) && globalClaude !== projectDir) {
       return globalClaude;
     }
   }

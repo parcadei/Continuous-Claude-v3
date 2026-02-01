@@ -1,5 +1,6 @@
-// src/session-register.ts
+// src/session-start-parallel.ts
 import { readFileSync as readFileSync2 } from "fs";
+import { spawn } from "child_process";
 
 // src/shared/db-utils-pg.ts
 import { spawnSync } from "child_process";
@@ -223,57 +224,171 @@ function getProject() {
   return process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
 
-// src/session-register.ts
-function main() {
-  let input;
+// src/session-start-parallel.ts
+function runCommand(name, command, args, stdinData, timeoutMs = 1e4) {
+  const start = Date.now();
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      timeout: timeoutMs,
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    proc.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+    proc.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+    proc.on("close", (code) => {
+      let output;
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        output = parsed.message;
+      } catch {
+        output = stdout.trim() || void 0;
+      }
+      resolve({
+        name,
+        success: code === 0,
+        output,
+        message: code === 0 ? "OK" : `Exit ${code}`,
+        error: stderr.trim() || void 0,
+        duration: Date.now() - start
+      });
+    });
+    proc.on("error", (err) => {
+      resolve({
+        name,
+        success: false,
+        error: err.message,
+        duration: Date.now() - start
+      });
+    });
+    proc.stdin?.write(stdinData);
+    proc.stdin?.end();
+  });
+}
+async function registerSessionTask() {
+  const start = Date.now();
   try {
-    const stdinContent = readFileSync2(0, "utf-8");
-    input = JSON.parse(stdinContent);
-  } catch {
-    console.log(JSON.stringify({ result: "continue" }));
-    return;
-  }
-  const sessionId = generateSessionId();
-  const project = getProject();
-  const projectName = project.split("/").pop() || "unknown";
-  process.env.COORDINATION_SESSION_ID = sessionId;
-  if (!writeSessionId(sessionId)) {
-    console.error(`[session-register] WARNING: Failed to persist session ID ${sessionId} to file`);
-  }
-  const registerResult = registerSession(sessionId, project, "");
-  const sessionsResult = getActiveSessions(project);
-  const otherSessions = sessionsResult.sessions.filter((s) => s.id !== sessionId);
-  let awarenessMessage = `
-<system-reminder>
-MULTI-SESSION COORDINATION ACTIVE
-
-Session: ${sessionId}
+    const sessionId = generateSessionId();
+    const project = getProject();
+    const projectName = project.split(/[/\\]/).pop() || "unknown";
+    process.env.COORDINATION_SESSION_ID = sessionId;
+    writeSessionId(sessionId);
+    registerSession(sessionId, project, "");
+    const sessionsResult = getActiveSessions(project);
+    const otherSessions = sessionsResult.sessions.filter((s) => s.id !== sessionId);
+    let output = `Session: ${sessionId}
 Project: ${projectName}
 `;
-  if (otherSessions.length > 0) {
-    awarenessMessage += `
-Active peer sessions (${otherSessions.length}):
-${otherSessions.map((s) => `  - ${s.id}: ${s.working_on || "working..."}`).join("\n")}
-
-Coordination features:
-- File edits are tracked to prevent conflicts
-- Research findings are shared automatically
-- Use Task tool normally - coordination happens via hooks
-`;
-  } else {
-    awarenessMessage += `
-No other sessions active on this project.
-You are the only session currently working here.
-`;
+    if (otherSessions.length > 0) {
+      output += `Active peers: ${otherSessions.length}`;
+    }
+    return {
+      name: "session-register",
+      success: true,
+      output,
+      message: `Registered, ${otherSessions.length} peers`,
+      duration: Date.now() - start
+    };
+  } catch (err) {
+    return {
+      name: "session-register",
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      duration: Date.now() - start
+    };
   }
-  awarenessMessage += `</system-reminder>`;
+}
+async function main() {
+  const totalStart = Date.now();
+  const project = getProject();
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const claudeDir = homeDir ? `${homeDir}/.claude`.replace(/\\/g, "/") : "";
+  const normalizedProject = project.replace(/\\/g, "/");
+  if (claudeDir && (normalizedProject === claudeDir || normalizedProject.includes("/.claude"))) {
+    console.log(JSON.stringify({
+      result: "continue",
+      message: "<system-reminder>\nSessionStart:clear hook success: Success\n</system-reminder>\nStartup hooks skipped in ~/.claude (infrastructure directory)"
+    }));
+    return;
+  }
+  let input;
+  let stdinContent = "{}";
+  try {
+    stdinContent = readFileSync2(0, "utf-8");
+    input = JSON.parse(stdinContent);
+  } catch {
+    input = {};
+  }
+  const hooksDir = "C:/Users/david.hayes/.claude/hooks";
+  const distDir = `${hooksDir}/dist`;
+  const results = await Promise.all([
+    // Inline task (no subprocess)
+    registerSessionTask(),
+    // Node.js hooks
+    runCommand(
+      "continuity",
+      "node",
+      [`${distDir}/session-start-continuity.mjs`],
+      stdinContent,
+      1e4
+    ),
+    runCommand(
+      "init-check",
+      "node",
+      [`${distDir}/session-start-init-check.mjs`],
+      stdinContent,
+      5e3
+    ),
+    // PowerShell daemon scripts
+    runCommand(
+      "tree-daemon",
+      "powershell",
+      ["-ExecutionPolicy", "Bypass", "-File", `${hooksDir}/session-start-tree-daemon.ps1`],
+      stdinContent,
+      15e3
+    ),
+    runCommand(
+      "memory-daemon",
+      "powershell",
+      ["-ExecutionPolicy", "Bypass", "-File", `${hooksDir}/session-start-memory-daemon.ps1`],
+      stdinContent,
+      1e4
+    )
+  ]);
+  const totalDuration = Date.now() - totalStart;
+  const outputs = [];
+  const errors = [];
+  for (const result of results) {
+    if (result.output) {
+      outputs.push(result.output);
+    }
+    if (!result.success && result.error) {
+      errors.push(`${result.name}: ${result.error}`);
+    }
+  }
+  let message = "";
+  if (outputs.length > 0) {
+    message = outputs.join("\n\n");
+  }
+  const timingSummary = results.map((r) => `${r.name}:${r.duration}ms`).join(" ");
+  message = `<system-reminder>
+SessionStart:compact hook success: Success
+</system-reminder>` + (message ? `
+${message}` : "");
   const output = {
     result: "continue",
-    message: awarenessMessage
+    message
   };
   console.log(JSON.stringify(output));
 }
-main();
+main().catch((err) => {
+  console.error("Parallel startup failed:", err);
+  console.log(JSON.stringify({ result: "continue" }));
+});
 export {
   main
 };

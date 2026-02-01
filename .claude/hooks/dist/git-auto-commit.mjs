@@ -9,8 +9,9 @@ var CLAUDE_DIR = join(homedir(), ".claude");
 var DEBOUNCE_FILE = join(CLAUDE_DIR, ".last-git-sync");
 var DEBOUNCE_MS = 10 * 60 * 1e3;
 function isInClaudeDir(filePath) {
-  const resolved = resolve(filePath);
-  return resolved.startsWith(CLAUDE_DIR);
+  const normalizedFile = resolve(filePath).replace(/\\/g, "/");
+  const normalizedClaudeDir = CLAUDE_DIR.replace(/\\/g, "/");
+  return normalizedFile.startsWith(normalizedClaudeDir);
 }
 function isTrackedByGit(filePath) {
   try {

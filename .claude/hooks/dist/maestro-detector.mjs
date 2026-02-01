@@ -2,6 +2,13 @@
 
 // src/maestro-detector.ts
 import { readFileSync } from "fs";
+
+// src/shared/output.ts
+function outputContinue() {
+  console.log(JSON.stringify({ result: "continue" }));
+}
+
+// src/maestro-detector.ts
 var COMPLEXITY_SIGNALS = [
   // Multi-task indicators
   { name: "conjunction", pattern: /\b(and then|and also|plus|as well as)\b/i, weight: 0.25 },
@@ -94,25 +101,31 @@ async function main() {
   try {
     const rawInput = readStdin();
     if (!rawInput.trim()) {
+      outputContinue();
       return;
     }
     let input;
     try {
       input = JSON.parse(rawInput);
     } catch {
+      outputContinue();
       return;
     }
     if (!input.prompt || typeof input.prompt !== "string") {
+      outputContinue();
       return;
     }
     const prompt = input.prompt;
     if (prompt.length < 50) {
+      outputContinue();
       return;
     }
     if (/\b(maestro|orchestrat)/i.test(prompt)) {
+      outputContinue();
       return;
     }
     if (/^(what|how|why|where|when|can you|could you|is there)\s/i.test(prompt) && prompt.length < 100) {
+      outputContinue();
       return;
     }
     const { score, signals } = analyzeComplexity(prompt);
@@ -120,8 +133,11 @@ async function main() {
     const adjustedScore = phases >= 3 ? score + 0.15 : score;
     if (adjustedScore >= COMPLEXITY_THRESHOLD && signals.length >= 2) {
       makeSuggestionOutput(adjustedScore, signals, Math.max(phases, 2));
+    } else {
+      outputContinue();
     }
   } catch (err) {
+    outputContinue();
   }
 }
 main();

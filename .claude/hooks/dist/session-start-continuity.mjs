@@ -557,7 +557,10 @@ async function readStdin() {
     process.stdin.on("end", () => resolve(data));
   });
 }
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  console.log(JSON.stringify({ result: "continue" }));
+});
 export {
   buildHandoffDirName,
   extractLedgerSection,

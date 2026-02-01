@@ -21,7 +21,7 @@ function getOpcDir() {
   if (homeDir) {
     const globalClaude = join(homeDir, ".claude");
     const globalScripts = join(globalClaude, "scripts", "core");
-    if (existsSync(globalScripts)) {
+    if (existsSync(globalScripts) && globalClaude !== projectDir) {
       return globalClaude;
     }
   }
@@ -49,8 +49,8 @@ import asyncio
 import json
 
 # Add opc to path for imports
-sys.path.insert(0, '${opcDir}')
-os.chdir('${opcDir}')
+sys.path.insert(0, '${opcDir.replace(/\\/g, "/")}')
+os.chdir('${opcDir.replace(/\\/g, "/")}')
 
 ${pythonCode}
 `;
@@ -58,8 +58,8 @@ ${pythonCode}
     const result = spawnSync("uv", ["run", "python", "-c", wrappedCode, ...args], {
       encoding: "utf-8",
       maxBuffer: 1024 * 1024,
-      timeout: 5e3,
-      // 5 second timeout - fail gracefully if DB unreachable
+      timeout: 3e3,
+      // 3 second timeout (reduced for faster startup)
       cwd: opcDir,
       env: {
         ...process.env,
@@ -78,6 +78,52 @@ ${pythonCode}
       stderr: String(err)
     };
   }
+}
+function isSessionActive(sessionId, thresholdMs = 5 * 60 * 1e3) {
+  const thresholdSeconds = Math.floor(thresholdMs / 1e3);
+  const pythonCode = `
+import asyncpg
+import os
+from datetime import datetime, timezone
+
+session_id = sys.argv[1]
+threshold_seconds = int(sys.argv[2])
+pg_url = os.environ.get('CONTINUOUS_CLAUDE_DB_URL') or os.environ.get('DATABASE_URL', 'postgresql://claude:claude_dev@localhost:5434/continuous_claude')
+
+async def main():
+    conn = await asyncpg.connect(pg_url)
+    try:
+        row = await conn.fetchrow('''
+            SELECT last_heartbeat FROM sessions
+            WHERE id = $1
+        ''', session_id)
+
+        if not row or not row['last_heartbeat']:
+            print('false')
+            return
+
+        # Check if heartbeat is within threshold
+        heartbeat = row['last_heartbeat']
+        if heartbeat.tzinfo is None:
+            heartbeat = heartbeat.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        age_seconds = (now - heartbeat).total_seconds()
+
+        if age_seconds <= threshold_seconds:
+            print('true')
+        else:
+            print('false')
+    finally:
+        await conn.close()
+
+asyncio.run(main())
+`;
+  const result = runPgQuery(pythonCode, [sessionId, String(thresholdSeconds)]);
+  if (!result.success) {
+    return false;
+  }
+  return result.stdout.trim() === "true";
 }
 function checkFileClaim(filePath, project, mySessionId) {
   const pythonCode = `
@@ -210,6 +256,7 @@ function getProject() {
 }
 
 // src/file-claims.ts
+var STALE_THRESHOLD_MS = 5 * 60 * 1e3;
 function main() {
   let input;
   try {
@@ -219,7 +266,7 @@ function main() {
     console.log(JSON.stringify({ result: "continue" }));
     return;
   }
-  if (input.tool_name !== "Edit") {
+  if (input.tool_name !== "Edit" && input.tool_name !== "Write") {
     console.log(JSON.stringify({ result: "continue" }));
     return;
   }
@@ -232,15 +279,26 @@ function main() {
   const project = getProject();
   const claimCheck = checkFileClaim(filePath, project, sessionId);
   let output;
-  if (claimCheck.claimed) {
-    const fileName = filePath.split("/").pop() || filePath;
-    output = {
-      result: "continue",
-      // Allow edit, just warn
-      message: `\u26A0\uFE0F **File Conflict Warning**
-\`${fileName}\` is being edited by Session ${claimCheck.claimedBy}
-Consider coordinating with the other session to avoid conflicts.`
-    };
+  if (claimCheck.claimed && claimCheck.claimedBy) {
+    const otherSessionActive = isSessionActive(claimCheck.claimedBy, STALE_THRESHOLD_MS);
+    if (otherSessionActive) {
+      const fileName = filePath.split(/[/\\]/).pop() || filePath;
+      output = {
+        result: "deny",
+        reason: `File locked by active session ${claimCheck.claimedBy}`,
+        message: `[BLOCKED] File Conflict
+"${fileName}" is locked by Session ${claimCheck.claimedBy}
+Wait for the other session to finish or coordinate directly.
+The lock will auto-release when that session's heartbeat goes stale (5 min).`
+      };
+    } else {
+      claimFile(filePath, project, sessionId);
+      const fileName = filePath.split(/[/\\]/).pop() || filePath;
+      output = {
+        result: "continue",
+        message: `[INFO] Took over stale file lock for "${fileName}" from inactive session`
+      };
+    }
   } else {
     claimFile(filePath, project, sessionId);
     output = { result: "continue" };

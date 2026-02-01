@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// src/heartbeat.ts
+import { existsSync as existsSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2, mkdirSync as mkdirSync2 } from "fs";
+import { join as join3 } from "path";
+
 // src/shared/db-utils-pg.ts
 import { spawnSync } from "child_process";
 
@@ -20,7 +24,7 @@ function getOpcDir() {
   if (homeDir) {
     const globalClaude = join(homeDir, ".claude");
     const globalScripts = join(globalClaude, "scripts", "core");
-    if (existsSync(globalScripts)) {
+    if (existsSync(globalScripts) && globalClaude !== projectDir) {
       return globalClaude;
     }
   }
@@ -48,8 +52,8 @@ import asyncio
 import json
 
 # Add opc to path for imports
-sys.path.insert(0, '${opcDir}')
-os.chdir('${opcDir}')
+sys.path.insert(0, '${opcDir.replace(/\\/g, "/")}')
+os.chdir('${opcDir.replace(/\\/g, "/")}')
 
 ${pythonCode}
 `;
@@ -57,8 +61,8 @@ ${pythonCode}
     const result = spawnSync("uv", ["run", "python", "-c", wrappedCode, ...args], {
       encoding: "utf-8",
       maxBuffer: 1024 * 1024,
-      timeout: 5e3,
-      // 5 second timeout - fail gracefully if DB unreachable
+      timeout: 3e3,
+      // 3 second timeout (reduced for faster startup)
       cwd: opcDir,
       env: {
         ...process.env,
@@ -173,14 +177,34 @@ function getSessionId(options = {}) {
 }
 
 // src/heartbeat.ts
-async function main() {
-  let input = {};
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
-  }
+var CACHE_TTL_MS = 3e4;
+var CACHE_DIR = join3(process.env.HOME || process.env.USERPROFILE || "", ".claude", "cache");
+var CACHE_FILE = join3(CACHE_DIR, "heartbeat-last.json");
+function shouldUpdateHeartbeat(sessionId) {
   try {
-    const rawInput = Buffer.concat(chunks).toString("utf-8").trim();
+    if (!existsSync2(CACHE_FILE)) return true;
+    const cache = JSON.parse(readFileSync2(CACHE_FILE, "utf-8"));
+    if (cache.sessionId !== sessionId) return true;
+    const elapsed = Date.now() - cache.timestamp;
+    return elapsed >= CACHE_TTL_MS;
+  } catch {
+    return true;
+  }
+}
+function updateCache(sessionId) {
+  try {
+    mkdirSync2(CACHE_DIR, { recursive: true });
+    writeFileSync2(CACHE_FILE, JSON.stringify({ sessionId, timestamp: Date.now() }));
+  } catch {
+  }
+}
+function readStdin() {
+  return readFileSync2(0, "utf-8");
+}
+function main() {
+  let input = {};
+  try {
+    const rawInput = readStdin().trim();
     if (rawInput) {
       input = JSON.parse(rawInput);
     }
@@ -188,14 +212,31 @@ async function main() {
   }
   const sessionId = input.session_id || getSessionId();
   const project = input.cwd || process.cwd();
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  if (homeDir) {
+    const claudeDir = homeDir.replace(/\\/g, "/") + "/.claude";
+    const normalizedProject = project.replace(/\\/g, "/");
+    if (normalizedProject === claudeDir || normalizedProject.endsWith("/.claude")) {
+      console.log(JSON.stringify({ result: "continue" }));
+      return;
+    }
+  }
   const workingOn = input.prompt ? input.prompt.split("\n")[0].substring(0, 100) : void 0;
+  if (!shouldUpdateHeartbeat(sessionId)) {
+    console.log(JSON.stringify({ result: "continue" }));
+    return;
+  }
   const result = registerSession(sessionId, project, workingOn);
   if (!result.success) {
     console.error(`Heartbeat update failed: ${result.error}`);
+  } else {
+    updateCache(sessionId);
   }
   console.log(JSON.stringify({ result: "continue" }));
 }
-main().catch((err) => {
+try {
+  main();
+} catch (err) {
   console.error("Heartbeat error:", err);
   console.log(JSON.stringify({ result: "continue" }));
-});
+}

@@ -20,16 +20,28 @@ function getOpcDir() {
   if (homeDir) {
     const globalClaude = join(homeDir, ".claude");
     const globalScripts = join(globalClaude, "scripts", "core");
-    if (existsSync(globalScripts)) {
+    if (existsSync(globalScripts) && globalClaude !== projectDir) {
       return globalClaude;
     }
   }
   return null;
 }
 
+// src/shared/output.ts
+function outputContinue() {
+  console.log(JSON.stringify({ result: "continue" }));
+}
+
 // src/memory-awareness.ts
 function readStdin() {
   return readFileSync(0, "utf-8");
+}
+function isInfrastructureDir(projectDir) {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  if (!homeDir) return false;
+  const claudeDir = homeDir.replace(/\\/g, "/") + "/.claude";
+  const normalizedProject = (projectDir || "").replace(/\\/g, "/");
+  return normalizedProject === claudeDir || normalizedProject.endsWith("/.claude");
 }
 function extractIntent(prompt) {
   const metaPhrases = [
@@ -207,8 +219,8 @@ function checkLocalMemory(intent, projectDir) {
     ], {
       encoding: "utf-8",
       cwd: path.join(homeDir, ".claude", "scripts", "core", "core"),
-      timeout: 3e3
-      // 3s timeout for local check
+      timeout: 2e3,
+      killSignal: "SIGKILL"
     });
     if (result.status !== 0 || !result.stdout) return null;
     const data = JSON.parse(result.stdout);
@@ -250,7 +262,8 @@ function checkMemoryRelevance(intent, projectDir) {
       ...process.env,
       PYTHONPATH: opcDir
     },
-    timeout: 5e3
+    timeout: 2e3,
+    killSignal: "SIGKILL"
   });
   if (result.status !== 0 || !result.stdout) {
     return null;
@@ -281,17 +294,25 @@ function checkMemoryRelevance(intent, projectDir) {
 async function main() {
   const input = JSON.parse(readStdin());
   const projectDir = process.env.CLAUDE_PROJECT_DIR || input.cwd;
+  if (isInfrastructureDir(projectDir)) {
+    outputContinue();
+    return;
+  }
   if (process.env.CLAUDE_AGENT_ID) {
+    outputContinue();
     return;
   }
   if (input.prompt.length < 15) {
+    outputContinue();
     return;
   }
   if (input.prompt.trim().startsWith("/")) {
+    outputContinue();
     return;
   }
   const intent = extractIntent(input.prompt);
   if (intent.length < 3) {
+    outputContinue();
     return;
   }
   const match = checkMemoryRelevance(intent, projectDir);
@@ -308,7 +329,10 @@ Use /recall "${intent}" for full content. Disclose if helpful.`;
         additionalContext: claudeContext
       }
     }));
+  } else {
+    outputContinue();
   }
 }
 main().catch(() => {
+  outputContinue();
 });
