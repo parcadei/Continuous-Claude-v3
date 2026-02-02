@@ -137,11 +137,24 @@ var RECON_COMPLETE_PATTERNS = [
   /\bscouting\s+(is\s+)?complete\b/i,
   /\bdone\s+(with\s+)?(recon|exploration|scouting)\b/i
 ];
-var INTERVIEW_COMPLETE_PATTERNS = [
-  /\binterview\s+complete\b/i,
-  /\bdiscovery\s+complete\b/i,
-  /\bdone\s+(with\s+)?(interview|questions)\b/i
-];
+var INTERVIEW_COMPLETE_PATTERNS = {
+  positive: [
+    /^interview\s+complete[\s\.!]*$/i,
+    /^discovery\s+complete[\s\.!]*$/i,
+    /^done\s+(with\s+)?(interview|questions)[\s\.!]*$/i,
+    /\bthe\s+interview\s+is\s+complete\b/i
+  ],
+  negative: [
+    /\?/,
+    /\bnot\b/i,
+    /\bmore\s+questions\b/i,
+    /\bstill\b/i,
+    /\bwhen\b/i,
+    /\blet\s+me\s+know\b/i,
+    /\bshould\b/i,
+    /\bsignal\b/i
+  ]
+};
 var IMPLEMENTATION_PATTERNS = [
   /\b(build|create|implement|add|develop|make|write)\b/i,
   /\b(feature|component|service|api|endpoint|module)\b/i,
@@ -151,20 +164,58 @@ var RESEARCH_PATTERNS = [
   /\b(research|understand|learn|explore|how\s+does|what\s+is)\b/i,
   /\b(best\s+practices|documentation|docs|patterns)\b/i
 ];
-var PLAN_APPROVAL_PATTERNS = [
-  /^(yes|approve|approved|proceed|go\s*ahead|looks\s*good|do\s*it|lgtm)\.?$/i,
-  /\bapprove\s+(the\s+)?plan\b/i,
-  /\bplan\s+approved\b/i,
-  /\bproceed\s+with\s+(the\s+)?plan\b/i
-];
-var CANCEL_PATTERNS = [
-  /\bcancel\s+maestro\b/i,
-  /\bstop\s+orchestrat/i,
-  /\bexit\s+maestro\b/i,
-  /\bdisable\s+maestro\b/i
-];
+var PLAN_APPROVAL_PATTERNS = {
+  positive: [
+    /^(yes|approve|approved|proceed|go\s*ahead|looks\s*good|do\s*it|lgtm)[\s,\.!]*$/i,
+    /^yes,?\s*(proceed|go\s*ahead|do\s*it|let'?s?\s*(do|go))[\s\.!]*$/i,
+    /\bapprove\s+(the\s+)?plan\b/i,
+    /\bplan\s+approved\b/i,
+    /\bproceed\s+with\s+(the\s+)?plan\b/i
+  ],
+  negative: [
+    /\bbut\b/i,
+    /\bhowever\b/i,
+    /\bwait\b/i,
+    /\bhold\s+on\b/i,
+    /\?/,
+    /\bfirst\b/i,
+    /\bbefore\b/i,
+    /\bconcern/i,
+    /\bquestion/i,
+    /\bmaybe\b/i,
+    /\bnot\s+yet\b/i
+  ]
+};
+var CANCEL_PATTERNS = {
+  positive: [
+    /\bcancel\s+maestro\b/i,
+    /\bstop\s+orchestrat/i,
+    /\bexit\s+maestro\b/i,
+    /\bdisable\s+maestro\b/i
+  ],
+  negative: [
+    /\bdon'?t\b/i,
+    /\bdo\s+not\b/i,
+    /\bkeep\b/i,
+    /\bwait\b/i,
+    /\bnot\s+yet\b/i,
+    /\bshould\s+i\b/i,
+    /\bif\s+(this|it|we|I)\b/i,
+    /\bI'?ll\b/i,
+    /\?/
+  ]
+};
 function matchesAny(text, patterns) {
   return patterns.some((p) => p.test(text));
+}
+function matchesPattern(text, patternSet) {
+  if (Array.isArray(patternSet)) {
+    return matchesAny(text, patternSet);
+  }
+  if (patternSet.negative && matchesAny(text, patternSet.negative)) {
+    return false;
+  }
+  return matchesAny(text, patternSet.positive);
 }
 async function main() {
   try {
@@ -190,7 +241,7 @@ async function main() {
     const sessionId = input.session_id;
     const prompt = input.prompt.trim();
     const state = readState(sessionId);
-    if (matchesAny(prompt, CANCEL_PATTERNS)) {
+    if (matchesPattern(prompt, CANCEL_PATTERNS)) {
       clearState(sessionId);
       console.log(`
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
@@ -295,7 +346,7 @@ Task tool BLOCKED until interview complete.
         outputContinue();
         return;
       }
-      if (state.reconComplete && !state.interviewComplete && matchesAny(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
+      if (state.reconComplete && !state.interviewComplete && matchesPattern(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
         state.interviewComplete = true;
         writeState(state, sessionId);
         const step = state.taskType === "research" ? 1 : 2;
@@ -318,7 +369,7 @@ Task tool still BLOCKED until plan approved.
         outputContinue();
         return;
       }
-      if (state.interviewComplete && !state.planApproved && matchesAny(prompt, PLAN_APPROVAL_PATTERNS)) {
+      if (state.interviewComplete && !state.planApproved && matchesPattern(prompt, PLAN_APPROVAL_PATTERNS)) {
         state.planApproved = true;
         writeState(state, sessionId);
         console.log(`

@@ -117,11 +117,24 @@ const RECON_COMPLETE_PATTERNS = [
   /\bdone\s+(with\s+)?(recon|exploration|scouting)\b/i,
 ];
 
-const INTERVIEW_COMPLETE_PATTERNS = [
-  /\binterview\s+complete\b/i,
-  /\bdiscovery\s+complete\b/i,
-  /\bdone\s+(with\s+)?(interview|questions)\b/i,
-];
+const INTERVIEW_COMPLETE_PATTERNS: PatternSet = {
+  positive: [
+    /^interview\s+complete[\s\.!]*$/i,
+    /^discovery\s+complete[\s\.!]*$/i,
+    /^done\s+(with\s+)?(interview|questions)[\s\.!]*$/i,
+    /\bthe\s+interview\s+is\s+complete\b/i,
+  ],
+  negative: [
+    /\?/,
+    /\bnot\b/i,
+    /\bmore\s+questions\b/i,
+    /\bstill\b/i,
+    /\bwhen\b/i,
+    /\blet\s+me\s+know\b/i,
+    /\bshould\b/i,
+    /\bsignal\b/i,
+  ]
+};
 
 // Patterns to detect task type from original request
 const IMPLEMENTATION_PATTERNS = [
@@ -135,22 +148,66 @@ const RESEARCH_PATTERNS = [
   /\b(best\s+practices|documentation|docs|patterns)\b/i,
 ];
 
-const PLAN_APPROVAL_PATTERNS = [
-  /^(yes|approve|approved|proceed|go\s*ahead|looks\s*good|do\s*it|lgtm)\.?$/i,
-  /\bapprove\s+(the\s+)?plan\b/i,
-  /\bplan\s+approved\b/i,
-  /\bproceed\s+with\s+(the\s+)?plan\b/i,
-];
+const PLAN_APPROVAL_PATTERNS: PatternSet = {
+  positive: [
+    /^(yes|approve|approved|proceed|go\s*ahead|looks\s*good|do\s*it|lgtm)[\s,\.!]*$/i,
+    /^yes,?\s*(proceed|go\s*ahead|do\s*it|let'?s?\s*(do|go))[\s\.!]*$/i,
+    /\bapprove\s+(the\s+)?plan\b/i,
+    /\bplan\s+approved\b/i,
+    /\bproceed\s+with\s+(the\s+)?plan\b/i,
+  ],
+  negative: [
+    /\bbut\b/i,
+    /\bhowever\b/i,
+    /\bwait\b/i,
+    /\bhold\s+on\b/i,
+    /\?/,
+    /\bfirst\b/i,
+    /\bbefore\b/i,
+    /\bconcern/i,
+    /\bquestion/i,
+    /\bmaybe\b/i,
+    /\bnot\s+yet\b/i,
+  ]
+};
 
-const CANCEL_PATTERNS = [
-  /\bcancel\s+maestro\b/i,
-  /\bstop\s+orchestrat/i,
-  /\bexit\s+maestro\b/i,
-  /\bdisable\s+maestro\b/i,
-];
+const CANCEL_PATTERNS: PatternSet = {
+  positive: [
+    /\bcancel\s+maestro\b/i,
+    /\bstop\s+orchestrat/i,
+    /\bexit\s+maestro\b/i,
+    /\bdisable\s+maestro\b/i,
+  ],
+  negative: [
+    /\bdon'?t\b/i,
+    /\bdo\s+not\b/i,
+    /\bkeep\b/i,
+    /\bwait\b/i,
+    /\bnot\s+yet\b/i,
+    /\bshould\s+i\b/i,
+    /\bif\s+(this|it|we|I)\b/i,
+    /\bI'?ll\b/i,
+    /\?/,
+  ]
+};
+
+interface PatternSet {
+  positive: RegExp[];
+  negative?: RegExp[];
+}
 
 function matchesAny(text: string, patterns: RegExp[]): boolean {
   return patterns.some(p => p.test(text));
+}
+
+function matchesPattern(text: string, patternSet: PatternSet | RegExp[]): boolean {
+  if (Array.isArray(patternSet)) {
+    return matchesAny(text, patternSet);
+  }
+  if (patternSet.negative && matchesAny(text, patternSet.negative)) {
+    return false;
+  }
+  return matchesAny(text, patternSet.positive);
 }
 
 async function main() {
@@ -184,7 +241,7 @@ async function main() {
     const state = readState(sessionId);
 
     // Check for cancel
-    if (matchesAny(prompt, CANCEL_PATTERNS)) {
+    if (matchesPattern(prompt, CANCEL_PATTERNS)) {
       clearState(sessionId);
       console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -300,7 +357,7 @@ Task tool BLOCKED until interview complete.
       }
 
       // Check for interview completion
-      if (state.reconComplete && !state.interviewComplete && matchesAny(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
+      if (state.reconComplete && !state.interviewComplete && matchesPattern(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
         state.interviewComplete = true;
         writeState(state, sessionId);
         const step = state.taskType === 'research' ? 1 : 2;
@@ -325,7 +382,7 @@ Task tool still BLOCKED until plan approved.
       }
 
       // Check for plan approval (only if interview complete)
-      if (state.interviewComplete && !state.planApproved && matchesAny(prompt, PLAN_APPROVAL_PATTERNS)) {
+      if (state.interviewComplete && !state.planApproved && matchesPattern(prompt, PLAN_APPROVAL_PATTERNS)) {
         state.planApproved = true;
         writeState(state, sessionId);
         console.log(`

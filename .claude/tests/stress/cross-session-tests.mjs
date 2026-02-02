@@ -66,7 +66,8 @@ async function testF1_FileClaimConflict() {
 
   if (exists) {
     const content = readFileSync(hookPath, 'utf-8');
-    const hasClaimCheck = content.includes('file_claims') || content.includes('checkClaim');
+    // checkFileClaim is imported from db-utils-pg which handles the query
+    const hasClaimCheck = content.includes('file_claims') || content.includes('checkFileClaim') || content.includes('claimFile');
     console.log(`Has file claim logic: ${hasClaimCheck}`);
 
     if (hasClaimCheck) {
@@ -108,8 +109,9 @@ async function testF2_SessionAwareness() {
   }
 
   const content = readFileSync(hookPath, 'utf-8');
-  const hasSessionTable = content.includes('sessions') && content.includes('INSERT');
-  const hasHeartbeat = content.includes('heartbeat') || content.includes('last_heartbeat');
+  // registerSession is imported from db-utils-pg which handles the INSERT
+  const hasSessionTable = content.includes('registerSession') || (content.includes('sessions') && content.includes('INSERT'));
+  const hasHeartbeat = content.includes('heartbeat') || content.includes('last_heartbeat') || content.includes('getActiveSessions');
 
   console.log(`Uses sessions table: ${hasSessionTable}`);
   console.log(`Has heartbeat logic: ${hasHeartbeat}`);
