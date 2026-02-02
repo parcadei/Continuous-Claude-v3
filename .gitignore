@@ -152,7 +152,6 @@ opc/scripts/tldr_fluid_cache_model.py
 
 # OPC dev-only (not needed for wizard install)
 opc/.github/
-opc/tests/
 opc/docs/
 opc/src/*
 !opc/src/runtime/
