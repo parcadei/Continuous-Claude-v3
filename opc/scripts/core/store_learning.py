@@ -92,6 +92,23 @@ PROJECT_KEYWORDS = {
     "package.json", "tsconfig", "pyproject.toml", "cargo.toml",
 }
 
+# Singleton embedding service (prevents 1.5GB model reload per learning)
+_embedder = None
+
+
+def get_embedder():
+    """Get or create singleton EmbeddingService instance.
+
+    The BGE embedding model is ~1.5GB. Creating a new instance per learning
+    causes OOM after ~10 learnings. This singleton ensures the model is
+    loaded once and reused.
+    """
+    global _embedder
+    if _embedder is None:
+        from db.embedding_service import EmbeddingService
+        _embedder = EmbeddingService(provider="local")
+    return _embedder
+
 
 def get_project_id(project_dir: str | None) -> str | None:
     """Generate stable project ID from absolute path."""
@@ -177,8 +194,8 @@ async def store_learning_v2(
             session_id=session_id,
         )
 
-        # Generate embedding
-        embedder = EmbeddingService(provider="local")
+        # Generate embedding (uses singleton to avoid 1.5GB model reload)
+        embedder = get_embedder()
         embedding = await embedder.embed(content)
 
         # Deduplication check: search for similar existing memories
@@ -313,8 +330,8 @@ async def store_learning(
             session_id=session_id,
         )
 
-        # Generate embedding using local provider (no API key needed)
-        embedder = EmbeddingService(provider="local")
+        # Generate embedding (uses singleton to avoid 1.5GB model reload)
+        embedder = get_embedder()
         embedding = await embedder.embed(learning_content)
 
         # Store with embedding for semantic search
@@ -404,7 +421,12 @@ async def main():
         )
 
     if args.json:
-        print(json.dumps(result))
+        # Ensure all values are JSON serializable (UUIDs, etc.)
+        def serialize(obj):
+            if hasattr(obj, 'hex'):  # UUID
+                return str(obj)
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        print(json.dumps(result, default=serialize))
     else:
         if result.get("skipped"):
             print(f"~ Learning skipped: {result.get('reason', 'duplicate')}")

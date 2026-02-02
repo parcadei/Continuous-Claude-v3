@@ -106,7 +106,8 @@ def get_connection_string() -> str:
     Checks env vars in order (single source of truth pattern):
     1. OPC_POSTGRES_URL - primary config used by wizard/docker-compose
     2. AGENTICA_POSTGRES_URL - legacy/alternative name
-    3. Development default if neither set
+    3. DATABASE_URL - standard convention (used by settings.json)
+    4. Development default if none set
 
     In production mode, one of these must be explicitly set.
 
@@ -114,14 +115,18 @@ def get_connection_string() -> str:
         ValueError: If no URL is set in production mode.
     """
     # Check env vars in priority order
-    url = os.environ.get("OPC_POSTGRES_URL") or os.environ.get("AGENTICA_POSTGRES_URL")
+    url = (
+        os.environ.get("OPC_POSTGRES_URL")
+        or os.environ.get("AGENTICA_POSTGRES_URL")
+        or os.environ.get("DATABASE_URL")
+    )
 
     if url:
         return url
 
     if _is_production():
         raise ValueError(
-            "OPC_POSTGRES_URL or AGENTICA_POSTGRES_URL must be set in production mode. "
+            "OPC_POSTGRES_URL, AGENTICA_POSTGRES_URL, or DATABASE_URL must be set in production mode. "
             "Set AGENTICA_ENV=development for local defaults."
         )
 

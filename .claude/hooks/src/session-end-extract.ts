@@ -1,21 +1,33 @@
 #!/usr/bin/env node
 /**
- * Session End Extract Hook
+ * Session End Extract Hook (L3 Defense Layer)
  *
- * Triggers memory extraction when a session ends.
- * Replaces the polling memory daemon with on-demand extraction.
+ * Final sweep memory extraction when a session ends.
+ * Complements PreCompact (L0), UserConfirm (L1), and SmarterEveryDay (L2).
  *
  * Hook: SessionEnd
  * Condition: Session has enough turns (>= 10)
+ *
+ * Enhancements:
+ * - Reads extraction-state.json to skip already-extracted content
+ * - Uses incremental_extract.py for deduplication
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn, spawnSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 
 interface SessionEndInput {
   session_id: string;
   type?: string;
+  transcript_path?: string;
+}
+
+interface ExtractionState {
+  session_id: string;
+  last_extracted_line: number;
+  recent_hashes: string[];
+  last_extraction_time: string;
 }
 
 const MIN_TURNS = 10;
@@ -23,6 +35,19 @@ const EXTRACTION_TIMEOUT = 60000; // 60 seconds
 
 function getOpcDir(): string {
   return process.env.CLAUDE_OPC_DIR || path.join(process.env.HOME || process.env.USERPROFILE || '', 'continuous-claude', 'opc');
+}
+
+function getStateFilePath(projectDir: string): string {
+  return path.join(projectDir, '.claude', 'extraction-state.json');
+}
+
+function loadExtractionState(stateFile: string): ExtractionState | null {
+  if (!fs.existsSync(stateFile)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+  } catch {
+    return null;
+  }
 }
 
 function shouldExtract(sessionId: string, projectDir: string): boolean {
@@ -48,7 +73,51 @@ function shouldExtract(sessionId: string, projectDir: string): boolean {
   }
 }
 
-function extractLearnings(sessionId: string, projectDir: string): void {
+function extractWithDedup(sessionId: string, projectDir: string, transcriptPath?: string): void {
+  const opcDir = getOpcDir();
+  const stateFile = getStateFilePath(projectDir);
+  const state = loadExtractionState(stateFile);
+
+  // If we have transcript and incremental_extract.py, use dedup-aware extraction
+  const incrementalScript = path.join(opcDir, 'scripts', 'core', 'incremental_extract.py');
+  if (transcriptPath && fs.existsSync(transcriptPath) && fs.existsSync(incrementalScript)) {
+    const startLine = state?.last_extracted_line || 0;
+
+    console.error(`[SessionEnd:L3] Final sweep from line ${startLine} with dedup`);
+
+    // Run incremental extraction for final sweep
+    const result = spawnSync('uv', [
+      'run', 'python', 'scripts/core/incremental_extract.py',
+      '--transcript', transcriptPath,
+      '--session-id', sessionId,
+      '--start-line', startLine.toString(),
+      '--state-file', stateFile,
+      '--project-dir', projectDir,
+      '--max-learnings', '15',  // More generous at session end
+      '--json'
+    ], {
+      cwd: opcDir,
+      encoding: 'utf-8',
+      env: { ...process.env, PYTHONPATH: opcDir },
+      timeout: 30000
+    });
+
+    if (result.status === 0) {
+      try {
+        const data = JSON.parse(result.stdout.trim());
+        console.error(`[SessionEnd:L3] Extracted ${data.learnings_stored}, deduped ${data.learnings_deduped}`);
+      } catch {
+        console.error('[SessionEnd:L3] Extraction complete');
+      }
+      return;
+    }
+  }
+
+  // Fallback to legacy extraction
+  extractLearningsLegacy(sessionId, projectDir);
+}
+
+function extractLearningsLegacy(sessionId: string, projectDir: string): void {
   const opcDir = getOpcDir();
   const lazyMemoryPath = path.join(opcDir, 'scripts', 'core', 'lazy_memory.py');
 
@@ -107,8 +176,8 @@ async function main() {
     return;
   }
 
-  // Trigger extraction (runs in background)
-  extractLearnings(sessionId, projectDir);
+  // Trigger extraction with deduplication
+  extractWithDedup(sessionId, projectDir, data.transcript_path);
 
   console.log(JSON.stringify({ result: 'continue' }));
 }

@@ -110,6 +110,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/maestro-detector.mjs",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/user-confirmation-detector.mjs",
+            "timeout": 5000
           }
         ]
       }
@@ -140,6 +145,17 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/pre-compact-extract.mjs",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
@@ -152,6 +168,16 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/agent-error-capture.mjs",
+            "timeout": 10000
+          }
+        ]
+      },
       {
         "matcher": "Grep|Read",
         "hooks": [
@@ -178,6 +204,16 @@
           {
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/roadmap-completion.mjs",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash|TaskUpdate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/smarter-everyday.mjs",
             "timeout": 5000
           }
         ]
