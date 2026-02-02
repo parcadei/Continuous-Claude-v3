@@ -15,7 +15,7 @@ C:\Users\david.hayes\.claude\scripts\start-memory-daemon.ps1
 python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py stop
 ```
 
-## Docker Services (PostgreSQL - Port 5434)
+## Docker Services (PostgreSQL - Port 5432)
 
 ```powershell
 # Start PostgreSQL (auto-starts on session via session-start-docker hook)
@@ -34,7 +34,7 @@ python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py stop
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" exec continuous-claude-postgres psql -U claude -d continuous_claude -c "SELECT COUNT(*) FROM archival_memory;"
 ```
 
-**Note:** Container uses port 5434 (configured in `docker/.env`)
+**Note:** Container uses port 5432 (default PostgreSQL port)
 
 ## Task Scheduler (Auto-Start)
 
@@ -156,14 +156,14 @@ Copy-Item "C:\Users\david.hayes\claude-archives\superClaude-v4.1.0-20260110-1757
 ## Environment Variables
 
 ```powershell
-# Set PostgreSQL connection (user-level) - NOTE: Port 5434
-[System.Environment]::SetEnvironmentVariable('DATABASE_URL', 'postgresql://claude:claude_dev@localhost:5434/continuous_claude', 'User')
+# Set PostgreSQL connection (user-level)
+[System.Environment]::SetEnvironmentVariable('DATABASE_URL', 'postgresql://claude:claude_dev@localhost:5432/continuous_claude', 'User')
 
 # Verify
 $env:DATABASE_URL
 
 # Required in ~/.claude/.env
-DATABASE_URL=postgresql://claude:claude_dev@localhost:5434/continuous_claude
+DATABASE_URL=postgresql://claude:claude_dev@localhost:5432/continuous_claude
 BRAINTRUST_API_KEY=sk-...
 TRACE_TO_BRAINTRUST=true
 ```
