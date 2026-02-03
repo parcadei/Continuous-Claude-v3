@@ -381,7 +381,16 @@ async function main() {
   const roadmapPath = path.join(projectDir, "ROADMAP.md");
   const planDirNested = path.join(projectDir, ".claude", "plans");
   const planDirDirect = path.join(projectDir, "plans");
-  const planDir = fs.existsSync(planDirNested) ? planDirNested : fs.existsSync(planDirDirect) ? planDirDirect : planDirNested;
+  const userHome = process.env.USERPROFILE || process.env.HOME || "";
+  const userPlanDir = path.join(userHome, ".claude", "plans");
+  const hasPlanFiles = (dir) => {
+    try {
+      return fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(".md"));
+    } catch {
+      return false;
+    }
+  };
+  const planDir = hasPlanFiles(planDirNested) ? planDirNested : hasPlanFiles(planDirDirect) ? planDirDirect : hasPlanFiles(userPlanDir) ? userPlanDir : planDirNested;
   let planContent = "";
   if (fs.existsSync(planDir)) {
     const planFiles = fs.readdirSync(planDir).filter((f) => f.endsWith(".md")).sort((a, b) => {
