@@ -1,0 +1,105 @@
+{
+  "doc_name": "sample_roadmap.md",
+  "structure": [
+    {
+      "node_id": "0001",
+      "title": "Project Roadmap",
+      "level": 1,
+      "text": "This is the project roadmap document.",
+      "line_num": 1,
+      "nodes": [
+        {
+          "node_id": "0002",
+          "title": "Overview",
+          "level": 2,
+          "text": "This is the project roadmap document.",
+          "line_num": 3,
+          "nodes": []
+        },
+        {
+          "node_id": "0003",
+          "title": "Current Focus",
+          "level": 2,
+          "text": "Working on the memory system integration.",
+          "line_num": 6,
+          "nodes": [
+            {
+              "node_id": "0004",
+              "title": "Phase 1: Foundation",
+              "level": 3,
+              "text": "- Set up database schema\n- Create basic CRUD operations",
+              "line_num": 9,
+              "nodes": []
+            },
+            {
+              "node_id": "0005",
+              "title": "Phase 2: Integration",
+              "level": 3,
+              "text": "- Connect to Claude Code hooks\n- Add semantic search",
+              "line_num": 13,
+              "nodes": []
+            }
+          ]
+        },
+        {
+          "node_id": "0006",
+          "title": "Goals",
+          "level": 2,
+          "text": "",
+          "line_num": 17,
+          "nodes": [
+            {
+              "node_id": "0007",
+              "title": "Short-term Goals",
+              "level": 3,
+              "text": "- Complete memory recall\n- Add batch indexing",
+              "line_num": 19,
+              "nodes": []
+            },
+            {
+              "node_id": "0008",
+              "title": "Long-term Goals",
+              "level": 3,
+              "text": "- Full semantic search\n- Cross-project knowledge sharing",
+              "line_num": 23,
+              "nodes": []
+            }
+          ]
+        },
+        {
+          "node_id": "0009",
+          "title": "Architecture",
+          "level": 2,
+          "text": "",
+          "line_num": 27,
+          "nodes": [
+            {
+              "node_id": "0010",
+              "title": "Database Design",
+              "level": 3,
+              "text": "Using PostgreSQL with pgvector for embeddings.",
+              "line_num": 29,
+              "nodes": []
+            },
+            {
+              "node_id": "0011",
+              "title": "API Design",
+              "level": 3,
+              "text": "RESTful endpoints for CRUD operations.",
+              "line_num": 32,
+              "nodes": []
+            }
+          ]
+        },
+        {
+          "node_id": "0012",
+          "title": "Timeline",
+          "level": 2,
+          "text": "- Q1: Foundation\n- Q2: Integration\n- Q3: Polish",
+          "line_num": 35,
+          "nodes": []
+        }
+      ]
+    }
+  ]
+}

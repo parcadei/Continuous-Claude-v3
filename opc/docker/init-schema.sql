@@ -92,3 +92,26 @@ CREATE INDEX IF NOT EXISTS idx_handoffs_goal_fts ON handoffs
     USING gin(to_tsvector('english', COALESCE(goal, '')));
 CREATE INDEX IF NOT EXISTS idx_handoffs_embedding_hnsw ON handoffs
     USING hnsw(embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+
+-- =============================================================================
+-- PAGEINDEX LAYER (Tree-based RAG)
+-- =============================================================================
+
+-- PageIndex Trees: Hierarchical tree indexes for markdown documents
+-- Uses LLM reasoning for retrieval (98.7% accuracy vs ~50% for vector similarity)
+CREATE TABLE IF NOT EXISTS pageindex_trees (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id TEXT NOT NULL,
+    doc_path TEXT NOT NULL,
+    doc_type TEXT CHECK(doc_type IN ('ROADMAP', 'DOCUMENTATION', 'ARCHITECTURE', 'README', 'OTHER')),
+    tree_structure JSONB NOT NULL,
+    doc_hash TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(project_id, doc_path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pageindex_project ON pageindex_trees(project_id);
+CREATE INDEX IF NOT EXISTS idx_pageindex_doctype ON pageindex_trees(doc_type);
+CREATE INDEX IF NOT EXISTS idx_pageindex_updated ON pageindex_trees(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pageindex_tree_gin ON pageindex_trees USING gin(tree_structure jsonb_path_ops);

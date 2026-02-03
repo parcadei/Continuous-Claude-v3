@@ -1,0 +1,59 @@
+# PageIndex Configuration
+# Controls indexing behavior and auto-regeneration
+
+init_project:
+  enabled: true
+  tiers: [1]  # Only Tier 1 (Critical) on init
+  include_text: true
+  verbose: false
+
+batch_index:
+  default_tiers: [1, 2, 3, 4]  # All tiers by default
+  include_text: true
+  min_skill_lines: 300  # Minimum lines for Tier 3 skills
+
+watch:
+  enabled: true
+  debounce_ms: 2000  # Wait 2s before regenerating
+  patterns:
+    - "ROADMAP.md"
+    - "README.md"
+    - "docs/**/*.md"
+    - ".claude/docs/**/*.md"
+    - ".claude/skills/*/SKILL.md"
+    - ".claude/agents/*.md"
+
+search:
+  default_model: haiku  # Fast, cost-effective for search
+  max_results: 5
+  include_text: true
+
+# Document tier definitions
+tiers:
+  1:
+    name: Critical
+    description: Core project documentation
+    examples:
+      - ROADMAP.md
+      - README.md
+      - docs/ARCHITECTURE.md
+
+  2:
+    name: Architecture
+    description: Architecture and design docs
+    path_patterns:
+      - ".claude/docs/architecture/**/*.md"
+      - "docs/*architecture*.md"
+
+  3:
+    name: Top Skills
+    description: Important skill files (>300 lines)
+    path_patterns:
+      - ".claude/skills/*/SKILL.md"
+    min_lines: 300
+
+  4:
+    name: Agents
+    description: Agent definition files
+    path_patterns:
+      - ".claude/agents/*.md"
