@@ -12,28 +12,28 @@ function outputContinue() {
 // src/navigator-safety.ts
 var DESTRUCTIVE_PATTERNS = [
   {
-    pattern: /\bgit\s+(reset\s+--hard|checkout\s+\.|clean\s+-f)/i,
+    pattern: /^git\s+(reset\s+--hard|checkout\s+\.|clean\s+-f)/i,
     category: "Git (destructive)",
     ruleQuery: "git destructive commands confirmation",
     ruleText: "Per destructive-commands.md: Ask user before git reset/checkout/clean"
   },
   {
-    pattern: /\bgit\s+push\s+(-f|--force)/i,
+    pattern: /^git\s+push\s+(-f|--force)/i,
     category: "Git (force push)",
     ruleQuery: "git force push dangerous",
     ruleText: "Per destructive-commands.md: NEVER force push to shared branches without explicit confirmation"
   },
   {
-    pattern: /\bgit\s+(checkout|stash|rebase|merge|push|commit)\b/i,
+    pattern: /^git\s+(checkout|stash|rebase|merge|push|commit)(?:\s|$)/i,
     category: "Git (state-modifying)",
     ruleQuery: "git confirmation state modify",
     ruleText: "Per destructive-commands.md: State-modifying git commands require confirmation"
   },
   {
-    pattern: /\brm\s+(-rf?|--recursive)\s/i,
+    pattern: /\brm\s+/i,
     category: "File deletion",
     ruleQuery: "file deletion rm confirmation",
-    ruleText: "Per destructive-commands.md: Ask before running rm -rf or recursive deletion"
+    ruleText: "Per destructive-commands.md: Ask before running rm (any form)"
   },
   {
     pattern: /\brmdir\b/i,

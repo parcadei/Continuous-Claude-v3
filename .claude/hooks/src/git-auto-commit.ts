@@ -24,7 +24,39 @@ interface HookInput {
   };
 }
 
+interface GitError {
+  type: 'GIT_NOT_FOUND' | 'NOT_GIT_REPO' | 'PERMISSION_DENIED' | 'COMMIT_FAILED';
+  message: string;
+  suggestedAction?: string;
+}
+
 const CLAUDE_DIR = join(homedir(), '.claude');
+
+function checkGitAvailable(): GitError | null {
+  try {
+    execSync('git --version', { stdio: 'pipe' });
+    return null;
+  } catch {
+    return {
+      type: 'GIT_NOT_FOUND',
+      message: 'Git not found in PATH',
+      suggestedAction: 'Install git: https://git-scm.com/downloads'
+    };
+  }
+}
+
+function checkIsGitRepo(): GitError | null {
+  try {
+    execSync('git rev-parse --git-dir', { cwd: CLAUDE_DIR, stdio: 'pipe' });
+    return null;
+  } catch {
+    return {
+      type: 'NOT_GIT_REPO',
+      message: `${CLAUDE_DIR} is not a git repository`,
+      suggestedAction: 'Run: cd ~/.claude && git init'
+    };
+  }
+}
 const DEBOUNCE_FILE = join(CLAUDE_DIR, '.last-git-sync');
 const DEBOUNCE_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -136,6 +168,25 @@ function doCommit(): boolean {
 }
 
 async function main(): Promise<void> {
+  // Pre-flight checks
+  const gitError = checkGitAvailable();
+  if (gitError) {
+    console.log(JSON.stringify({
+      result: 'continue',
+      message: `[git-auto-commit] ${gitError.message}. ${gitError.suggestedAction || ''}`
+    }));
+    return;
+  }
+
+  const repoError = checkIsGitRepo();
+  if (repoError) {
+    console.log(JSON.stringify({
+      result: 'continue',
+      message: `[git-auto-commit] ${repoError.message}. ${repoError.suggestedAction || ''}`
+    }));
+    return;
+  }
+
   // Read hook input
   let input: HookInput;
   try {
@@ -191,4 +242,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(() => console.log('{}'));
+main().catch((err) => {
+  console.log(JSON.stringify({
+    result: 'continue',
+    message: `[git-auto-commit error] ${err.message || 'Unknown error'}`
+  }));
+});

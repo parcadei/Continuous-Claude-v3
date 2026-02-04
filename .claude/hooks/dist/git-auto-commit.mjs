@@ -6,6 +6,30 @@ import { execSync } from "child_process";
 import { join, resolve } from "path";
 import { homedir } from "os";
 var CLAUDE_DIR = join(homedir(), ".claude");
+function checkGitAvailable() {
+  try {
+    execSync("git --version", { stdio: "pipe" });
+    return null;
+  } catch {
+    return {
+      type: "GIT_NOT_FOUND",
+      message: "Git not found in PATH",
+      suggestedAction: "Install git: https://git-scm.com/downloads"
+    };
+  }
+}
+function checkIsGitRepo() {
+  try {
+    execSync("git rev-parse --git-dir", { cwd: CLAUDE_DIR, stdio: "pipe" });
+    return null;
+  } catch {
+    return {
+      type: "NOT_GIT_REPO",
+      message: `${CLAUDE_DIR} is not a git repository`,
+      suggestedAction: "Run: cd ~/.claude && git init"
+    };
+  }
+}
 var DEBOUNCE_FILE = join(CLAUDE_DIR, ".last-git-sync");
 var DEBOUNCE_MS = 10 * 60 * 1e3;
 function isInClaudeDir(filePath) {
@@ -92,6 +116,22 @@ function doCommit() {
   }
 }
 async function main() {
+  const gitError = checkGitAvailable();
+  if (gitError) {
+    console.log(JSON.stringify({
+      result: "continue",
+      message: `[git-auto-commit] ${gitError.message}. ${gitError.suggestedAction || ""}`
+    }));
+    return;
+  }
+  const repoError = checkIsGitRepo();
+  if (repoError) {
+    console.log(JSON.stringify({
+      result: "continue",
+      message: `[git-auto-commit] ${repoError.message}. ${repoError.suggestedAction || ""}`
+    }));
+    return;
+  }
   let input;
   try {
     input = JSON.parse(readFileSync(0, "utf-8"));
@@ -132,4 +172,9 @@ async function main() {
     console.log("{}");
   }
 }
-main().catch(() => console.log("{}"));
+main().catch((err) => {
+  console.log(JSON.stringify({
+    result: "continue",
+    message: `[git-auto-commit error] ${err.message || "Unknown error"}`
+  }));
+});

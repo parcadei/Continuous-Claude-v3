@@ -4,6 +4,19 @@
 import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+var BASH_LOCATIONS = [
+  process.env.GIT_BASH_PATH,
+  "C:\\Program Files\\Git\\bin\\bash.exe",
+  "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+  process.env.PROGRAMFILES ? process.env.PROGRAMFILES + "\\Git\\bin\\bash.exe" : null,
+  process.env.LOCALAPPDATA ? process.env.LOCALAPPDATA + "\\Programs\\Git\\bin\\bash.exe" : null
+];
+function findBash() {
+  for (const loc of BASH_LOCATIONS) {
+    if (loc && fs.existsSync(loc)) return loc;
+  }
+  return null;
+}
 var CLAUDE_DIR = process.env.HOME ? path.join(process.env.HOME, ".claude") : path.join(process.env.USERPROFILE || "", ".claude");
 var REPO_DIR = process.env.USERPROFILE ? path.join(process.env.USERPROFILE, "continuous-claude") : path.join(process.env.HOME || "", "continuous-claude");
 var SYNC_SCRIPT = path.join(REPO_DIR, "scripts", "sync-claude.sh");
@@ -40,7 +53,19 @@ function runSync() {
   }
   try {
     const isWindows = process.platform === "win32";
-    const bashCmd = isWindows ? `"C:\\Program Files\\Git\\bin\\bash.exe" -c "source '${SYNC_SCRIPT.replace(/\\/g, "/")}' --to-repo"` : `bash "${SYNC_SCRIPT}" --to-repo`;
+    let bashCmd;
+    if (isWindows) {
+      const bashPath = findBash();
+      if (!bashPath) {
+        return {
+          success: false,
+          message: "Git Bash not found. Set GIT_BASH_PATH env var or install Git for Windows."
+        };
+      }
+      bashCmd = `"${bashPath}" -c "source '${SYNC_SCRIPT.replace(/\\/g, "/")}' --to-repo"`;
+    } else {
+      bashCmd = `bash "${SYNC_SCRIPT}" --to-repo`;
+    }
     const output = execSync(bashCmd, {
       cwd: REPO_DIR,
       encoding: "utf8",

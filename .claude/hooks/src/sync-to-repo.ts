@@ -13,6 +13,21 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const BASH_LOCATIONS = [
+  process.env.GIT_BASH_PATH,
+  'C:\\Program Files\\Git\\bin\\bash.exe',
+  'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
+  process.env.PROGRAMFILES ? process.env.PROGRAMFILES + '\\Git\\bin\\bash.exe' : null,
+  process.env.LOCALAPPDATA ? process.env.LOCALAPPDATA + '\\Programs\\Git\\bin\\bash.exe' : null,
+];
+
+function findBash(): string | null {
+  for (const loc of BASH_LOCATIONS) {
+    if (loc && fs.existsSync(loc)) return loc;
+  }
+  return null;
+}
+
 interface HookInput {
   tool_name: string;
   tool_input: {
@@ -83,9 +98,20 @@ function runSync(): { success: boolean; message: string } {
   try {
     // Run sync in Git Bash on Windows, or bash on Unix
     const isWindows = process.platform === 'win32';
-    const bashCmd = isWindows
-      ? `"C:\\Program Files\\Git\\bin\\bash.exe" -c "source '${SYNC_SCRIPT.replace(/\\/g, '/')}' --to-repo"`
-      : `bash "${SYNC_SCRIPT}" --to-repo`;
+    let bashCmd: string;
+
+    if (isWindows) {
+      const bashPath = findBash();
+      if (!bashPath) {
+        return {
+          success: false,
+          message: 'Git Bash not found. Set GIT_BASH_PATH env var or install Git for Windows.',
+        };
+      }
+      bashCmd = `"${bashPath}" -c "source '${SYNC_SCRIPT.replace(/\\/g, '/')}' --to-repo"`;
+    } else {
+      bashCmd = `bash "${SYNC_SCRIPT}" --to-repo`;
+    }
 
     const output = execSync(bashCmd, {
       cwd: REPO_DIR,

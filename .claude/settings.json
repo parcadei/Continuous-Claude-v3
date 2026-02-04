@@ -22,6 +22,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/agent-validate.mjs",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/explore-to-scout.mjs",
             "timeout": 5000
           },
