@@ -43,7 +43,7 @@
           {
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/maestro-enforcer.mjs",
-            "timeout": 5000
+            "timeout": 10000
           },
           {
             "type": "command",
@@ -78,7 +78,7 @@
           {
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-delegation-enforcer.mjs",
-            "timeout": 5000
+            "timeout": 10000
           }
         ]
       },
@@ -98,7 +98,7 @@
           {
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/file-claims.mjs",
-            "timeout": 5000
+            "timeout": 10000
           }
         ]
       }
@@ -145,6 +145,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/user-confirmation-detector.mjs",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py user_prompt_submit",
+            "timeout": 10000
           }
         ]
       }
@@ -171,6 +176,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-start-init-check.mjs",
             "timeout": 15000
+          },
+          {
+            "type": "command",
+            "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py session_start",
+            "timeout": 10000
           }
         ]
       }
@@ -191,13 +201,32 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/maestro-cleanup.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-end-extract.mjs",
             "timeout": 15000
+          },
+          {
+            "type": "command",
+            "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py session_end",
+            "timeout": 10000
           }
         ]
       }
     ],
     "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py post_tool_use",
+            "timeout": 5000
+          }
+        ]
+      },
       {
         "matcher": "Task",
         "hooks": [

@@ -52,22 +52,30 @@ export function main(): void {
   // Check if file is claimed by another session
   const claimCheck = checkFileClaim(filePath, project, sessionId);
 
-  let output: HookOutput;
+  let output: any;
 
   if (claimCheck.claimed && claimCheck.claimedBy) {
     // Check if the claiming session is still active
     const otherSessionActive = isSessionActive(claimCheck.claimedBy, STALE_THRESHOLD_MS);
 
     if (otherSessionActive) {
-      // Active session has the file - BLOCK the edit
+      // Active session has the file - BLOCK the edit with proper PreToolUse format
       const fileName = filePath.split(/[/\\]/).pop() || filePath;
-      output = {
-        result: 'deny',
-        reason: `File locked by active session ${claimCheck.claimedBy}`,
-        message: `[BLOCKED] File Conflict
+      const blockMessage = `⚠️ FILE CONFLICT BLOCKED
+
 "${fileName}" is locked by Session ${claimCheck.claimedBy}
+
+This file is being edited by another active Claude session.
 Wait for the other session to finish or coordinate directly.
-The lock will auto-release when that session's heartbeat goes stale (5 min).`,
+
+The lock auto-releases when that session's heartbeat goes stale (5 min).`;
+
+      output = {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: blockMessage
+        }
       };
     } else {
       // Other session is stale - take over the claim

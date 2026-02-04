@@ -283,13 +283,20 @@ function main() {
     const otherSessionActive = isSessionActive(claimCheck.claimedBy, STALE_THRESHOLD_MS);
     if (otherSessionActive) {
       const fileName = filePath.split(/[/\\]/).pop() || filePath;
-      output = {
-        result: "deny",
-        reason: `File locked by active session ${claimCheck.claimedBy}`,
-        message: `[BLOCKED] File Conflict
+      const blockMessage = `\u26A0\uFE0F FILE CONFLICT BLOCKED
+
 "${fileName}" is locked by Session ${claimCheck.claimedBy}
+
+This file is being edited by another active Claude session.
 Wait for the other session to finish or coordinate directly.
-The lock will auto-release when that session's heartbeat goes stale (5 min).`
+
+The lock auto-releases when that session's heartbeat goes stale (5 min).`;
+      output = {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: blockMessage
+        }
       };
     } else {
       claimFile(filePath, project, sessionId);
