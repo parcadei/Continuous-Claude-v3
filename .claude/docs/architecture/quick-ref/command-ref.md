@@ -28,6 +28,15 @@
 | `/recall "<query>"` | Search past learnings |
 | `/memory store` | Store new learning |
 
+## ROADMAP Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/roadmap show` | Display current ROADMAP state |
+| `/roadmap add <item>` | Add item to Planned section |
+| `/roadmap focus <item>` | Set Current Focus |
+| `/roadmap complete` | Mark current goal done |
+
 ## Git Commands
 
 | Command | Purpose |

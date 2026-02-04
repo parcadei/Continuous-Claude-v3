@@ -20,6 +20,9 @@ PreToolUse ────────→ Runs BEFORE each tool execution
 PostToolUse ───────→ Runs AFTER each tool execution
                      • epistemic-reminder (verify grep claims)
                      • roadmap-completion (track progress)
+                     • git-commit-roadmap (log commits to ROADMAP)
+                     • post-plan-roadmap (update ROADMAP on plan exit)
+                     • prd-roadmap-sync (sync PRD files to ROADMAP)
 ```
 
 ## Hook Response Schema

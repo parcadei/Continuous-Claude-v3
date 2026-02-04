@@ -18,6 +18,7 @@
 | **ROADMAP Updates** | Syncs goals with planning/tasks | `post-plan-roadmap`, `prd-roadmap-sync` hooks |
 | **Handoff Loading** | Loads context from previous sessions | Hook reads `current.md` on startup |
 | **Repo Sync** | Auto-syncs ~/.claude changes to team repo | `sync-to-repo` hook on Write/Edit |
+| **Memory Auto-Injection** | Surfaces relevant past learnings | `memory-awareness` hook |
 
 ### On-Demand (Commands You Run)
 
@@ -49,7 +50,14 @@ When starting a new Claude session, these happen automatically:
 ### Recall Learnings (Before Starting Work)
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "<what you're working on>" --k 5
+# Hybrid search (RECOMMENDED - best accuracy)
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "<what you're working on>" --hybrid
+
+# Standard search
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "<what you're working on>" --k 5
+
+# PageIndex only (for large docs)
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "<what you're working on>" --pageindex
 ```
 
 **When to use:** Before implementing something you may have done before
@@ -69,7 +77,7 @@ cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --qu
 ### Store Learning (When You Discover Something)
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/store_learning.py \
   --session-id "<short-id>" \
   --type <TYPE> \
   --content "<what you learned>" \
@@ -115,6 +123,51 @@ tail -20 ~/.claude/memory-daemon.log
 # Restart if needed
 cd ~/.claude/scripts/core/core && uv run python memory_daemon.py start
 ```
+
+---
+
+## PageIndex System (Document Navigation)
+
+PageIndex provides **reasoning-based document search** with 98.7% accuracy (vs ~50% for vector similarity).
+
+### How It Works
+1. Documents parsed into hierarchical tree (titles, sections)
+2. LLM reasons over tree outline (~500 tokens) to find relevant nodes
+3. Full content retrieved from matched nodes
+
+### When to Use
+| Use PageIndex | Use Vector Memory |
+|---------------|-------------------|
+| Large docs (ROADMAP, ARCHITECTURE) | Session learnings |
+| Hierarchical content | Code patterns |
+| "What does X say about Y?" | "How did we solve X?" |
+
+### Commands
+```bash
+# Generate tree for a document
+cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py generate ROADMAP.md
+
+# Search indexed docs
+cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py search "query"
+
+# Hybrid search (best accuracy - combines both)
+cd $CLAUDE_OPC_DIR && uv run python scripts/core/recall_learnings.py --query "topic" --hybrid
+```
+
+### Auto-Updates
+The `pageindex-watch` hook automatically regenerates trees when .md files are edited.
+
+---
+
+## Git Safety (Memory Integration)
+
+The `git-memory-check` hook automatically protects against mistakes:
+
+| Command | Check | Action |
+|---------|-------|--------|
+| `git push origin` | "NEVER push to origin" memories | Block with warning |
+| `git push --force` | Force push warnings | Block with warning |
+| `git reset --hard` | Reset warnings | Warn if relevant |
 
 ---
 
@@ -190,25 +243,21 @@ To manually resume: `/skill:resume_handoff`
 └─────────────────────────────────────────────────────────────────────────────┘
                                         │
                                         ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       FOUR PILLARS (All Auto-Start ✅)                       │
-├─────────────────────┬─────────────────────┬─────────────────────┬───────────┤
-│                     │                     │                     │           │
-│  ┌───────────────┐  │  ┌───────────────┐  │  ┌───────────────┐  │ HANDOFFS  │
-│  │    MEMORY     │  │  │  KNOWLEDGE    │  │  │   ROADMAP     │  │           │
-│  │    SYSTEM     │  │  │    TREE       │  │  │               │  │ current.  │
-│  ├───────────────┤  │  ├───────────────┤  │  ├───────────────┤  │ md auto-  │
-│  │ PostgreSQL +  │  │  │ knowledge-    │  │  │ ROADMAP.md    │  │ loaded on │
-│  │ pgvector      │  │  │ tree.json     │  │  │               │  │ session   │
-│  │               │  │  │               │  │  │ ## Current    │  │ start     │
-│  │ memory_daemon │  │  │ tree_daemon   │  │  │ ## Completed  │  │           │
-│  │ extracts from │  │  │ watches files │  │  │ ## Planned    │  │           │
-│  │ stale sessions│  │  │ 2s debounce   │  │  │               │  │           │
-│  └───────────────┘  │  └───────────────┘  │  └───────────────┘  │           │
-│                     │                     │                     │           │
-│  Auto: daemon hook  │  Auto: daemon hook  │  Auto: plan hooks   │  Auto:    │
-│  ✅                 │  ✅                 │  ✅                 │  ✅       │
-└─────────────────────┴─────────────────────┴─────────────────────┴───────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         FIVE PILLARS (All Auto-Start ✅)                            │
+├─────────────────┬─────────────────┬─────────────────┬─────────────────┬─────────────┤
+│     MEMORY      │   KNOWLEDGE     │   PAGEINDEX     │    ROADMAP      │  HANDOFFS   │
+│     SYSTEM      │     TREE        │   (NEW)         │                 │             │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────┤
+│ PostgreSQL +    │ knowledge-      │ Tree-based      │ ROADMAP.md      │ current.md  │
+│ pgvector        │ tree.json       │ doc search      │                 │ auto-loaded │
+│                 │                 │                 │                 │             │
+│ Vector search   │ File navigate   │ 98.7% accuracy  │ Goal tracking   │ Session     │
+│ for learnings   │ 2s debounce     │ LLM reasoning   │ Auto-update     │ continuity  │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────┤
+│ Auto: daemon    │ Auto: daemon    │ Auto: watch     │ Auto: plan      │ Auto: hook  │
+│ hook ✅         │ hook ✅         │ hook ✅         │ hooks ✅        │ ✅          │
+└─────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────┘
 ```
 
 ---
@@ -247,15 +296,34 @@ This is working as intended! The other session has claimed files. Coordinate wit
 
 ## ROADMAP Integration
 
-The ROADMAP system tracks project goals with automatic updates:
+ROADMAP.md is the **single authoritative view** of project status, maintained by 4 specialized hooks with manual override via `/roadmap` skill.
 
-### Automatic Updates
-| Event | Hook | ROADMAP Action |
-|-------|------|----------------|
-| Exit plan mode | `post-plan-roadmap` | Adds planning session to Recent |
-| TaskUpdate completed | `roadmap-completion` | Moves Current → Completed |
-| Create PRD | `prd-roadmap-sync` | Adds to Planned section |
-| Edit tasks file | `prd-roadmap-sync` | Updates progress %, promotes to Current |
+### Section Ownership Model
+
+| Section | Primary Source | Automation | Human Override |
+|---------|----------------|------------|----------------|
+| **Current Focus** | Planning sessions | `post-plan-roadmap` | `/roadmap focus` |
+| **Planned** | PRD files + manual | `prd-roadmap-sync` | `/roadmap add` |
+| **Completed** | Git commits + tasks | `git-commit-roadmap` + `roadmap-completion` | `/roadmap complete` |
+| **Recent Planning** | ExitPlanMode | `post-plan-roadmap` | Archive manually |
+
+### The 4 ROADMAP Hooks
+
+| Hook | Trigger | ROADMAP Section |
+|------|---------|-----------------|
+| `post-plan-roadmap` | ExitPlanMode | Current Focus + Recent Planning |
+| `prd-roadmap-sync` | Write\|Edit PRD files | Planned |
+| `git-commit-roadmap` | Bash git commit | Completed |
+| `roadmap-completion` | TaskUpdate completed | Current Focus → Completed |
+
+### /roadmap Skill Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/roadmap show` | Display current ROADMAP state |
+| `/roadmap add <item>` | Add item to Planned section |
+| `/roadmap focus <item>` | Set Current Focus |
+| `/roadmap complete` | Mark current goal done |
 
 ### PRD/Tasks Workflow
 ```
@@ -265,13 +333,22 @@ The ROADMAP system tracks project goals with automatic updates:
 4. Complete: All tasks [x] → Moved to Completed with date
 ```
 
+### Plan Directory Fallback
+The post-plan-roadmap hook checks plans in 3 locations (in order):
+1. `{projectDir}/.claude/plans` - Standard project plans
+2. `{projectDir}/plans` - When project IS ~/.claude
+3. `~/.claude/plans` - User-level fallback
+
+### Deep Dive
+→ [ROADMAP Subsystem](docs/architecture/subsystems/roadmap.md) for architecture details
+
 ---
 
 ## Key Paths
 
 | Path | Purpose |
 |------|---------|
-| `~/.claude/.env` | DATABASE_URL (port 5434), Braintrust keys |
+| `~/.claude/.env` | DATABASE_URL (port 5432), Braintrust keys |
 | `~/.claude/docker/.env` | PostgreSQL port configuration |
 | `~/.claude/projects/` | Session JSONL files |
 | `~/.claude/thoughts/shared/handoffs/` | Handoff documents |

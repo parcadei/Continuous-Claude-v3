@@ -74,6 +74,15 @@ echo '{}' | node C:\Users\david.hayes\.claude\hooks\dist\session-register.mjs
 | `session-start-continuity.mjs` | SessionStart | Load handoff ledger |
 | `session-start-tree-daemon.ps1` | SessionStart | Start knowledge tree watcher |
 | `session-start-memory-daemon.ps1` | SessionStart | **Auto-start memory daemon** |
+| `memory-awareness.mjs` | UserPromptSubmit | Auto-inject relevant memories |
+| `pageindex-watch.mjs` | PostToolUse:Write\|Edit | Rebuild PageIndex on .md changes |
+| `pre-compact-extract.mjs` | PreCompact | Extract learnings before compression |
+| `smarter-everyday.mjs` | PostToolUse | Detect problem resolution patterns |
+| `user-confirmation-detector.mjs` | UserPromptSubmit | Capture "it's fixed" signals |
+| `session-end-extract.mjs` | SessionEnd | Final learning extraction sweep |
+| `maestro-state-manager.mjs` | UserPromptSubmit | Track maestro workflow state |
+| `ralph-delegation-enforcer.mjs` | PreToolUse:Task | Enforce ralph routing (**BLOCKS**) |
+| `git-memory-check.mjs` | PreToolUse:Bash | Check memory before git (**BLOCKS**) |
 | `pre-tool-knowledge.mjs` | PreToolUse:Task | Inject knowledge tree context |
 | `post-plan-roadmap.mjs` | PostToolUse:ExitPlanMode | Update ROADMAP from plan |
 | `roadmap-completion.mjs` | PostToolUse:TaskUpdate | Mark goals complete |
@@ -119,13 +128,29 @@ cd ~/.claude/scripts/core/core; uv run python query_tree.py --project . --query 
 {project}/ROADMAP.md  # or {project}/.claude/ROADMAP.md
 ```
 
-### Auto-Updates via Hooks
-| Event | Hook | Action |
-|-------|------|--------|
-| Exit plan mode | `post-plan-roadmap` | Adds planning session |
-| TaskUpdate completed | `roadmap-completion` | Moves current → completed |
-| Write prd-*.md | `prd-roadmap-sync` | Adds to Planned |
-| Edit tasks-*.md | `prd-roadmap-sync` | Updates progress %, promotes to Current |
+### /roadmap Skill Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/roadmap show` | Display current ROADMAP state |
+| `/roadmap add <item>` | Add item to Planned section |
+| `/roadmap focus <item>` | Set Current Focus |
+| `/roadmap complete` | Mark current goal done |
+
+### The 4 ROADMAP Hooks
+
+| Hook | Trigger | ROADMAP Section |
+|------|---------|-----------------|
+| `post-plan-roadmap` | ExitPlanMode | Current Focus + Recent Planning |
+| `prd-roadmap-sync` | Write\|Edit PRD files | Planned |
+| `git-commit-roadmap` | Bash git commit | Completed |
+| `roadmap-completion` | TaskUpdate completed | Current Focus → Completed |
+
+### Plan Directory Fallback
+The post-plan-roadmap hook checks 3 locations (in order):
+1. `{projectDir}/.claude/plans` - Standard project plans
+2. `{projectDir}/plans` - When project IS ~/.claude
+3. `~/.claude/plans` - User-level fallback
 
 ## Rollback
 
@@ -143,8 +168,9 @@ Copy-Item "C:\Users\david.hayes\claude-archives\superClaude-v4.1.0-20260110-1757
 
 | Path | Purpose |
 |------|---------|
-| `.claude\hooks\` | Hook scripts (343 files) |
-| `.claude\hooks\dist\` | Compiled JS hooks (64 files) |
+| `.claude\hooks\` | Hook scripts (100+ files) |
+| `.claude\hooks\dist\` | Compiled JS hooks (100+ files) |
+| `.claude\scripts\pageindex\` | PageIndex CLI and tree search |
 | `.claude\agents\` | Agent definitions (53 files) |
 | `.claude\skills\` | Skill definitions (383 files) |
 | `.claude\scripts\core\core\` | Memory daemon, TLDR |
@@ -169,6 +195,12 @@ TRACE_TO_BRAINTRUST=true
 ```
 
 ## Troubleshooting
+
+### DATABASE_URL Priority
+The system loads DATABASE_URL in this order:
+1. `opc/.env` (authoritative - uses override=True)
+2. Shell environment variables
+3. `~/.claude/.env` (supplements only)
 
 ```powershell
 # Check if daemon is running
@@ -247,4 +279,37 @@ docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c "S
 - **Index**: HNSW (fast cosine similarity)
 
 ---
-*Updated: 2026-01-10 | + Memory System*
+
+## PageIndex (Document Navigation)
+
+PageIndex provides **reasoning-based document search** with 98.7% accuracy (vs ~50% for vector similarity).
+
+### Generate Tree for Document
+```powershell
+cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py generate ROADMAP.md
+```
+
+### Search Indexed Documents
+```powershell
+cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py search "current goals"
+```
+
+### Hybrid Search (Vector + PageIndex) - RECOMMENDED
+```powershell
+cd $CLAUDE_OPC_DIR && uv run python scripts/core/recall_learnings.py --query "topic" --hybrid
+```
+
+### PageIndex-Only Search
+```powershell
+cd $CLAUDE_OPC_DIR && uv run python scripts/core/recall_learnings.py --query "topic" --pageindex
+```
+
+### List Indexed Documents
+```powershell
+cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py list
+```
+
+**When to use:** Large structured docs (ROADMAP, ARCHITECTURE). 98.7% accuracy vs ~50% vector similarity.
+
+---
+*Updated: 2026-02-03 | + PageIndex System, Five Pillars*

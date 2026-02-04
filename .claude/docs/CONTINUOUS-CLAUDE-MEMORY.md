@@ -31,7 +31,7 @@
             │                     │                     │
             ▼                     ▼                     ▼
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
-│                              FOUR PILLARS OF INTELLIGENCE                             │
+│                              FIVE PILLARS OF INTELLIGENCE                             │
 ├───────────────────┬───────────────────┬───────────────────┬───────────────────────────┤
 │                   │                   │                   │                           │
 │  ┌─────────────┐  │  ┌─────────────┐  │  ┌─────────────┐  │  ┌─────────────────────┐  │
@@ -68,7 +68,7 @@
 │  Docker:         │  File:            │  File:            │  Cloud:                   │
 │  continuous-     │  {project}/       │  {project}/       │  api.braintrust.dev       │
 │  claude-postgres │  .claude/         │  ROADMAP.md       │                           │
-│  Port 5434       │  knowledge-       │                   │  Local state:             │
+│  Port 5432       │  knowledge-       │                   │  Local state:             │
 │                  │  tree.json        │                   │  ~/.claude/state/         │
 │  1024-dim BGE    │                   │                   │  braintrust_sessions/     │
 │  embeddings      │  Updated by       │  Updated by       │                           │
@@ -152,6 +152,7 @@ SESSION END / LEARNING
 | System | What it knows | When it's used | Isolation |
 |--------|---------------|----------------|-----------|
 | **Memory** | Past learnings, errors, decisions, patterns | Recall via `/recall` or hooks | `project_id` hash |
+| **PageIndex** | Document tree structures | Large doc search (ROADMAP, ARCH) | Per-project |
 | **Knowledge Tree** | File structure, stack, components | Implementation tasks | Per-project JSON |
 | **Roadmap** | Goals: current, completed, planned | Planning, progress tracking | Per-project `.md` |
 | **Braintrust** | Session traces, tool calls, timing | Debugging, analytics | `workspace_project_id` |
@@ -162,7 +163,7 @@ SESSION END / LEARNING
 
 ### 1. Memory System
 
-**Location:** PostgreSQL container `continuous-claude-postgres` on port 5434
+**Location:** PostgreSQL container `continuous-claude-postgres` on port 5432
 
 **Schema:**
 ```sql
@@ -271,8 +272,14 @@ cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py \
 ## Configuration
 
 **Environment (`.env`):**
+
+**DATABASE_URL Priority:**
+1. `opc/.env` (authoritative - uses override=True)
+2. Shell environment variables
+3. `~/.claude/.env` (supplements only)
+
 ```bash
-DATABASE_URL=postgresql://claude:claude_dev@localhost:5434/continuous_claude
+DATABASE_URL=postgresql://claude:claude_dev@localhost:5432/continuous_claude
 BRAINTRUST_API_KEY=sk-...
 TRACE_TO_BRAINTRUST=true
 BRAINTRUST_CC_PROJECT=My Project
@@ -280,7 +287,7 @@ BRAINTRUST_CC_PROJECT=My Project
 
 **Docker (`docker/.env`):**
 ```bash
-POSTGRES_PORT=5434
+POSTGRES_PORT=5432
 POSTGRES_USER=claude
 POSTGRES_PASSWORD=claude_dev
 POSTGRES_DB=continuous_claude
@@ -297,7 +304,7 @@ POSTGRES_DB=continuous_claude
 5. **Tree daemon optimized:** Debounce increased 500ms → 2000ms
 6. **ROADMAP completion hook:** `roadmap-completion.ts` - auto-updates on TaskUpdate
 7. **PRD/Tasks sync hook:** `prd-roadmap-sync.ts` - syncs ai-dev-tasks workflow with ROADMAP
-8. **Memory daemon auto-start (2026-01-30):** `session-start-memory-daemon.ps1` - starts memory extraction daemon on session start (completes the "Four Pillars" auto-start)
+8. **Memory daemon auto-start (2026-01-30):** `session-start-memory-daemon.ps1` - starts memory extraction daemon on session start (completes the "Five Pillars" auto-start)
 
 ---
 
@@ -327,3 +334,40 @@ POSTGRES_DB=continuous_claude
 | `TaskUpdate` | `roadmap-completion.mjs` | Mark goals complete on task completion |
 | `Write\|Edit` | `prd-roadmap-sync.mjs` | Sync PRD/Tasks with ROADMAP |
 | `Write\|Edit` | `sync-to-repo.mjs` | Auto-sync ~/.claude to continuous-claude repo |
+| `Write\|Edit` | `pageindex-watch.mjs` | Rebuild PageIndex trees on .md changes |
+| `Bash` | `git-memory-check.mjs` | Check memory before destructive git commands |
+| `Bash` | `git-commit-roadmap.mjs` | Add git commits to ROADMAP Completed |
+
+---
+
+## PageIndex Integration
+
+PageIndex provides reasoning-based document search with 98.7% accuracy.
+
+| Search Type | Flag | Best For |
+|-------------|------|----------|
+| Vector (default) | none | Learnings, patterns |
+| PageIndex | `--pageindex` | Large structured docs |
+| Hybrid | `--hybrid` | Best accuracy (recommended) |
+| Text-only | `--text-only` | Fast keyword search |
+
+### Commands
+```bash
+# Hybrid search (recommended)
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "topic" --hybrid
+
+# PageIndex only
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "topic" --pageindex
+```
+
+---
+
+## Git Safety (Memory Integration)
+
+The `git-memory-check` hook protects against mistakes by checking memory before git commands:
+
+| Command | Check | Action |
+|---------|-------|--------|
+| `git push origin` | "NEVER push to origin" memories | Block with warning |
+| `git push --force` | Force push warnings | Block with warning |
+| `git reset --hard` | Reset warnings | Warn if relevant |

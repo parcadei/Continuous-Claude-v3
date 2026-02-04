@@ -53,8 +53,15 @@ Memory Storage (if learning detected)
 
 Search Modes:
   • Hybrid RRF (default) - Best accuracy, combines text + vector
+  • Hybrid + PageIndex   - Best for docs (--hybrid flag)
+  • PageIndex-only       - Large structured docs (--pageindex flag)
   • Vector-only          - Pure semantic similarity
   • Text-only            - Fast keyword matching
+
+PageIndex Layer:
+  • pageindex_cli.py ───→ Tree-based doc search
+  • tree_search.py ─────→ LLM reasoning over outlines
+  • 98.7% accuracy vs ~50% vector similarity
 ```
 
 ## Hook Lifecycle
@@ -72,11 +79,16 @@ Search Modes:
 │                      skill-activation                        │
 │                                                              │
 │  PreToolUse ───────→ file-claims (can BLOCK)                 │
+│                      ralph-delegation-enforcer (can BLOCK)   │
+│                      git-memory-check (can BLOCK)            │
 │                      task-router                             │
 │                      explore-to-scout                        │
 │                                                              │
 │  PostToolUse ──────→ epistemic-reminder                      │
 │                      roadmap-completion                      │
+│                      pageindex-watch                         │
+│                      smarter-everyday                        │
+│                      git-commit-roadmap                      │
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -123,6 +135,31 @@ Agent Selection Rule:
      scout         kraken        arbiter
    (research)   (implement)     (test)
 ```
+
+## ROADMAP Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ROADMAP.md                              │
+│  ┌─────────────┐ ┌──────────┐ ┌──────────┐ ┌─────────────────┐  │
+│  │Current Focus│ │ Planned  │ │Completed │ │Recent Planning  │  │
+│  └──────┬──────┘ └────┬─────┘ └────┬─────┘ └────────┬────────┘  │
+└─────────┼─────────────┼────────────┼────────────────┼───────────┘
+          │             │            │                │
+          ▼             ▼            ▼                ▼
+   post-plan-    prd-roadmap-  git-commit-    post-plan-
+   roadmap       sync          roadmap        roadmap
+```
+
+**4 ROADMAP Hooks:**
+| Hook | Trigger | Section |
+|------|---------|---------|
+| `post-plan-roadmap` | ExitPlanMode | Current Focus |
+| `prd-roadmap-sync` | Write PRD files | Planned |
+| `git-commit-roadmap` | git commit | Completed |
+| `roadmap-completion` | TaskUpdate | Current → Completed |
+
+**Manual Override:** `/roadmap show|add|focus|complete`
 
 ## File Locations
 

@@ -8,6 +8,7 @@
 | Implement feature | [Decision Trees → Implementation](DECISION-TREES.md#implementation) |
 | Debug/Fix issue | [Decision Trees → Debugging](DECISION-TREES.md#debugging) |
 | Store/recall memory | [Memory Subsystem](subsystems/memory.md) |
+| Manage goals | [ROADMAP Subsystem](subsystems/roadmap.md) |
 | Use agents | [Agent Picker](quick-ref/agent-picker.md) |
 | Find a hook | [Hook Catalog](quick-ref/hook-catalog.md) |
 
@@ -18,22 +19,23 @@
 | Memory | Persistent learnings across sessions | `recall_learnings.py` |
 | Hooks | Intercept & modify Claude behavior | `.claude/hooks/` |
 | Agents | Specialized task delegation | Task tool |
+| PageIndex | Document navigation & search | `pageindex_cli.py` |
 | Workflows | Multi-step orchestration | `/ralph`, `/maestro` |
 
-## Four Pillars
+## Five Pillars
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLAUDE SESSION                           │
-│  User Prompt → Hooks → Tools/Agents → Output → Hooks        │
-└─────────────────────────────────────────────────────────────┘
-        │           │           │           │
-        ▼           ▼           ▼           ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│  MEMORY  │ │  HOOKS   │ │  AGENTS  │ │ WORKFLOWS│
-│PostgreSQL│ │28 TS/JS  │ │18+ types │ │Ralph/    │
-│+pgvector │ │intercepts│ │Task tool │ │Maestro   │
-└──────────┘ └──────────┘ └──────────┘ └──────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CLAUDE SESSION                                     │
+│     User Prompt → Hooks → Tools/Agents → Output → Hooks                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+        │           │           │           │           │
+        ▼           ▼           ▼           ▼           ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│  MEMORY  │ │  HOOKS   │ │  AGENTS  │ │ PAGEINDEX│ │ WORKFLOWS│
+│PostgreSQL│ │100+ TS/JS│ │18+ types │ │Doc search│ │Ralph/    │
+│+pgvector │ │intercepts│ │Task tool │ │LLM reason│ │Maestro   │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘
 ```
 
 ## Cross-References
@@ -47,6 +49,8 @@
 
 **Quick Reference (local):**
 - [Memory System](subsystems/memory.md) - PostgreSQL, pgvector, embeddings
+- [PageIndex System](subsystems/pageindex.md) - Tree-based doc search, LLM reasoning
+- [ROADMAP System](subsystems/roadmap.md) - Goal tracking, 4 hooks, /roadmap skill
 - [Hook System](subsystems/hooks.md) - Lifecycle, blocking, patterns
 - [Agent Orchestration](subsystems/agents.md) - When to use which agent
 - [Workflows](subsystems/workflows.md) - Ralph, Maestro, compound workflows
