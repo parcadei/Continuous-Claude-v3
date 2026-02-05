@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)
-[![Skills](https://img.shields.io/badge/Skills-114-green.svg)](#skills-system)
-[![Agents](https://img.shields.io/badge/Agents-48-purple.svg)](#agents-system)
-[![Hooks](https://img.shields.io/badge/Hooks-34-blue.svg)](#hooks-system)
+[![Skills](https://img.shields.io/badge/Skills-109-green.svg)](#skills-system)
+[![Agents](https://img.shields.io/badge/Agents-32-purple.svg)](#agents-system)
+[![Hooks](https://img.shields.io/badge/Hooks-30-blue.svg)](#hooks-system)
 
 **Continuous Claude** transforms Claude Code into a continuously learning system that maintains context across sessions, orchestrates specialized agents, and eliminates wasting tokens through intelligent code analysis.
 
@@ -18,9 +18,9 @@
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Core Systems](#core-systems)
-  - [Skills (114)](#skills-system)
-  - [Agents (48)](#agents-system)
-  - [Hooks (34)](#hooks-system)
+  - [Skills (109)](#skills-system)
+  - [Agents (32)](#agents-system)
+  - [Hooks (30)](#hooks-system)
   - [TLDR Code Analysis](#tldr-code-analysis)
   - [Memory System](#memory-system)
   - [Continuity System](#continuity-system)
@@ -184,41 +184,10 @@ uv run python -m scripts.setup.wizard
 | 2 | Check prerequisites (Docker, Python, uv) |
 | 3-5 | Database + API key configuration |
 | 6-7 | Start Docker stack, run migrations |
-| 8 | Install Claude Code integration (48 agents, 114 skills, 34 hooks) |
+| 8 | Install Claude Code integration (32 agents, 109 skills, 30 hooks) |
 | 9 | Math features (SymPy, Z3, Pint - optional) |
 | 10 | TLDR code analysis tool |
 | 11-12 | Diagnostics tools + Loogle (optional) |
-
-
-#### To Uninstall:
-
-```
-cd Continuous-Claude-v3/opc
-  uv run python -m scripts.setup.wizard --uninstall
-```
-
-**What it does**
-
-1. Archives your current setup → Moves ~/.claude to ~/.claude-v3.archived.<timestamp>
-2. Restores your backup → Finds the most recent ~/.claude.backup.* (created during install) and restores it
-3. Preserves user data → Copies these back from the archive:
-
-  - history.jsonl (your command history)
-  - mcp_config.json (MCP servers)
-  - .env (API keys)
-  - projects.json (project configs)
-  - file-history/ directory
-  - projects/ directory
-4. Removes CC-v3 additions → Everything else (hooks, skills, agents, rules)
-
-
-**Safety Features**
-
-- Your current setup is archived with timestamp - nothing gets deleted
-- The wizard asks for confirmation before proceeding
-- It restores from the backup that was made during installation
-- All your Claude Code settings stay intact
-
 
 ### Remote Database Setup
 
@@ -294,7 +263,7 @@ claude
 │                                                                     │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
 │  │   Skills    │    │   Agents    │    │    Hooks    │             │
-│  │   (114)     │───▶│    (48)     │◀───│    (34)     │             │
+│  │   (109)     │───▶│    (32)     │◀───│    (30)     │             │
 │  └─────────────┘    └─────────────┘    └─────────────┘             │
 │         │                  │                  │                     │
 │         ▼                  ▼                  ▼                     │
@@ -480,7 +449,7 @@ SessionStart                    Working                      SessionEnd
 
 ### Skills System
 
-Skills are modular capabilities triggered by natural language. Located in `.claude/skills/` (114 skills).
+Skills are modular capabilities triggered by natural language. Located in `.claude/skills/`.
 
 #### Meta-Skills (Workflow Orchestrators)
 
@@ -615,7 +584,7 @@ What do I want to do?
 
 Agents are specialized AI workers spawned via the Task tool. Located in `.claude/agents/`.
 
-#### Agent Categories (48 active)
+#### Agent Categories (32 active)
 
 > **Note:** There are likely too many agents—consolidation is a v4 goal. Use what fits your workflow.
 
@@ -667,7 +636,7 @@ Agents are specialized AI workers spawned via the Task tool. Located in `.claude
 
 Hooks intercept Claude Code at lifecycle points. Located in `.claude/hooks/`.
 
-#### Hook Events (34 hooks total)
+#### Hook Events (30 hooks total)
 
 | Event | Key Hooks | Purpose |
 |-------|-----------|---------|
@@ -688,7 +657,7 @@ Hooks intercept Claude Code at lifecycle points. Located in `.claude/hooks/`.
 | **post-edit-diagnostics** | Runs pyright/ruff after edits |
 | **memory-awareness** | Surfaces relevant learnings |
 
-[See all 34 hooks →](docs/hooks/)
+[See all 30 hooks →](docs/hooks/)
 
 ---
 
@@ -1043,9 +1012,9 @@ This will:
 
 | Component | Location |
 |-----------|----------|
-| Agents (48) | ~/.claude/agents/ |
-| Skills (114) | ~/.claude/skills/ |
-| Hooks (34) | ~/.claude/hooks/ |
+| Agents (32) | ~/.claude/agents/ |
+| Skills (109) | ~/.claude/skills/ |
+| Hooks (30) | ~/.claude/hooks/ |
 | Rules | ~/.claude/rules/ |
 | Scripts | ~/.claude/scripts/ |
 | PostgreSQL | Docker container |
@@ -1213,11 +1182,11 @@ Services without API keys still work:
 ```
 continuous-claude/
 ├── .claude/
-│   ├── agents/           # 48 specialized AI agents
-│   ├── hooks/            # 34 lifecycle hooks
+│   ├── agents/           # 32 specialized AI agents
+│   ├── hooks/            # 30 lifecycle hooks
 │   │   ├── src/          # TypeScript source
 │   │   └── dist/         # Compiled JavaScript
-│   ├── skills/           # 114 modular capabilities
+│   ├── skills/           # 109 modular capabilities
 │   ├── rules/            # System policies
 │   ├── scripts/          # Python utilities
 │   └── settings.json     # Hook configuration
@@ -1295,14 +1264,13 @@ This documentation uses a 3-tier confidence system:
 | **MEDIUM** | Based on code analysis, may have minor drift | Agent/Skill counts, Workflow chains |
 | **LOW** | Inferred or aspirational, needs verification | Some advanced features |
 
-**Last verified:** 2026-02-05
+**Last verified:** 2026-02-04
 
 ### Component Counts (as of verification date)
-- **Skills:** 114 skill directories in `.claude/skills/`
-- **Agents:** 48 agent definitions in `.claude/agents/`
-- **Hooks:** 34 TypeScript source files in `.claude/hooks/src/`
-- **MCP Servers:** 9 server integrations in `.claude/servers/`
-- **Lean Proofs:** 108 `.lean` files in `proofs/`
+- **Skills:** 108 active SKILL.md files across `.claude/skills/`
+- **Agents:** 32 agent definitions in `.claude/agents/`
+- **Hooks:** 34 TypeScript source files, ~30 registered in settings.json
+- **MCP Servers:** 10 server integrations in `.claude/servers/`
 
 ---
 
