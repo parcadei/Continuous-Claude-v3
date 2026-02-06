@@ -1,0 +1,1 @@
+"""Core dashboard service initialization."""
