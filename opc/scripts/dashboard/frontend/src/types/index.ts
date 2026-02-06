@@ -15,7 +15,7 @@ export interface HealthResponse {
 }
 
 export interface Learning {
-  id: number
+  id: string
   session_id: string
   type: string
   content: string
@@ -84,6 +84,22 @@ export interface HandoffDetail extends HandoffSummary {
 
 export interface HandoffsResponse {
   handoffs: HandoffSummary[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface IndexedDocument {
+  id: string
+  file_path: string
+  status: 'indexed' | 'pending' | 'failed'
+  indexed_at: string | null
+  language: string
+  error?: string
+}
+
+export interface PageIndexResponse {
+  documents: IndexedDocument[]
   total: number
   page: number
   page_size: number

@@ -24,6 +24,7 @@ from dashboard.routers.health import router as health_router
 from dashboard.routers.handoffs import router as handoffs_router
 from dashboard.routers.knowledge import router as knowledge_router
 from dashboard.routers.memory import router as memory_router
+from dashboard.routers.pageindex import router as pageindex_router
 from dashboard.routers.roadmap import router as roadmap_router
 from dashboard.tasks.health_monitor import HealthMonitor
 from dashboard.websocket.manager import ConnectionManager
@@ -81,6 +82,7 @@ app.include_router(health_router)
 app.include_router(handoffs_router)
 app.include_router(knowledge_router)
 app.include_router(memory_router)
+app.include_router(pageindex_router)
 app.include_router(roadmap_router)
 
 # Static files configuration

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -17,17 +17,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { fetchPageIndexDocuments } from '@/lib/api'
+import type { IndexedDocument } from '@/types'
 
 type IndexStatus = 'indexed' | 'pending' | 'failed'
-
-interface IndexedDocument {
-  id: string
-  file_path: string
-  status: IndexStatus
-  indexed_at: string | null
-  language: string
-  error?: string
-}
 
 interface PageIndexDetailProps {
   open: boolean
@@ -51,67 +44,6 @@ const STATUS_CONFIG: Record<IndexStatus, { label: string; variant: string; icon:
     icon: '○',
   },
 }
-
-const MOCK_DOCUMENTS: IndexedDocument[] = [
-  {
-    id: '1',
-    file_path: 'src/components/Dashboard.tsx',
-    status: 'indexed',
-    indexed_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    language: 'typescript',
-  },
-  {
-    id: '2',
-    file_path: 'src/lib/api.ts',
-    status: 'indexed',
-    indexed_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    language: 'typescript',
-  },
-  {
-    id: '3',
-    file_path: 'docs/README.md',
-    status: 'indexed',
-    indexed_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    language: 'markdown',
-  },
-  {
-    id: '4',
-    file_path: 'src/hooks/useQuery.ts',
-    status: 'pending',
-    indexed_at: null,
-    language: 'typescript',
-  },
-  {
-    id: '5',
-    file_path: 'scripts/build.py',
-    status: 'pending',
-    indexed_at: null,
-    language: 'python',
-  },
-  {
-    id: '6',
-    file_path: 'config/settings.yaml',
-    status: 'failed',
-    indexed_at: null,
-    language: 'yaml',
-    error: 'Parse error: Invalid YAML syntax at line 42',
-  },
-  {
-    id: '7',
-    file_path: 'src/types/index.ts',
-    status: 'indexed',
-    indexed_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    language: 'typescript',
-  },
-  {
-    id: '8',
-    file_path: 'tests/unit/api.test.ts',
-    status: 'failed',
-    indexed_at: null,
-    language: 'typescript',
-    error: 'Timeout: Indexing took longer than 30s',
-  },
-]
 
 function formatTimeAgo(dateStr: string | null): string {
   if (!dateStr) return 'Never'
@@ -138,30 +70,58 @@ function getLanguageColor(language: string): string {
     markdown: 'text-gray-400',
     yaml: 'text-purple-400',
     json: 'text-orange-400',
+    text: 'text-muted-foreground',
   }
   return colors[language] || 'text-muted-foreground'
 }
 
 export function PageIndexDetail({ open, onOpenChange }: PageIndexDetailProps) {
+  const [documents, setDocuments] = useState<IndexedDocument[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<IndexStatus | 'all'>('all')
 
+  useEffect(() => {
+    if (!open) return
+
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    fetchPageIndexDocuments({ page: 1, page_size: 100, search: searchQuery || undefined })
+      .then((data) => {
+        if (cancelled) return
+        setDocuments(data.documents)
+        setTotal(data.total)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err.message || 'Failed to load documents')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [open, searchQuery])
+
   const filteredDocuments = useMemo(() => {
-    return MOCK_DOCUMENTS.filter((doc) => {
-      const matchesSearch = doc.file_path.toLowerCase().includes(searchQuery.toLowerCase())
+    return documents.filter((doc) => {
       const matchesStatus = statusFilter === 'all' || doc.status === statusFilter
-      return matchesSearch && matchesStatus
+      return matchesStatus
     })
-  }, [searchQuery, statusFilter])
+  }, [documents, statusFilter])
 
   const stats = useMemo(() => {
     return {
-      indexed: MOCK_DOCUMENTS.filter((d) => d.status === 'indexed').length,
-      pending: MOCK_DOCUMENTS.filter((d) => d.status === 'pending').length,
-      failed: MOCK_DOCUMENTS.filter((d) => d.status === 'failed').length,
-      total: MOCK_DOCUMENTS.length,
+      indexed: documents.filter((d) => d.status === 'indexed').length,
+      pending: documents.filter((d) => d.status === 'pending').length,
+      failed: documents.filter((d) => d.status === 'failed').length,
+      total: total,
     }
-  }, [])
+  }, [documents, total])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -260,7 +220,15 @@ export function PageIndexDetail({ open, onOpenChange }: PageIndexDetailProps) {
         <ScrollArea className="mt-4 h-[calc(100vh-320px)]">
           <TooltipProvider>
             <div className="space-y-2 pr-4">
-              {filteredDocuments.length === 0 ? (
+              {loading ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <p className="text-sm">Loading documents...</p>
+                </div>
+              ) : error ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <p className="text-sm text-offline">{error}</p>
+                </div>
+              ) : filteredDocuments.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground">
                   <svg
                     className="mx-auto h-12 w-12 text-muted-foreground/50"
@@ -286,10 +254,6 @@ export function PageIndexDetail({ open, onOpenChange }: PageIndexDetailProps) {
             </div>
           </TooltipProvider>
         </ScrollArea>
-
-        <div className="absolute bottom-4 left-4 right-4 rounded-lg border bg-muted/50 p-2 text-center text-xs text-muted-foreground">
-          Using mock data. API integration pending.
-        </div>
       </SheetContent>
     </Sheet>
   )

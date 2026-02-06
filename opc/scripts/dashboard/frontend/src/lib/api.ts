@@ -7,6 +7,7 @@ import type {
   HandoffsResponse,
   HandoffDetail,
   Learning,
+  PageIndexResponse,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -61,8 +62,8 @@ export async function fetchLearnings(params?: {
   return fetchJson<LearningsResponse>(`/pillars/memory/learnings${query ? `?${query}` : ''}`)
 }
 
-export async function fetchLearning(id: number): Promise<Learning> {
-  return fetchJson<Learning>(`/pillars/memory/learnings/${id}`)
+export async function fetchLearning(id: string): Promise<Learning> {
+  return fetchJson<Learning>(`/pillars/memory/learnings/${encodeURIComponent(id)}`)
 }
 
 export async function fetchMemoryDetails(): Promise<MemoryDetails> {
@@ -80,12 +81,12 @@ export async function fetchRoadmapGoals(): Promise<RoadmapResponse> {
 export async function fetchHandoffs(params?: {
   page?: number
   page_size?: number
-  source?: 'db' | 'file'
+  status_filter?: string
 }): Promise<HandoffsResponse> {
   const searchParams = new URLSearchParams()
   if (params?.page) searchParams.set('page', String(params.page))
   if (params?.page_size) searchParams.set('page_size', String(params.page_size))
-  if (params?.source) searchParams.set('source', params.source)
+  if (params?.status_filter) searchParams.set('status_filter', params.status_filter)
 
   const query = searchParams.toString()
   return fetchJson<HandoffsResponse>(`/pillars/handoffs${query ? `?${query}` : ''}`)
@@ -93,6 +94,20 @@ export async function fetchHandoffs(params?: {
 
 export async function fetchHandoff(id: string): Promise<HandoffDetail> {
   return fetchJson<HandoffDetail>(`/pillars/handoffs/${encodeURIComponent(id)}`)
+}
+
+export async function fetchPageIndexDocuments(params?: {
+  page?: number
+  page_size?: number
+  search?: string
+}): Promise<PageIndexResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.page) searchParams.set('page', String(params.page))
+  if (params?.page_size) searchParams.set('page_size', String(params.page_size))
+  if (params?.search) searchParams.set('search', params.search)
+
+  const query = searchParams.toString()
+  return fetchJson<PageIndexResponse>(`/pillars/pageindex/documents${query ? `?${query}` : ''}`)
 }
 
 export { ApiError }
