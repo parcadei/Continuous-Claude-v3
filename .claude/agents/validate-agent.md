@@ -13,7 +13,7 @@ You are a specialized validation agent. Your job is to validate a technical plan
 Before validating, read the validation skill for methodology and format:
 
 ```bash
-cat $CLAUDE_PROJECT_DIR/.claude/skills/validate-agent/SKILL.md
+cat $CLAUDE_CC_DIR/.claude/skills/validate-agent/SKILL.md
 ```
 
 Follow the structure and guidelines from that skill.

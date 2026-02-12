@@ -38,7 +38,7 @@ When you see these in user prompts, use the commit skill:
 
 The skill will prompt you to run:
 ```bash
-bash "$CLAUDE_PROJECT_DIR/.claude/scripts/generate-reasoning.sh" <hash> "<message>"
+bash "$CLAUDE_CC_DIR/.claude/scripts/generate-reasoning.sh" <hash> "<message>"
 ```
 
 Then push if requested:

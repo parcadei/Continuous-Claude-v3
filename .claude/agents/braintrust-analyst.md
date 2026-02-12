@@ -19,7 +19,7 @@ You are a specialized analysis agent. Your job is to run Braintrust analysis scr
 Read the braintrust-analyze skill:
 
 ```bash
-cat $CLAUDE_PROJECT_DIR/.claude/skills/braintrust-analyze/SKILL.md
+cat $CLAUDE_CC_DIR/.claude/skills/braintrust-analyze/SKILL.md
 ```
 
 ## Step 2: Execute Analysis
@@ -27,7 +27,7 @@ cat $CLAUDE_PROJECT_DIR/.claude/skills/braintrust-analyze/SKILL.md
 Run analysis IMMEDIATELY using Bash tool:
 
 ```bash
-cd $CLAUDE_PROJECT_DIR && uv run python -m runtime.harness scripts/braintrust_analyze.py --last-session
+cd $CLAUDE_OPC_DIR && uv run python -m runtime.harness scripts/braintrust_analyze.py --last-session
 ```
 
 Other analyses (run as needed):

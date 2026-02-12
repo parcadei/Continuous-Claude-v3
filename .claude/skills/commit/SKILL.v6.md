@@ -71,7 +71,7 @@ eta |-> generate_reasoning(hash, message)
 ```bash
 git add <file1> <file2> ...
 git commit -m "message"
-bash "$CLAUDE_PROJECT_DIR/.claude/scripts/generate-reasoning.sh" <hash> "<message>"
+bash "$CLAUDE_CC_DIR/.claude/scripts/generate-reasoning.sh" <hash> "<message>"
 git log --oneline -n N
 ```
 

@@ -20,7 +20,7 @@ Show a beautiful dashboard with token usage, actual API costs, TLDR savings, and
 
 1. Run the stats script:
 ```bash
-python3 $CLAUDE_PROJECT_DIR/.claude/scripts/tldr_stats.py
+python3 $CLAUDE_CC_DIR/.claude/scripts/tldr_stats.py
 ```
 
 2. **Copy the full output into your response** so the user sees the dashboard directly in the chat. Do not just run the command silently - the user wants to see the stats.

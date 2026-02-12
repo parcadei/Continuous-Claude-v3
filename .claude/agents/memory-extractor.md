@@ -31,7 +31,7 @@ You receive:
 
 ```bash
 # Use the extraction script with filtering
-(cd $CLAUDE_PROJECT_DIR/opc && uv run python scripts/core/extract_thinking_blocks.py \
+(cd $CLAUDE_OPC_DIR && uv run python scripts/core/extract_thinking_blocks.py \
   --jsonl "$JSONL_PATH" \
   --filter \
   --format json) > /tmp/perception-blocks.json
@@ -42,7 +42,7 @@ This extracts only thinking blocks containing perception signals (actually, real
 ### Step 2: Check Stats
 
 ```bash
-(cd $CLAUDE_PROJECT_DIR/opc && uv run python scripts/core/extract_thinking_blocks.py \
+(cd $CLAUDE_OPC_DIR && uv run python scripts/core/extract_thinking_blocks.py \
   --jsonl "$JSONL_PATH" \
   --stats)
 ```
@@ -80,7 +80,7 @@ For each extracted perception change, use the mapped type from Step 3:
 
 ```bash
 # Example for a CORRECTION → ERROR_FIX
-(cd $CLAUDE_PROJECT_DIR/opc && uv run python scripts/core/store_learning.py \
+(cd $CLAUDE_OPC_DIR && uv run python scripts/core/store_learning.py \
   --session-id "$SESSION_ID" \
   --type "ERROR_FIX" \
   --context "what this relates to" \
@@ -90,7 +90,7 @@ For each extracted perception change, use the mapped type from Step 3:
   --json)
 
 # Example for a REALIZATION/INSIGHT → CODEBASE_PATTERN
-(cd $CLAUDE_PROJECT_DIR/opc && uv run python scripts/core/store_learning.py \
+(cd $CLAUDE_OPC_DIR && uv run python scripts/core/store_learning.py \
   --session-id "$SESSION_ID" \
   --type "CODEBASE_PATTERN" \
   --context "what this relates to" \
@@ -100,7 +100,7 @@ For each extracted perception change, use the mapped type from Step 3:
   --json)
 
 # Example for a DEBUGGING_APPROACH → WORKING_SOLUTION
-(cd $CLAUDE_PROJECT_DIR/opc && uv run python scripts/core/store_learning.py \
+(cd $CLAUDE_OPC_DIR && uv run python scripts/core/store_learning.py \
   --session-id "$SESSION_ID" \
   --type "WORKING_SOLUTION" \
   --context "debugging methodology" \
