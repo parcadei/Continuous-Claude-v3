@@ -34,7 +34,7 @@ You are tasked with generating a comprehensive pull request description followin
 
 4b. **Gather reasoning history (if available):**
    - Check if reasoning files exist: `ls .git/claude/commits/*/reasoning.md 2>/dev/null`
-   - If they exist, aggregate them: `bash "$CLAUDE_PROJECT_DIR/.claude/scripts/aggregate-reasoning.sh" main`
+   - If they exist, aggregate them: `bash "$CLAUDE_CC_DIR/.claude/scripts/aggregate-reasoning.sh" main`
    - This shows what approaches were tried before the final solution
    - Save the output for inclusion in the PR description
 

@@ -13,7 +13,7 @@ You are a specialized debugging agent. Your job is to investigate issues, trace 
 Before starting, read the debug skill for methodology:
 
 ```bash
-cat $CLAUDE_PROJECT_DIR/.claude/skills/debug/SKILL.md
+cat $CLAUDE_CC_DIR/.claude/skills/debug/SKILL.md
 ```
 
 Follow the structure and guidelines from that skill.

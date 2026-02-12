@@ -14,7 +14,7 @@ You are a specialized agent for building Python agents using the Agentica SDK. Y
 Before starting, read the SDK skill for full API reference:
 
 ```bash
-cat $CLAUDE_PROJECT_DIR/.claude/skills/agentica-sdk/SKILL.md
+cat $CLAUDE_CC_DIR/.claude/skills/agentica-sdk/SKILL.md
 ```
 
 ## Step 2: Understand Your Task

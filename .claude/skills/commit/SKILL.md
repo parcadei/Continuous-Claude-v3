@@ -32,7 +32,7 @@ You are tasked with creating git commits for the changes made during this sessio
    - Show the result with `git log --oneline -n [number]`
 
 5. **Generate reasoning (after each commit):**
-   - Run: `bash "$CLAUDE_PROJECT_DIR/.claude/scripts/generate-reasoning.sh" <commit-hash> "<commit-message>"`
+   - Run: `bash "$CLAUDE_CC_DIR/.claude/scripts/generate-reasoning.sh" <commit-hash> "<commit-message>"`
    - This captures what was tried during development (build failures, fixes)
    - The reasoning file helps future sessions understand past decisions
    - Stored in `.git/claude/commits/<hash>/reasoning.md`

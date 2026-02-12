@@ -836,8 +836,10 @@ async def run_setup_wizard() -> None:
         else:
             console.print("  Skipped integration installation")
 
-    # Set CLAUDE_OPC_DIR environment variable for skills to find scripts
-    console.print("  Setting CLAUDE_OPC_DIR environment variable...")
+    # Set CLAUDE_OPC_DIR and CLAUDE_CC_DIR environment variables
+    # CLAUDE_OPC_DIR = opc/ directory (Python scripts, MCP runtime)
+    # CLAUDE_CC_DIR  = repository root (contains .claude/scripts/, .claude/skills/)
+    console.print("  Setting environment variables...")
     shell_config = None
     shell = os.environ.get("SHELL", "")
     if "zsh" in shell:
@@ -846,21 +848,32 @@ async def run_setup_wizard() -> None:
         shell_config = Path.home() / ".bashrc"
 
     opc_dir = _project_root  # Use script location, not cwd (robust if invoked from elsewhere)
+    cc_dir = opc_dir.parent   # Repository root (Continuous-Claude-v3/)
     if shell_config and shell_config.exists():
         content = shell_config.read_text()
-        export_line = f'export CLAUDE_OPC_DIR="{opc_dir}"'
+        changed = False
+        export_opc = f'export CLAUDE_OPC_DIR="{opc_dir}"'
+        export_cc = f'export CLAUDE_CC_DIR="{cc_dir}"'
         if "CLAUDE_OPC_DIR" not in content:
             with open(shell_config, "a") as f:
-                f.write(f"\n# Continuous-Claude OPC directory (for skills to find scripts)\n{export_line}\n")
-            console.print(f"  [green]OK[/green] Added CLAUDE_OPC_DIR to {shell_config.name}")
+                f.write(f"\n# Continuous-Claude directories (for skills to find scripts)\n{export_opc}\n{export_cc}\n")
+            changed = True
+        elif "CLAUDE_CC_DIR" not in content:
+            with open(shell_config, "a") as f:
+                f.write(f"\n# Continuous-Claude root directory\n{export_cc}\n")
+            changed = True
+        if changed:
+            console.print(f"  [green]OK[/green] Added CLAUDE_OPC_DIR and CLAUDE_CC_DIR to {shell_config.name}")
         else:
-            console.print(f"  [dim]CLAUDE_OPC_DIR already in {shell_config.name}[/dim]")
+            console.print(f"  [dim]CLAUDE_OPC_DIR and CLAUDE_CC_DIR already in {shell_config.name}[/dim]")
     elif sys.platform == "win32":
         console.print("  [yellow]NOTE[/yellow] Add to your environment:")
         console.print(f'       set CLAUDE_OPC_DIR="{opc_dir}"')
+        console.print(f'       set CLAUDE_CC_DIR="{cc_dir}"')
     else:
         console.print("  [yellow]NOTE[/yellow] Add to your shell config:")
         console.print(f'       export CLAUDE_OPC_DIR="{opc_dir}"')
+        console.print(f'       export CLAUDE_CC_DIR="{cc_dir}"')
 
     # Step 8: Math Features (Optional)
     console.print("\n[bold]Step 9/13: Math Features (Optional)[/bold]")
