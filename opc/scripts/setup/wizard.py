@@ -991,15 +991,6 @@ async def run_setup_wizard() -> None:
                         except ValueError:
                             threshold = 20
 
-                        # Save config to global ~/.claude/settings.json
-                        settings_path = get_global_claude_dir() / "settings.json"
-                        settings = {}
-                        if settings_path.exists():
-                            try:
-                                settings = json.loads(settings_path.read_text())
-                            except Exception:
-                                pass
-
                         # Detect GPU for model selection
                         # BGE-large (1.3GB) needs GPU, MiniLM (80MB) works on CPU
                         has_gpu = False
@@ -1017,14 +1008,43 @@ async def run_setup_wizard() -> None:
                             timeout = 300  # 5 min for small model
                             console.print("  [dim]No GPU detected, using lightweight model[/dim]")
 
-                        settings["semantic_search"] = {
+                        # Save config to ~/.config/tldr/config.json (TLDR-specific).
+                        # Previously this was written to ~/.claude/settings.json, but
+                        # Claude Code does not recognise the "semantic_search" key and
+                        # reports the settings file as invalid.  The tldr daemon reads
+                        # config from <project>/.tldr/config.json at runtime; this
+                        # global file serves as a reference for the chosen model.
+                        tldr_config_dir = Path.home() / ".config" / "tldr"
+                        tldr_config_path = tldr_config_dir / "config.json"
+                        tldr_config: dict[str, Any] = {}
+                        if tldr_config_path.exists():
+                            try:
+                                tldr_config = json.loads(tldr_config_path.read_text())
+                            except Exception:
+                                pass
+
+                        tldr_config["semantic"] = {
                             "enabled": True,
                             "auto_reindex_threshold": threshold,
                             "model": model,
                         }
 
-                        settings_path.parent.mkdir(parents=True, exist_ok=True)
-                        settings_path.write_text(json.dumps(settings, indent=2))
+                        tldr_config_dir.mkdir(parents=True, exist_ok=True)
+                        tldr_config_path.write_text(json.dumps(tldr_config, indent=2))
+
+                        # Clean up stale key from ~/.claude/settings.json if present
+                        global_settings_path = get_global_claude_dir() / "settings.json"
+                        if global_settings_path.exists():
+                            try:
+                                global_settings = json.loads(global_settings_path.read_text())
+                                if "semantic_search" in global_settings:
+                                    del global_settings["semantic_search"]
+                                    global_settings_path.write_text(
+                                        json.dumps(global_settings, indent=2)
+                                    )
+                            except Exception:
+                                pass
+
                         console.print(f"  [green]OK[/green] Semantic search enabled (threshold: {threshold})")
 
                         # Offer to pre-download embedding model
