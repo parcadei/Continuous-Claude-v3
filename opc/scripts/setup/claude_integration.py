@@ -812,10 +812,11 @@ def find_latest_backup(claude_dir: Path) -> Path | None:
 
 # Files to preserve during uninstall (user data accumulated since install)
 PRESERVE_FILES = [
-    "history.jsonl",      # Command history
-    "mcp_config.json",    # MCP server configs
-    ".env",               # API keys and settings
-    "projects.json",      # Project configs
+    "history.jsonl",        # Command history
+    "mcp_config.json",      # MCP server configs
+    ".env",                 # API keys and settings
+    "projects.json",        # Project configs
+    "settings.local.json",  # User's custom permissions and overrides
 ]
 
 PRESERVE_DIRS = [
@@ -918,8 +919,8 @@ def uninstall_opc_integration(
                 else:
                     shutil.copy2(archived_src, dest)
                 result["preserved"].append(name)
-            except Exception:
-                pass  # Best effort
+            except Exception as e:
+                result.setdefault("preserve_warnings", []).append(f"{name}: {e}")
 
     # Build summary message
     msg_parts = ["Uninstalled successfully."]
@@ -930,6 +931,9 @@ def uninstall_opc_integration(
         msg_parts.append("  No backup found (created empty .claude)")
     if result["preserved"]:
         msg_parts.append(f"  Preserved user data: {', '.join(result['preserved'])}")
+    if result.get("preserve_warnings"):
+        for warning in result["preserve_warnings"]:
+            msg_parts.append(f"  [WARN] Could not preserve {warning}")
 
     result["message"] = "\n".join(msg_parts)
     result["success"] = True

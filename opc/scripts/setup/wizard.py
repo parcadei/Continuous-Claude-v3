@@ -1329,6 +1329,41 @@ async def run_uninstall_wizard() -> None:
         console.print(f"\n[green]SUCCESS[/green]\n{result['message']}")
     else:
         console.print(f"\n[red]FAILED[/red]\n{result['message']}")
+        return
+
+    # Additional cleanup: shell config
+    console.print("\n[bold]Additional cleanup:[/bold]")
+
+    # Remove CLAUDE_OPC_DIR from shell config
+    for shell_config in [Path.home() / ".zshrc", Path.home() / ".bashrc"]:
+        if shell_config.exists():
+            content = shell_config.read_text()
+            if "CLAUDE_OPC_DIR" in content:
+                lines = content.splitlines()
+                cleaned = [
+                    line for line in lines
+                    if "CLAUDE_OPC_DIR" not in line
+                    and "Continuous-Claude OPC directory" not in line
+                ]
+                shell_config.write_text("\n".join(cleaned) + "\n")
+                console.print(f"  [green]OK[/green] Removed CLAUDE_OPC_DIR from {shell_config.name}")
+
+    # Offer to remove TLDR CLI
+    if shutil.which("tldr"):
+        if Confirm.ask("\n  Remove TLDR CLI tool?", default=False):
+            import subprocess
+
+            remove_result = subprocess.run(
+                ["uv", "tool", "uninstall", "llm-tldr"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if remove_result.returncode == 0:
+                console.print("  [green]OK[/green] TLDR removed")
+            else:
+                console.print("  [yellow]WARN[/yellow] Could not remove TLDR")
+                console.print("  Remove manually: uv tool uninstall llm-tldr")
 
 
 async def main():
