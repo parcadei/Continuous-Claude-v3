@@ -517,13 +517,14 @@ async def run_setup_wizard() -> None:
     5. Start Docker stack
     6. Run migrations
     7. Install Claude Code integration (hooks, skills, rules)
+    8. Install optional CLI tools (qlty, ast-grep)
     """
     console.print(
         Panel.fit("[bold]CLAUDE CONTINUITY KIT v3 - SETUP WIZARD[/bold]", border_style="blue")
     )
 
     # Step 0: Backup global ~/.claude (safety first)
-    console.print("\n[bold]Step 0/13: Backing up global Claude configuration...[/bold]")
+    console.print("\n[bold]Step 0/15: Backing up global Claude configuration...[/bold]")
     from scripts.setup.claude_integration import (
         backup_global_claude_dir,
         get_global_claude_dir,
@@ -540,7 +541,7 @@ async def run_setup_wizard() -> None:
         console.print("  [dim]No existing ~/.claude found (clean install)[/dim]")
 
     # Step 1: Check prerequisites (with installation offers)
-    console.print("\n[bold]Step 1/13: Checking system requirements...[/bold]")
+    console.print("\n[bold]Step 1/15: Checking system requirements...[/bold]")
     prereqs = await check_prerequisites_with_install_offers()
 
     if prereqs["docker"]:
@@ -565,7 +566,7 @@ async def run_setup_wizard() -> None:
         sys.exit(1)
 
     # Step 2: Database config
-    console.print("\n[bold]Step 2/13: Database Configuration[/bold]")
+    console.print("\n[bold]Step 2/15: Database Configuration[/bold]")
     console.print("  Choose your database backend:")
     console.print("    [bold]docker[/bold]    - PostgreSQL in Docker (recommended)")
     console.print("    [bold]embedded[/bold]  - Embedded PostgreSQL (no Docker needed)")
@@ -605,21 +606,21 @@ async def run_setup_wizard() -> None:
         db_config["mode"] = "docker"
 
     # Step 3: Embedding configuration
-    console.print("\n[bold]Step 3/13: Embedding Configuration[/bold]")
+    console.print("\n[bold]Step 3/15: Embedding Configuration[/bold]")
     if Confirm.ask("Configure embedding provider?", default=True):
         embeddings = await prompt_embedding_config()
     else:
         embeddings = {"provider": "local"}
 
     # Step 4: API keys
-    console.print("\n[bold]Step 4/13: API Keys (Optional)[/bold]")
+    console.print("\n[bold]Step 4/15: API Keys (Optional)[/bold]")
     if Confirm.ask("Configure API keys?", default=False):
         api_keys = await prompt_api_keys()
     else:
         api_keys = {"perplexity": "", "nia": "", "braintrust": ""}
 
     # Step 5: Generate .env
-    console.print("\n[bold]Step 5/13: Generating configuration...[/bold]")
+    console.print("\n[bold]Step 5/15: Generating configuration...[/bold]")
     config = {"database": db_config, "embeddings": embeddings, "api_keys": api_keys}
     env_path = Path.cwd() / ".env"
     generate_env_file(config, env_path)
@@ -627,7 +628,7 @@ async def run_setup_wizard() -> None:
 
     # Step 5: Container stack (Sandbox Infrastructure)
     runtime = prereqs.get("container_runtime", "docker")
-    console.print(f"\n[bold]Step 6/13: Container Stack (Sandbox Infrastructure)[/bold]")
+    console.print(f"\n[bold]Step 6/15: Container Stack (Sandbox Infrastructure)[/bold]")
     console.print("  The sandbox requires PostgreSQL and Redis for:")
     console.print("  - Agent coordination and scheduling")
     console.print("  - Build cache and LSP index storage")
@@ -655,7 +656,7 @@ async def run_setup_wizard() -> None:
             console.print(f"  You can start manually with: {runtime} compose up -d")
 
     # Step 6: Migrations
-    console.print("\n[bold]Step 7/13: Database Setup[/bold]")
+    console.print("\n[bold]Step 7/15: Database Setup[/bold]")
     if Confirm.ask("Run database migrations?", default=True):
         from scripts.setup.docker_setup import run_migrations, set_container_runtime
 
@@ -668,7 +669,7 @@ async def run_setup_wizard() -> None:
             console.print(f"  [red]ERROR[/red] {result.get('error', 'Unknown error')}")
 
     # Step 7: Claude Code Integration
-    console.print("\n[bold]Step 8/13: Claude Code Integration[/bold]")
+    console.print("\n[bold]Step 8/15: Claude Code Integration[/bold]")
     from scripts.setup.claude_integration import (
         analyze_conflicts,
         backup_claude_dir,
@@ -863,7 +864,7 @@ async def run_setup_wizard() -> None:
         console.print(f'       export CLAUDE_OPC_DIR="{opc_dir}"')
 
     # Step 8: Math Features (Optional)
-    console.print("\n[bold]Step 9/13: Math Features (Optional)[/bold]")
+    console.print("\n[bold]Step 9/15: Math Features (Optional)[/bold]")
     console.print("  Math features include:")
     console.print("    - SymPy: symbolic algebra, calculus, equation solving")
     console.print("    - Z3: SMT solver for constraint satisfaction & proofs")
@@ -922,7 +923,7 @@ async def run_setup_wizard() -> None:
         console.print("  [dim]Install later with: uv sync --extra math[/dim]")
 
     # Step 9: TLDR Code Analysis Tool
-    console.print("\n[bold]Step 10/13: TLDR Code Analysis Tool[/bold]")
+    console.print("\n[bold]Step 10/15: TLDR Code Analysis Tool[/bold]")
     console.print("  TLDR provides token-efficient code analysis for LLMs:")
     console.print("    - 95% token savings vs reading raw files")
     console.print("    - 155x faster queries with daemon mode")
@@ -1080,8 +1081,93 @@ async def run_setup_wizard() -> None:
                 if strip_tldr_hooks_from_settings(settings_path):
                     console.print("  [green]OK[/green] TLDR hooks disabled")
 
-    # Step 10: Diagnostics Tools (Shift-Left Feedback)
-    console.print("\n[bold]Step 11/13: Diagnostics Tools (Shift-Left Feedback)[/bold]")
+    # Step 10b: Code Quality CLI - qlty (Optional)
+    console.print("\n[bold]Step 11/15: Code Quality CLI (Optional)[/bold]")
+    console.print("  qlty provides universal code quality checking:")
+    console.print("    - 70+ linters across 40+ languages")
+    console.print("    - Auto-fix for common issues")
+    console.print("    - Powers the /qlty-check skill")
+    console.print("")
+
+    if shutil.which("qlty"):
+        console.print("  [green]OK[/green] qlty already installed")
+    elif Confirm.ask("\nInstall qlty?", default=True):
+        console.print("  Installing qlty...")
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["sh", "-c", "curl -fsSL https://qlty.sh | sh"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode == 0:
+                console.print("  [green]OK[/green] qlty installed")
+            else:
+                console.print("  [yellow]WARN[/yellow] Installation failed")
+                console.print("  Install manually: curl -fsSL https://qlty.sh | sh")
+        except subprocess.TimeoutExpired:
+            console.print("  [yellow]WARN[/yellow] Installation timed out")
+            console.print("  Install manually: curl -fsSL https://qlty.sh | sh")
+        except Exception as e:
+            console.print(f"  [red]ERROR[/red] {e}")
+    else:
+        console.print("  Skipped qlty installation")
+        console.print("  [dim]Install later: curl -fsSL https://qlty.sh | sh[/dim]")
+
+    # Step 10c: AST-Grep (Optional)
+    console.print("\n[bold]Step 12/15: AST-Based Code Search (Optional)[/bold]")
+    console.print("  ast-grep enables structural code search and refactoring:")
+    console.print("    - Search by AST patterns, not text")
+    console.print("    - Language-aware refactoring")
+    console.print("    - Powers the /ast-grep-find and search-router skills")
+    console.print("")
+
+    if shutil.which("ast-grep") or shutil.which("sg"):
+        console.print("  [green]OK[/green] ast-grep already installed")
+    elif Confirm.ask("\nInstall ast-grep?", default=True):
+        console.print("  Installing ast-grep...")
+        import subprocess
+
+        try:
+            # Try brew first (macOS), then cargo
+            if shutil.which("brew"):
+                result = subprocess.run(
+                    ["brew", "install", "ast-grep"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+            elif shutil.which("cargo"):
+                console.print("  [dim]Using cargo (may take a few minutes)...[/dim]")
+                result = subprocess.run(
+                    ["cargo", "install", "ast-grep", "--locked"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
+            else:
+                console.print("  [yellow]WARN[/yellow] Neither brew nor cargo found")
+                console.print("  Install manually: https://github.com/ast-grep/ast-grep#installation")
+                result = None
+
+            if result and result.returncode == 0:
+                console.print("  [green]OK[/green] ast-grep installed")
+            elif result:
+                console.print("  [yellow]WARN[/yellow] Installation failed")
+                console.print("  Install manually: brew install ast-grep")
+        except subprocess.TimeoutExpired:
+            console.print("  [yellow]WARN[/yellow] Installation timed out")
+            console.print("  Install manually: brew install ast-grep")
+        except Exception as e:
+            console.print(f"  [red]ERROR[/red] {e}")
+    else:
+        console.print("  Skipped ast-grep installation")
+        console.print("  [dim]Install later: brew install ast-grep[/dim]")
+
+    # Step 10d: Diagnostics Tools (Shift-Left Feedback)
+    console.print("\n[bold]Step 13/15: Diagnostics Tools (Shift-Left Feedback)[/bold]")
     console.print("  Claude gets immediate type/lint feedback after editing files.")
     console.print("  This catches errors before tests run (shift-left).")
     console.print("")
@@ -1119,7 +1205,7 @@ async def run_setup_wizard() -> None:
     console.print("  [dim]TypeScript, Go, Rust coming soon.[/dim]")
 
     # Step 11: Loogle (Lean 4 type search for /prove skill)
-    console.print("\n[bold]Step 12/13: Loogle (Lean 4 Type Search)[/bold]")
+    console.print("\n[bold]Step 14/15: Loogle (Lean 4 Type Search)[/bold]")
     console.print("  Loogle enables type-aware search of Mathlib theorems:")
     console.print("    - Used by /prove skill for theorem proving")
     console.print("    - Search by type signature (e.g., 'Nontrivial _ ↔ _')")
