@@ -1015,8 +1015,8 @@ Blocks on HIGH severity until user accepts/mitigates risks.
 
 ```bash
 # Clone
-git clone https://github.com/parcadei/continuous-claude.git
-cd continuous-claude/opc
+git clone https://github.com/parcadei/Continuous-Claude-v3.git
+cd Continuous-Claude-v3/opc
 
 # Run the setup wizard
 uv run python -m scripts.setup.wizard
@@ -1260,7 +1260,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 - **[yoloshii/mcp-code-execution-enhanced](https://github.com/yoloshii/mcp-code-execution-enhanced)** - Enhanced MCP execution
 - **[HumanLayer](https://github.com/humanlayer/humanlayer)** - Agent patterns
 
-### Tools & Services
+### Tools & Services (Optional Integrations)
+
+> These tools enhance specific skills but are **not required** for core functionality.
+> The setup wizard installs only the essentials (Docker, Python 3.11+, uv).
+
 - **[uv](https://github.com/astral-sh/uv)** - Python packaging
 - **[tree-sitter](https://tree-sitter.github.io/)** - Code parsing
 - **[Braintrust](https://braintrust.dev)** - LLM evaluation, logging, and session tracing
@@ -1275,7 +1279,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=parcadei/Continuous-Claude-v2&type=timeline)](https://star-history.com/#parcadei/Continuous-Claude-v2&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=parcadei/Continuous-Claude-v3&type=timeline)](https://star-history.com/#parcadei/Continuous-Claude-v3&Date)
 
 ---
 
