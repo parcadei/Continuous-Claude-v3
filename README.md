@@ -170,7 +170,7 @@ ACTION: Use Skill tool BEFORE responding
 git clone https://github.com/parcadei/Continuous-Claude-v3.git
 cd Continuous-Claude-v3/opc
 
-# Run setup wizard (12 steps)
+# Run setup wizard (15 steps)
 uv run python -m scripts.setup.wizard
 ```
 
@@ -187,7 +187,9 @@ uv run python -m scripts.setup.wizard
 | 8 | Install Claude Code integration (32 agents, 109 skills, 30 hooks) |
 | 9 | Math features (SymPy, Z3, Pint - optional) |
 | 10 | TLDR code analysis tool |
-| 11-12 | Diagnostics tools + Loogle (optional) |
+| 11 | Code quality CLI - qlty (optional) |
+| 12 | AST-based code search - ast-grep (optional) |
+| 13-14 | Diagnostics tools + Loogle (optional) |
 
 
 #### To Uninstall:
