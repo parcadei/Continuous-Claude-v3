@@ -109,7 +109,7 @@ hyperfine "uv run python script.py"
 
 **ALWAYS write findings to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/profiler/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/profiler/latest-output.md
 ```
 
 ## Output Format

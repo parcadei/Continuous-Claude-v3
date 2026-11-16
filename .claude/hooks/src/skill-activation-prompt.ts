@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { spawnSync } from 'child_process';
-import { tmpdir } from 'os';
+import { execSync } from 'child_process';
 
 // Import shared resource reader (Phase 4 module)
 import { readResourceState, ResourceState } from './shared/resource-reader.js';
@@ -35,21 +34,6 @@ interface PatternInference {
     work_breakdown_detailed: string;
 }
 
-// Pattern-to-agent mapping
-const PATTERN_AGENT_MAP: Record<string, string> = {
-    'swarm': 'research-agent',
-    'hierarchical': 'kraken',
-    'pipeline': 'kraken',
-    'generator_critic': 'review-agent',
-    'adversarial': 'validate-agent',
-    'map_reduce': 'kraken',
-    'jury': 'validate-agent',
-    'blackboard': 'maestro',
-    'circuit_breaker': 'kraken',
-    'chain_of_responsibility': 'maestro',
-    'event_driven': 'kraken',
-};
-
 interface PromptTriggers {
     keywords?: string[];
     intentPatterns?: string[];
@@ -81,50 +65,38 @@ interface MatchedSkill {
 /**
  * Run pattern inference using the Python module.
  * Returns null if inference fails or module not available.
- *
- * Cross-platform: Uses spawnSync with cwd option (works on Windows/macOS/Linux).
  */
 function runPatternInference(prompt: string, projectDir: string): PatternInference | null {
     try {
-        const scriptPath = join(projectDir, 'scripts', 'agentica_patterns', 'pattern_inference.py');
+        const scriptPath = join(projectDir, 'scripts', 'agentica', 'pattern_inference.py');
         if (!existsSync(scriptPath)) {
             return null;
         }
 
-        // Build Python code as a string (no shell escaping needed with spawnSync)
-        const pythonCode = `
+        // Escape prompt for shell
+        const escapedPrompt = prompt.replace(/'/g, "'\\''");
+
+        // Run the Python module with uv
+        const result = execSync(
+            `cd "${projectDir}" && uv run python -c "
 import sys
+sys.path.insert(0, '.')
+from scripts.agentica.pattern_inference import infer_pattern, generate_work_breakdown
 import json
-import importlib.util
-
-# Direct import bypassing __init__.py
-spec = importlib.util.spec_from_file_location(
-    'pattern_inference',
-    ${JSON.stringify(scriptPath)}
-)
-pattern_mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(pattern_mod)
-
-prompt = ${JSON.stringify(prompt)}
-result = pattern_mod.infer_pattern(prompt)
+prompt = '''${escapedPrompt}'''
+result = infer_pattern(prompt)
 output = result.to_dict()
-output['work_breakdown_detailed'] = pattern_mod.generate_work_breakdown(result)
+output['work_breakdown_detailed'] = generate_work_breakdown(result)
 print(json.dumps(output))
-`;
+"`,
+            {
+                encoding: 'utf-8',
+                timeout: 5000,  // 5 second timeout
+                stdio: ['pipe', 'pipe', 'pipe'],
+            }
+        );
 
-        // Cross-platform: use spawnSync with cwd instead of shell cd && command
-        const result = spawnSync('uv', ['run', 'python', '-c', pythonCode], {
-            encoding: 'utf-8',
-            timeout: 5000,
-            cwd: projectDir,
-            stdio: ['pipe', 'pipe', 'pipe'],
-        });
-
-        if (result.status !== 0 || !result.stdout) {
-            return null;
-        }
-
-        return JSON.parse(result.stdout.trim()) as PatternInference;
+        return JSON.parse(result.trim()) as PatternInference;
     } catch (err) {
         // Pattern inference is optional - fail silently
         return null;
@@ -142,16 +114,16 @@ function generateAgenticaOutput(inference: PatternInference, prompt: string): st
     output += '\n';
 
     if (inference.confidence >= 0.7) {
-        const suggestedAgent = PATTERN_AGENT_MAP[inference.pattern] || 'kraken';
-        output += 'SUGGESTED APPROACH:\n';
-        output += `  Agent: ${suggestedAgent}\n`;
-        output += `  Pattern: ${inference.work_breakdown_detailed}\n`;
-        const confidencePct = Math.round(inference.confidence * 100);
-        output += `  Confidence: ${confidencePct}%\n`;
+        // High confidence - auto-select pattern, show work breakdown
+        output += 'WORK BREAKDOWN:\n';
+        output += `  ${inference.work_breakdown_detailed}\n`;
         output += '\n';
-        output += 'ACTION: Use AskUserQuestion to confirm before spawning:\n';
-        output += `  "I'll use ${suggestedAgent} to ${inference.work_breakdown}. Proceed?"\n`;
-        output += '  Options: [Yes, proceed] [Different approach] [Let me explain more]\n';
+        output += `Confidence: ${Math.round(inference.confidence * 100)}%\n`;
+        if (inference.signals.length > 0) {
+            output += `Signals detected: ${inference.signals.join(', ')}\n`;
+        }
+        output += '\n';
+        output += 'ACTION: Proceed with this approach. Use Task tool to spawn agents.\n';
         if (inference.alternatives.length > 0) {
             output += `\nAlternative approaches available: ${inference.alternatives.join(', ')}\n`;
         }
@@ -164,8 +136,7 @@ function generateAgenticaOutput(inference: PatternInference, prompt: string): st
         }
         output += '\n';
         output += 'Initial analysis suggests: ' + inference.work_breakdown + '\n';
-        const confidencePct = Math.round(inference.confidence * 100);
-        output += `Confidence: ${confidencePct}%\n`;
+        output += `Confidence: ${Math.round(inference.confidence * 100)}%\n`;
         output += '\n';
         output += 'ACTION: Use AskUserQuestion to clarify before proceeding.\n';
     }
@@ -174,63 +145,16 @@ function generateAgenticaOutput(inference: PatternInference, prompt: string): st
     return output;
 }
 
-/**
- * Detect semantic/natural language queries that would benefit from TLDR semantic search.
- * Pattern: Questions starting with how/what/where/why/when/which
- */
-function detectSemanticQuery(prompt: string): { isSemanticQuery: boolean; suggestion?: string } {
-    // Question word patterns that indicate semantic queries
-    const semanticPatterns = [
-        /^(how|what|where|why|when|which)\s/i,
-        /\?$/,
-        /^(find|show|list|get|explain)\s+(all|the|every|any)/i,
-        /^.*\s+(implementation|architecture|flow|pattern|logic|system)$/i,
-    ];
-
-    const isSemanticQuery = semanticPatterns.some(p => p.test(prompt.trim()));
-
-    if (!isSemanticQuery) {
-        return { isSemanticQuery: false };
-    }
-
-    // Generate suggestion for semantic search
-    const shortPrompt = prompt.length > 50 ? prompt.slice(0, 50) + '...' : prompt;
-    const suggestion = `💡 **Semantic Query Detected**
-
-Your question "${shortPrompt}" may benefit from semantic code search.
-
-**Try:**
-\`\`\`bash
-tldr semantic search "${prompt.slice(0, 100)}" .
-\`\`\`
-
-Or use the /explore skill for guided exploration.
-`;
-
-    return { isSemanticQuery: true, suggestion };
-}
-
 async function main() {
     try {
         // Read input from stdin
         const input = readFileSync(0, 'utf-8');
-        let data: HookInput;
-        try {
-            data = JSON.parse(input);
-        } catch {
-            // Malformed JSON - exit silently
-            process.exit(0);
-        }
-
-        // Early validation - prompt is required
-        if (!data.prompt || typeof data.prompt !== 'string') {
-            process.exit(0);
-        }
+        const data: HookInput = JSON.parse(input);
         const prompt = data.prompt.toLowerCase();
 
         // Load skill rules (try project first, then global)
         const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+        const homeDir = process.env.HOME || '';
         const projectRulesPath = join(projectDir, '.claude', 'skills', 'skill-rules.json');
         const globalRulesPath = join(homeDir, '.claude', 'skills', 'skill-rules.json');
 
@@ -244,12 +168,6 @@ async function main() {
             process.exit(0);
         }
         const rules: SkillRules = JSON.parse(readFileSync(rulesPath, 'utf-8'));
-
-        // CHANGE 1: Run pattern inference EARLY on all prompts
-        const patternInference = runPatternInference(data.prompt, projectDir);
-
-        // CHANGE 3: Detect semantic queries and suggest TLDR semantic search
-        const semanticQuery = detectSemanticQuery(data.prompt);
 
         const matchedSkills: MatchedSkill[] = [];
 
@@ -372,8 +290,8 @@ async function main() {
             }
         }
 
-        // Generate output if matches found OR pattern inference succeeded OR semantic query detected
-        if (matchedSkills.length > 0 || matchedAgents.length > 0 || patternInference || semanticQuery.isSemanticQuery) {
+        // Generate output if matches found
+        if (matchedSkills.length > 0 || matchedAgents.length > 0) {
             // Check which skills need LLM validation (potential false positives)
             const skillsNeedingValidation = matchedSkills.filter(s => s.needsValidation);
             const agentsNeedingValidation = matchedAgents.filter(a => a.needsValidation);
@@ -384,105 +302,119 @@ async function main() {
             const confirmedSkills = matchedSkills.filter(s => !s.needsValidation);
             const confirmedAgents = matchedAgents.filter(a => !a.needsValidation);
 
-            let output = '';
-            
-            // CHANGE 2: Show pattern inference output FIRST if available
-            if (patternInference) {
-                output += generateAgenticaOutput(patternInference, data.prompt);
-                output += '\n';
-            }
+            let output = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+            output += '🎯 SKILL ACTIVATION CHECK\n';
+            output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
 
-            // CHANGE 3: Show semantic query suggestion if detected
-            if (semanticQuery.isSemanticQuery && semanticQuery.suggestion) {
-                output += semanticQuery.suggestion;
-                output += '\n';
-            }
+            // Show skills needing validation FIRST
+            if (allNeedingValidation.length > 0) {
+                output += '❓ AMBIGUOUS MATCHES (validate before activating):\n';
+                output += '   The following skills matched on keywords that may be used\n';
+                output += '   in a non-technical context. Consider if they\'re needed:\n\n';
 
-            // Show skill activation check only if skills/agents matched
-            if (matchedSkills.length > 0 || matchedAgents.length > 0) {
-                output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-                output += '🎯 SKILL ACTIVATION CHECK\n';
-                output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
-
-                // Show skills needing validation FIRST
-                if (allNeedingValidation.length > 0) {
-                    output += '❓ AMBIGUOUS MATCHES (validate before activating):\n';
-                    output += '   The following skills matched on keywords that may be used\n';
-                    output += '   in a non-technical context. Consider if they\'re needed:\n\n';
-
-                    for (const item of allNeedingValidation) {
-                        const isAgent = item.isAgent ? ' [agent]' : '';
-                        output += `   • ${item.name}${isAgent}\n`;
-                        output += `     Matched: "${item.matchedTerm}" (keyword match)\n`;
-                        if (item.config.description) {
-                            output += `     Purpose: ${item.config.description}\n`;
-                        }
-                        output += `     → Skip if the user is NOT asking for this functionality\n`;
-                        output += '\n';
+                for (const item of allNeedingValidation) {
+                    const isAgent = item.isAgent ? ' [agent]' : '';
+                    output += `   • ${item.name}${isAgent}\n`;
+                    output += `     Matched: "${item.matchedTerm}" (keyword match)\n`;
+                    if (item.config.description) {
+                        output += `     Purpose: ${item.config.description}\n`;
                     }
-
-                    output += '   VALIDATION: Before activating these, ask yourself:\n';
-                    output += '   "Is the user asking for this skill\'s capability, or just\n';
-                    output += '    using the word in everyday language?"\n\n';
-                }
-
-                // Group confirmed skills by priority
-                const critical = confirmedSkills.filter(s => s.config.priority === 'critical');
-                const high = confirmedSkills.filter(s => s.config.priority === 'high');
-                const medium = confirmedSkills.filter(s => s.config.priority === 'medium');
-                const low = confirmedSkills.filter(s => s.config.priority === 'low');
-
-                if (critical.length > 0) {
-                    output += '⚠️ CRITICAL SKILLS (REQUIRED):\n';
-                    critical.forEach(s => output += `  → ${s.name}\n`);
+                    output += `     → Skip if the user is NOT asking for this functionality\n`;
                     output += '\n';
                 }
 
-                if (high.length > 0) {
-                    output += '📚 RECOMMENDED SKILLS:\n';
-                    high.forEach(s => output += `  → ${s.name}\n`);
+                output += '   VALIDATION: Before activating these, ask yourself:\n';
+                output += '   "Is the user asking for this skill\'s capability, or just\n';
+                output += '    using the word in everyday language?"\n\n';
+            }
+
+            // Group confirmed skills by priority
+            const critical = confirmedSkills.filter(s => s.config.priority === 'critical');
+            const high = confirmedSkills.filter(s => s.config.priority === 'high');
+            const medium = confirmedSkills.filter(s => s.config.priority === 'medium');
+            const low = confirmedSkills.filter(s => s.config.priority === 'low');
+
+            if (critical.length > 0) {
+                output += '⚠️ CRITICAL SKILLS (REQUIRED):\n';
+                critical.forEach(s => output += `  → ${s.name}\n`);
+                output += '\n';
+            }
+
+            if (high.length > 0) {
+                output += '📚 RECOMMENDED SKILLS:\n';
+                high.forEach(s => output += `  → ${s.name}\n`);
+                output += '\n';
+            }
+
+            if (medium.length > 0) {
+                output += '💡 SUGGESTED SKILLS:\n';
+                medium.forEach(s => output += `  → ${s.name}\n`);
+                output += '\n';
+            }
+
+            if (low.length > 0) {
+                output += '📌 OPTIONAL SKILLS:\n';
+                low.forEach(s => output += `  → ${s.name}\n`);
+                output += '\n';
+            }
+
+            // Add confirmed agents
+            if (confirmedAgents.length > 0) {
+                output += '🤖 RECOMMENDED AGENTS (token-efficient):\n';
+                confirmedAgents.forEach(a => output += `  → ${a.name}\n`);
+                output += '\n';
+            }
+
+            if (confirmedSkills.length > 0) {
+                output += 'ACTION: Use Skill tool BEFORE responding\n';
+            }
+            if (confirmedAgents.length > 0) {
+                output += 'ACTION: Use Task tool with agent for exploration\n';
+            }
+            output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+
+            // Check if any matched skill has enforcement: 'block'
+            const blockingSkills = matchedSkills.filter(s => s.config.enforcement === 'block');
+            if (blockingSkills.length > 0) {
+                // Return blocking response - Claude must invoke the skill first
+                const blockMessage = output + '\n⛔ BLOCKING: You MUST invoke ' +
+                    blockingSkills.map(s => s.name).join(', ') +
+                    ' skill(s) before generating ANY response.';
+                console.log(JSON.stringify({
+                    result: 'block',
+                    reason: blockMessage
+                }));
+                process.exit(0);
+            }
+
+            // Special handling for agentica-orchestrator with pattern inference
+            if (matchedAgents.some(a => a.name === 'agentica-orchestrator')) {
+                // Try pattern inference first (inference-first approach)
+                const inference = runPatternInference(data.prompt, projectDir);
+
+                if (inference) {
+                    // Pattern inference succeeded - use it
+                    output += generateAgenticaOutput(inference, data.prompt);
+                } else {
+                    // Fallback to manual pattern selection if inference fails
                     output += '\n';
-                }
-
-                if (medium.length > 0) {
-                    output += '💡 SUGGESTED SKILLS:\n';
-                    medium.forEach(s => output += `  → ${s.name}\n`);
+                    output += '='.repeat(50) + '\n';
+                    output += 'AGENTICA ORCHESTRATION ACTIVATED\n';
+                    output += '='.repeat(50) + '\n';
                     output += '\n';
-                }
-
-                if (low.length > 0) {
-                    output += '📌 OPTIONAL SKILLS:\n';
-                    low.forEach(s => output += `  → ${s.name}\n`);
+                    output += 'Pattern inference unavailable. Manual selection:\n';
                     output += '\n';
-                }
-
-                // Add confirmed agents
-                if (confirmedAgents.length > 0) {
-                    output += '🤖 RECOMMENDED AGENTS (token-efficient):\n';
-                    confirmedAgents.forEach(a => output += `  → ${a.name}\n`);
+                    output += 'Use AskUserQuestion to gather information:\n';
+                    output += '1. Ask user to describe their task in detail\n';
+                    output += '2. Ask which approach fits best:\n';
+                    output += '   - Research/Explore (Swarm pattern)\n';
+                    output += '   - Build/Implement (Hierarchical pattern)\n';
+                    output += '   - Iterate/Refine (Generator/Critic pattern)\n';
+                    output += '   - Validate/Verify (Jury pattern)\n';
                     output += '\n';
-                }
-
-                if (confirmedSkills.length > 0) {
-                    output += 'ACTION: Use Skill tool BEFORE responding\n';
-                }
-                if (confirmedAgents.length > 0) {
-                    output += 'ACTION: Use Task tool with agent for exploration\n';
-                }
-                output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-
-                // Check if any matched skill has enforcement: 'block'
-                const blockingSkills = matchedSkills.filter(s => s.config.enforcement === 'block');
-                if (blockingSkills.length > 0) {
-                    // Return blocking response - Claude must invoke the skill first
-                    const blockMessage = output + '\n⛔ BLOCKING: You MUST invoke ' +
-                        blockingSkills.map(s => s.name).join(', ') +
-                        ' skill(s) before generating ANY response.';
-                    console.log(JSON.stringify({
-                        result: 'block',
-                        reason: blockMessage
-                    }));
-                    process.exit(0);
+                    output += 'After user selects, spawn appropriate pattern with:\n';
+                    output += '  SWARM_ID=<uuid> environment variable\n';
+                    output += '='.repeat(50) + '\n';
                 }
             }
 
@@ -490,11 +422,10 @@ async function main() {
         }
 
         // Check context % from statusLine temp file and add tiered warnings
-        // Use hook input session_id first, then env vars as fallback
-        // CLAUDE_PPID kept for backwards compatibility with bash wrapper
-        const rawSessionId = data.session_id || process.env.CLAUDE_SESSION_ID || process.env.CLAUDE_PPID || 'default';
-        const sessionId = rawSessionId.slice(0, 8);  // Match status.py truncation
-        const contextFile = join(tmpdir(), `claude-context-pct-${sessionId}.txt`);
+        // CLAUDE_PPID is passed from shell wrapper (matches status.sh's $PPID)
+        // This ensures we read the same file that StatusLine wrote
+        const sessionId = process.env.CLAUDE_SESSION_ID || process.env.CLAUDE_PPID || 'default';
+        const contextFile = `/tmp/claude-context-pct-${sessionId}.txt`;
         if (existsSync(contextFile)) {
             try {
                 const pct = parseInt(readFileSync(contextFile, 'utf-8').trim(), 10);

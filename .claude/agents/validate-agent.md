@@ -73,7 +73,7 @@ Check for:
 
 **ALWAYS write your validation to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/validate-agent/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/validate-agent/latest-output.md
 ```
 
 Also write to handoff directory if provided:

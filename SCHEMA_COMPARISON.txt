@@ -1,0 +1,128 @@
+================================================================================
+SIDE-BY-SIDE SCHEMA COMPARISON
+================================================================================
+
+PRODUCTION SCHEMA (from scripts/agentica/coordination.py)
+vs
+TEST SCHEMA (from tests/unit/test_stop_swarm_coordinator.py)
+
+================================================================================
+COMPLETED_TASKS TABLE COMPARISON
+================================================================================
+
+PRODUCTION                              TEST
+─────────────────────────────────────────────────────────────────────────────
+id                  TEXT PRIMARY KEY    id                  TEXT PRIMARY KEY
+agent_id            TEXT NOT NULL       swarm_id            TEXT NOT NULL ← EXTRA
+pattern             TEXT                agent_id            TEXT NOT NULL
+input_summary       TEXT                task_prompt         TEXT NOT NULL ← DIFFERENT
+output_summary      TEXT                completed_at        TEXT NOT NULL
+output_type         TEXT                
+artifacts           TEXT                
+duration_ms         INTEGER             
+completed_at        TEXT NOT NULL       
+
+FOREIGN KEY:
+agent_id → agents(id)                   (no foreign key)
+
+INDEX:
+idx_tasks_agent                         (no index in test)
+
+MISMATCH: 
+- Test has swarm_id (production doesn't)
+- Test uses task_prompt (production uses input/output_summary + other fields)
+- Production has more tracking fields
+
+================================================================================
+BROADCASTS TABLE COMPARISON (both correct)
+================================================================================
+
+PRODUCTION                              TEST
+─────────────────────────────────────────────────────────────────────────────
+id                  TEXT PRIMARY KEY    id                  TEXT PRIMARY KEY
+swarm_id            TEXT NOT NULL       swarm_id            TEXT NOT NULL ✓
+sender_agent        TEXT NOT NULL       sender_agent        TEXT NOT NULL ✓
+broadcast_type      TEXT NOT NULL       broadcast_type      TEXT NOT NULL ✓
+payload             TEXT NOT NULL       payload             TEXT NOT NULL ✓
+created_at          TEXT NOT NULL       created_at          TEXT NOT NULL ✓
+
+INDEX:
+idx_broadcasts_swarm(swarm_id, created_at)    (same)
+
+MATCH: Both are identical ✓
+
+================================================================================
+WHAT THIS MEANS
+================================================================================
+
+The test creates a MINIMAL schema just for testing the Stop hook logic:
+- Includes swarm_id (which doesn't exist in production)
+- Omits most fields production needs (input_summary, output_summary, etc)
+- Uses different field names (task_prompt vs multiple fields)
+
+Result: Test validates that "the query would work IF swarm_id existed"
+        But it doesn't validate against the ACTUAL schema
+
+================================================================================
+THE STOP HOOK ASSUMPTION
+================================================================================
+
+Stop hook assumes at line 79-81:
+    SELECT COUNT(DISTINCT agent_id) as total_count
+    FROM completed_tasks
+    WHERE swarm_id = ?
+
+This query:
+- Works in tests ✓ (because test schema has swarm_id)
+- CRASHES in production ✗ (because production schema doesn't have swarm_id)
+
+Error message when run against production database:
+    sqlite3.OperationalError: no such column: swarm_id
+
+================================================================================
+THE DEPENDENCY CHAIN
+================================================================================
+
+Phase 12.5 (Stop Hook)
+  ↓
+  Assumes Phase 12.7 is complete
+  ↓
+  Requires completed_tasks.swarm_id column
+  ↓
+  Requires Phase 12.7 (PostToolUse Hook) to populate that column
+  ↓
+Phase 12.7 (NOT IMPLEMENTED)
+  ├─ Should create completed_tasks.swarm_id column in schema
+  ├─ Should implement PostToolUse hook
+  └─ Should populate swarm_id when tasks complete
+
+Current status: Phase 12.7 is PENDING
+                Phase 12.5 is ACTIVE (but broken)
+
+================================================================================
+FIELDS COMPARISON: What gets tracked
+================================================================================
+
+PRODUCTION completed_tasks tracks:
+✓ id              - Task identifier
+✓ agent_id        - Which agent did the task
+✓ pattern         - Agentica pattern type (swarm, hierarchical, etc)
+✓ input_summary   - Truncated prompt
+✓ output_summary  - Truncated result
+✓ output_type     - Type of output (str, dict, etc)
+✓ artifacts       - JSON of produced artifacts
+✓ duration_ms     - How long the task took
+✓ completed_at    - When it finished
+✗ swarm_id        - Which swarm (MISSING - Phase 12.7 should add)
+
+TEST completed_tasks tracks:
+✓ id              - Task identifier
+✓ swarm_id        - Which swarm (exists in test schema only)
+✓ agent_id        - Which agent
+✓ task_prompt     - What was asked
+✓ completed_at    - When finished
+
+Production is much richer but missing swarm linkage
+Test is minimal but includes swarm linkage
+
+================================================================================

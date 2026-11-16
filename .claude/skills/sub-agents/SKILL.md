@@ -2,7 +2,6 @@
 name: sub-agents
 description: Create and configure Claude Code sub-agents with custom prompts, tools, and models
 allowed-tools: [Read, Write, Bash]
-user-invocable: false
 ---
 
 # Sub-Agents Reference
@@ -65,7 +64,7 @@ claude --agents '{
 name: agent-name
 description: When/why to use this agent
 tools: Read, Edit, Bash      # Optional, inherits all if omitted
-model: sonnet                 # sonnet, haiku, claude-opus-4-5-20251101, inherit
+model: sonnet                 # sonnet, opus, haiku, inherit
 ---
 
 System prompt content here...
@@ -78,7 +77,7 @@ System prompt content here...
 | `name` | Yes | lowercase, hyphens |
 | `description` | Yes | When to use |
 | `tools` | No | Tool list (inherits all if omitted) |
-| `model` | No | `sonnet`, `haiku`, `claude-opus-4-5-20251101`, `inherit` |
+| `model` | No | `sonnet`, `opus`, `haiku`, `inherit` |
 
 ## Built-In Agents
 

@@ -1,8 +1,7 @@
 ---
-name: implement_plan_micro
+name: implement_plan
 description: Implement technical plans from thoughts/shared/plans with verification
 version: 3.0
-user-invocable: false
 ---
 
 # Formal Specification
@@ -183,7 +182,7 @@ Let me know when done.
 
 **Agent Spawn:**
 ```
-Task(subagent_type="general-purpose", model="claude-opus-4-5-20251101", prompt="""
+Task(subagent_type="general-purpose", model="opus", prompt="""
 [implement_task SKILL.md]
 ## Context
 - Ledger: [content]

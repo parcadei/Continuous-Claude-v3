@@ -34,7 +34,7 @@ The API intelligently places your edit in the right location.
 
 ### Add error handling
 ```bash
-uv run python -m runtime.harness scripts/mcp/morph_apply.py \
+uv run python -m runtime.harness scripts/morph_apply.py \
     --file "src/auth.py" \
     --instruction "Add error handling to login function" \
     --code_edit "# ... existing code ...
@@ -48,7 +48,7 @@ except AuthError as e:
 
 ### Add logging
 ```bash
-uv run python -m runtime.harness scripts/mcp/morph_apply.py \
+uv run python -m runtime.harness scripts/morph_apply.py \
     --file "src/api.py" \
     --instruction "Add debug logging" \
     --code_edit "# ... existing code ...
@@ -58,7 +58,7 @@ logger.debug(f'Processing request: {request.id}')
 
 ### TypeScript example
 ```bash
-uv run python -m runtime.harness scripts/mcp/morph_apply.py \
+uv run python -m runtime.harness scripts/morph_apply.py \
     --file "src/types.ts" \
     --instruction "Add user validation" \
     --code_edit "// ... existing code ...

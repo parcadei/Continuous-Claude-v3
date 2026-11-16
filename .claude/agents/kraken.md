@@ -107,7 +107,7 @@ uv run python -m runtime.harness scripts/morph_search.py --query "function_name"
 
 **ALWAYS write your summary to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/kraken/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/kraken/latest-output.md
 ```
 
 ## Output Format

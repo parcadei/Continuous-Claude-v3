@@ -1,5 +1,4 @@
 ---
-name: resume-handoff
 description: Resume work from handoff document with context analysis and validation
 ---
 
@@ -130,52 +129,12 @@ Then wait for the user's input.
    Ready to begin with the first task: [task description]?
    ```
 
-### Step 4: Route to Specialist Agent
+### Step 4: Begin Implementation
 
-**CRITICAL: Do NOT implement directly. Always spawn via Task tool.**
-
-1. **Analyze task type and select specialist agent**:
-
-   **Leads (can spawn workers):**
-   | Agent | Domain | Use For |
-   |-------|--------|---------|
-   | `kraken` | implement | Large features, new systems, major components |
-   | `architect` | plan | Feature design, system architecture, implementation planning |
-   | `phoenix` | plan | Refactoring plans, migrations, codebase restructuring |
-   | `herald` | deploy | Releases, deployments, publishing |
-   | `maestro` | orchestrate | Complex multi-agent workflows |
-
-   **Workers (focused specialists):**
-   | Agent | Domain | Use For |
-   |-------|--------|---------|
-   | `spark` | implement | Quick fixes, patches, minor tweaks |
-   | `scribe` | document | Documentation, guides, explanations |
-   | `sleuth` | debug | Bug investigation, tracing, root cause analysis |
-   | `aegis` | debug | Security audits, vulnerability scanning |
-   | `profiler` | debug | Performance optimization, bottleneck analysis |
-   | `arbiter` | validate | Unit tests |
-   | `atlas` | validate | E2E/integration tests |
-   | `oracle` | research | External docs, best practices, how-to |
-   | `scout` | research | Codebase exploration, finding existing code |
-   | `pathfinder` | research | Repository structure analysis |
-   | `plan-reviewer` | review | Feature plan review, design validation |
-   | `plan-reviewer` | review | Migration review, refactoring validation |
-   | `chronicler` | session | Session analysis, history summaries |
-
-2. **Spawn the specialist via Task tool**:
-   ```
-   Use Task tool with:
-   - subagent_type: [selected agent from above]
-   - prompt: [task description + relevant handoff context + learnings]
-   ```
-
-3. **Include handoff context in the prompt**:
-   - Key learnings from the handoff
-   - File references with line numbers
-   - Patterns to follow
-   - Pitfalls to avoid
-
-4. **Wait for agent completion**, then proceed to next task
+1. **Start with the first approved task**
+2. **Reference learnings from handoff** throughout implementation
+3. **Apply patterns and approaches documented** in the handoff
+4. **Update progress** as tasks are completed
 
 ## Guidelines
 
@@ -253,15 +212,5 @@ I've analyzed the handoff from [date]. Here's the current situation...
 Shall I proceed with implementing the webhook validation fix, or would you like to adjust the approach?
 
 User: Yes, proceed with the webhook validation
-Assistant: This is a bugfix task, so I'll route to the `spark` agent.
-
-[Uses Task tool with subagent_type="spark" and prompt containing:
- - The webhook validation fix task
- - Key learnings from handoff
- - Relevant file:line references
- - Patterns to follow]
-
-[Waits for spark agent to complete]
-
-The spark agent has completed the webhook validation fix. Moving to the next task...
+Assistant: [Creates todo list and begins implementation]
 ```

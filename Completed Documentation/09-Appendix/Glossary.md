@@ -1,0 +1,23 @@
+# Glossary
+
+- A/B test: Compare two prompt specifications with identical tasks.
+- E(X,Q): Erotetic evocation; the set of unresolved questions.
+- Flywheel: Auto-upgrade loop for skills (infer, verify, diff, persist).
+- HandoffAtom: Structured agent-to-agent state transfer format.
+- IYU: Initiation, Observation, Action (skill structure shorthand).
+- Q-value: Quality/expected value of an action.
+- v6.0 format: Decision-theory skill format with modal constraints.
+- TEL: Temporal Epistemic Logic; used for inertia rules.
+- Ragie: Document indexing and retrieval system.
+- Braintrust: Trace analysis and span logging system.
+- Agentica: Agent runtime + tool orchestration system.
+- Invariant: A fact that never changed across turns.
+- Current state: Snapshot of the latest known facts.
+- MDP: Markov Decision Process; (S, A, R, P, gamma) formalism.
+- POMDP: Partially Observable MDP; adds observations to state.
+- beta: Termination function in options framework (stop condition).
+- pi: Policy mapping (state → action).
+- Deontic: Permission/obligation/forbidden logic (P/O/F).
+- Temporal: Always/eventually operators (□ / ◇).
+- Skill formalization: Compiling prose skills into structured I/Y/U/pi/beta.
+- Erotetic hook: Clarification system that asks only unresolved questions.

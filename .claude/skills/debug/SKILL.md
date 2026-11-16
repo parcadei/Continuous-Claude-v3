@@ -1,5 +1,4 @@
 ---
-name: debug
 description: Debug issues by investigating logs, database state, and git history
 ---
 

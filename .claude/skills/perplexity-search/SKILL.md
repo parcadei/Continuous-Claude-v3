@@ -28,13 +28,13 @@ Web search with AI-powered answers, deep research, and chain-of-thought reasonin
 
 ### Quick question (AI answer)
 ```bash
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --ask "What is the latest version of Python?"
 ```
 
 ### Direct web search (ranked results, no AI)
 ```bash
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --search "SQLite graph database patterns" \
     --max-results 5 \
     --recency week
@@ -42,19 +42,19 @@ uv run python scripts/mcp/perplexity_search.py \
 
 ### AI-synthesized research
 ```bash
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --research "compare FastAPI vs Django for microservices"
 ```
 
 ### Chain-of-thought reasoning
 ```bash
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --reason "should I use Neo4j or SQLite for small graph under 10k nodes?"
 ```
 
 ### Deep comprehensive research
 ```bash
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --deep "state of AI agent observability 2025"
 ```
 
@@ -89,20 +89,20 @@ uv run python scripts/mcp/perplexity_search.py \
 
 ```bash
 # Find recent sources on a topic
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --search "OpenTelemetry AI agent tracing" \
     --recency month --max-results 5
 
 # Get AI synthesis
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --research "best practices for AI agent logging 2025"
 
 # Make a decision
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --reason "microservices vs monolith for startup MVP"
 
 # Deep dive
-uv run python scripts/mcp/perplexity_search.py \
+uv run python scripts/perplexity_search.py \
     --deep "comprehensive guide to building feedback loops for autonomous agents"
 ```
 

@@ -1,165 +1,127 @@
-.DS_Store
-*.pyc
+# Python
 __pycache__/
-.venv/
-
-# Claude Code local state (personal data, tokens, paths)
-.claude.json
-.claude.json.backup
-*.egg-info/
-dist/
-!.claude/hooks/dist/
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
-!.claude/skills/build/
-.pytest_cache/
-.mypy_cache/
-node_modules/
-*.log
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
 .env
-.env.local
-stats-cache.json
 
-# Session artifacts (per-session, not shareable)
-debug/
-todos/
-projects/
-paste-cache/
-shell-snapshots/
-file-history/
-history.jsonl
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+pytest-coverage.txt
+coverage.xml
+*.cover
+.cache
+nosetests.xml
 
-# Claude cache and state
-.claude/cache/
-.claude/state/
-.claude/statsig/
-.claude/debug/
-.claude/image-cache/
-.claude/paste-cache/
-.claude/shell-snapshots/
-.claude/history.jsonl
-.claude/projects/
-.claude/todos/
-.claude/file-history/
-.claude/sessions.db
-.claude/tsc-cache/
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
 
-# Python bytecode in MCP servers/runtime
-.claude/servers/*/__pycache__/
-.claude/runtime/__pycache__/
-
-# TLDR cache (regenerated per-session)
-.tldr/
-
-# Internal development docs (not for release)
-docs/_internal/
-
-# Statsig telemetry
-statsig/
-
-# Archives (historical, not needed to operate)
-opc/scripts/archive/
-.claude/hooks/archive/
-.claude/hooks/_archived/
-.claude/skills/_archived/
-.claude/agents/_archived/
-
-# OPC internal caches
-opc/.claude/cache/
-
-# Thoughts/handoffs (session-specific context)
-thoughts/
-
-# OPC archives (historical)
-opc/archive/
-
-# Lean4/Mathlib downloaded dependencies (6GB+)
-proofs/.lake/
-proofs/lake-packages/
-.elan/
-
-# SWE-bench TLDR experiment (separate project)
-swe-bench-tldr/
-
-# Root-level runtime artifacts
-archive/
-cache/
-image-cache/
-plans/
-plugins/
-session-env/
-telemetry/
-tldr/
-
-# Tool caches
-.qlty/
+# Linting
 .ruff_cache/
 
-# Lean experiment files (not part of proofs/)
-*.lean
-qlty-during-development.md
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# OPC runtime artifacts (session-specific, not source)
-opc/logs/
-opc/outputs/
-opc/workspace/
-opc/thoughts/
-opc/.env
-opc/:memory:/
+# Project-specific
+servers/          # Generated wrappers (regenerate with mcp-generate)
+workspace/        # User scripts (gitignored for privacy)
+discovery_config.json  # May contain sensitive test data
 
-# OPC .claude (wizard uses root .claude, not this)
-opc/.claude/
+# Note: mcp_config.json is tracked as an example config with ${VAR} placeholders
+# Users can also create .mcp.json (Claude Code convention) which takes priority
 
-# OPC tool caches
-opc/.venv/
-opc/.mypy_cache/
-opc/.pytest_cache/
-opc/.ruff_cache/
+# Logs and temporary files
+*.log
+*.pid
+*.seed
+*.pid.lock
+.env.local
+.env.*.local
 
-# OPC accidental dirs (command typos)
-opc/ls/
-opc/mkdir/
+# OS-specific
+Thumbs.db
+Desktop.ini
 
-# OPC local files (not needed for install)
-opc/bin/
-opc/opc/
-opc/mcp_config.json
-opc/init-db.sql.bak
-opc/ISOLATED_SETUP.md
-opc/docker-compose.memory.yml
+# Secrets and credentials
+*.pem
+*.key
+*.cert
+*secret*
+*password*
+.secrets/
 
-# Personal/local development (not for release)
-.claude/agents/brenner.md
-.claude/skills/rigg-eval.md
-.claude/skills/don-norman-ux/
-.claude/hooks/src/tldr-read-enforcer.backup.ts
-.claude/hooks/dist/tldr-read-enforcer.backup.mjs
-.claude/hooks/.tldrignore
-.claude/hooks/src/.tldrignore
-opc/scripts/.tldrignore
-.tldrignore
-.envrc
+# Editor backup files
+*.bak
+*.tmp
+*.temp
 
-# OPC testing scripts (local experiments)
-opc/scripts/analyze_session_cache_potential.py
-opc/scripts/context_cache_calculator.py
-opc/scripts/context_engine_chaos_model.py
-opc/scripts/context_engine_economics.py
-opc/scripts/test_anthropic_cache_empirical.py
-opc/scripts/test_native_vs_api_caching.py
-opc/scripts/tldr_fluid_cache_model.py
+# uv specific
+# uv.lock included in repo for reproducibility
 
-# OPC dev-only (not needed for wizard install)
-opc/.github/
-opc/tests/
-opc/docs/
-opc/src/*
-!opc/src/runtime/
-opc/spec/
-opc/packages/
-opc/migrations/
-opc/pyproject.toml
-opc/uv.lock
-opc/README.md
-opc/LICENSE
-opc/.git/
-opc/.python-version
+# Claude reasoning data (local only, per-developer)
+.git/claude/
+
+# Claude cache (async results, temp data, agent outputs)
+.claude/cache/
+.claude/tsc-cache/
+
+# Node modules in hooks (dev deps only)
+.claude/hooks/node_modules/
+
+# Include bundled hooks (zero-dep runtime)
+!.claude/hooks/dist/
+
+# Continuity ledgers (session-specific, not shared)
+CONTINUITY_CLAUDE-*
+
+# Thoughts directory (user-specific research and plans)
+thoughts/
+!thoughts/shared/
+!thoughts/shared/.gitkeep
+!thoughts/shared/plans/.gitkeep
+!thoughts/shared/research/.gitkeep
+!thoughts/shared/handoffs/.gitkeep
+package.json
+pnpm-lock.yaml
+node_modules/
+workspace/
+.claude/settings.local.json

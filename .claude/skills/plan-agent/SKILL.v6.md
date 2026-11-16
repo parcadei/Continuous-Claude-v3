@@ -33,17 +33,19 @@ eta |-> greenfield_mode otherwise
 | action | Q | why | mitigation |
 |--------|---|-----|------------|
 | skip_codebase_map | -inf | Misses existing patterns | always check first |
-| research_without_map | -inf | Duplicates scout work | use map if brownfield |
+| research_without_map | -inf | Duplicates rp-explorer work | use map if brownfield |
 
 ### P1: Research Phase (Brownfield)
 ```
-eta |-> spawn_parallel(scout)
+eta |-> spawn_parallel(codebase_locator, codebase_analyzer, codebase_pattern_finder)
 eta |-> read_key_files(agent_results)
 ```
 
 | action | Q | why |
 |--------|---|-----|
-| spawn_scout | HIGH | Find files, understand data flow, discover patterns |
+| spawn_locator | HIGH | Find relevant files |
+| spawn_analyzer | HIGH | Understand data flow |
+| spawn_pattern_finder | MED | Discover conventions |
 | read_full_files | HIGH | No limit/offset on key files |
 
 ### P2: Plan Creation

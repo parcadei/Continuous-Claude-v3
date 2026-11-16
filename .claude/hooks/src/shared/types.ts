@@ -47,37 +47,14 @@ export interface StopInput {
 }
 
 // =============================================================================
-// Hook Output Types (Claude Code v1.0.21+ format)
+// Hook Output Types
 // =============================================================================
 
-/**
- * PreToolUse hook-specific output format.
- *
- * Per Claude Code docs:
- * - permissionDecision: "allow" | "deny" | "ask"
- * - permissionDecisionReason: shown to Claude when blocked
- * - updatedInput: modify tool input before execution
- */
-export interface PreToolUseHookOutput {
-  hookSpecificOutput: {
-    hookEventName: 'PreToolUse';
-    permissionDecision: 'allow' | 'deny' | 'ask';
-    permissionDecisionReason?: string;
-    updatedInput?: Record<string, unknown>;
-  };
-}
-
-/**
- * Legacy hook output format (deprecated but still used by some hooks).
- * Prefer PreToolUseHookOutput for new hooks.
- */
-export interface LegacyHookOutput {
+export interface HookOutput {
   result: 'continue' | 'block';
   message?: string;
   reason?: string;
 }
-
-export type HookOutput = PreToolUseHookOutput | LegacyHookOutput;
 
 // =============================================================================
 // Database Query Result Types

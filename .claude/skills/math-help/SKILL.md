@@ -2,7 +2,6 @@
 name: math-help
 description: Guide to the math cognitive stack - what tools exist and when to use each
 triggers: ["help", "guide", "how do I", "what math", "math help", "math tools", "which tool", "math tutorial"]
-user-invocable: false
 ---
 
 # Math Cognitive Stack Guide
@@ -75,15 +74,15 @@ uv run python -m runtime.harness scripts/sympy_compute.py \
 **Key Commands:**
 ```bash
 # Prove commutativity
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py \
+uv run python -m runtime.harness scripts/z3_solve.py \
     prove "x + y == y + x" --vars x y --type int
 
 # Check satisfiability
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py \
+uv run python -m runtime.harness scripts/z3_solve.py \
     sat "x > 0, x < 10, x*x == 49" --type int
 
 # Optimize
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py \
+uv run python -m runtime.harness scripts/z3_solve.py \
     optimize "x + y" --constraints "x >= 0, y >= 0, x + y <= 100" \
     --direction maximize --type real
 ```
@@ -97,19 +96,19 @@ uv run python -m runtime.harness scripts/cc_math/z3_solve.py \
 **Key Commands:**
 ```bash
 # Verify single step
-uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
+uv run python -m runtime.harness scripts/math_scratchpad.py \
     verify "x = 2 implies x^2 = 4"
 
 # Verify with context
-uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
+uv run python -m runtime.harness scripts/math_scratchpad.py \
     verify "x^2 = 4" --context '{"x": 2}'
 
 # Verify chain of reasoning
-uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
+uv run python -m runtime.harness scripts/math_scratchpad.py \
     chain --steps '["x^2 - 4 = 0", "(x-2)(x+2) = 0", "x = 2 or x = -2"]'
 
 # Explain a step
-uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
+uv run python -m runtime.harness scripts/math_scratchpad.py \
     explain "d/dx(x^3) = 3*x^2"
 ```
 
@@ -122,13 +121,13 @@ uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
 **Key Commands:**
 ```bash
 # Step-by-step solution
-uv run python scripts/cc_math/math_tutor.py steps "x**2 - 5*x + 6 = 0" --operation solve
+uv run python scripts/math_tutor.py steps "x**2 - 5*x + 6 = 0" --operation solve
 
 # Progressive hint (level 1-5)
-uv run python scripts/cc_math/math_tutor.py hint "Solve x**2 - 4 = 0" --level 2
+uv run python scripts/math_tutor.py hint "Solve x**2 - 4 = 0" --level 2
 
 # Generate practice problem
-uv run python scripts/cc_math/math_tutor.py generate --topic algebra --difficulty 2
+uv run python scripts/math_tutor.py generate --topic algebra --difficulty 2
 ```
 
 **Best For:** Learning, tutoring, practice.
@@ -148,31 +147,31 @@ For numerical (not symbolic) computation:
 ### NumPy (160 functions)
 ```bash
 # Matrix operations
-uv run python scripts/cc_math/numpy_compute.py det "[[1,2],[3,4]]"
-uv run python scripts/cc_math/numpy_compute.py inv "[[1,2],[3,4]]"
-uv run python scripts/cc_math/numpy_compute.py eig "[[1,2],[3,4]]"
-uv run python scripts/cc_math/numpy_compute.py svd "[[1,2,3],[4,5,6]]"
+uv run python scripts/numpy_compute.py det "[[1,2],[3,4]]"
+uv run python scripts/numpy_compute.py inv "[[1,2],[3,4]]"
+uv run python scripts/numpy_compute.py eig "[[1,2],[3,4]]"
+uv run python scripts/numpy_compute.py svd "[[1,2,3],[4,5,6]]"
 
 # Solve linear system
-uv run python scripts/cc_math/numpy_compute.py solve "[[3,1],[1,2]]" "[9,8]"
+uv run python scripts/numpy_compute.py solve "[[3,1],[1,2]]" "[9,8]"
 ```
 
 ### SciPy (289 functions)
 ```bash
 # Minimize function
-uv run python scripts/cc_math/scipy_compute.py minimize "x**2 + 2*x" "5"
+uv run python scripts/scipy_compute.py minimize "x**2 + 2*x" "5"
 
 # Find root
-uv run python scripts/cc_math/scipy_compute.py root "x**3 - x - 2" "1.5"
+uv run python scripts/scipy_compute.py root "x**3 - x - 2" "1.5"
 
 # Curve fitting
-uv run python scripts/cc_math/scipy_compute.py curve_fit "a*exp(-b*x)" "0,1,2,3" "1,0.6,0.4,0.2" "1,0.5"
+uv run python scripts/scipy_compute.py curve_fit "a*exp(-b*x)" "0,1,2,3" "1,0.6,0.4,0.2" "1,0.5"
 ```
 
 ### mpmath (153 functions, arbitrary precision)
 ```bash
 # Pi to 100 decimal places
-uv run python scripts/cc_math/mpmath_compute.py pi --dps 100
+uv run python scripts/mpmath_compute.py pi --dps 100
 
 # Arbitrary precision sqrt
 uv run python -m scripts.mpmath_compute mp_sqrt "2" --dps 100
@@ -183,19 +182,19 @@ uv run python -m scripts.mpmath_compute mp_sqrt "2" --dps 100
 ### math_plot.py
 ```bash
 # 2D plot
-uv run python scripts/cc_math/math_plot.py plot2d "sin(x)" \
+uv run python scripts/math_plot.py plot2d "sin(x)" \
     --var x --range -10 10 --output plot.png
 
 # 3D surface
-uv run python scripts/cc_math/math_plot.py plot3d "x**2 + y**2" \
+uv run python scripts/math_plot.py plot3d "x**2 + y**2" \
     --xvar x --yvar y --range 5 --output surface.html
 
 # Multiple functions
-uv run python scripts/cc_math/math_plot.py plot2d-multi "sin(x),cos(x)" \
+uv run python scripts/math_plot.py plot2d-multi "sin(x),cos(x)" \
     --var x --range -6.28 6.28 --output multi.png
 
 # LaTeX rendering
-uv run python scripts/cc_math/math_plot.py latex "\\int e^{-x^2} dx" --output equation.png
+uv run python scripts/math_plot.py latex "\\int e^{-x^2} dx" --output equation.png
 ```
 
 ## Educational Features
@@ -213,16 +212,16 @@ uv run python scripts/cc_math/math_plot.py latex "\\int e^{-x^2} dx" --output eq
 **Usage:**
 ```bash
 # Start with conceptual hint
-uv run python scripts/cc_math/math_tutor.py hint "integrate x*sin(x)" --level 1
+uv run python scripts/math_tutor.py hint "integrate x*sin(x)" --level 1
 
 # Get more specific guidance
-uv run python scripts/cc_math/math_tutor.py hint "integrate x*sin(x)" --level 3
+uv run python scripts/math_tutor.py hint "integrate x*sin(x)" --level 3
 ```
 
 ### Step-by-Step Solutions
 
 ```bash
-uv run python scripts/cc_math/math_tutor.py steps "x**2 - 5*x + 6 = 0" --operation solve
+uv run python scripts/math_tutor.py steps "x**2 - 5*x + 6 = 0" --operation solve
 ```
 
 Returns structured steps with:
@@ -244,7 +243,7 @@ uv run python -m runtime.harness scripts/sympy_compute.py \
     solve "x**2 - 4 = 0" --var x
 
 # Verify the solutions work
-uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
+uv run python -m runtime.harness scripts/math_scratchpad.py \
     verify "x = 2 implies x^2 - 4 = 0"
 ```
 
@@ -255,14 +254,14 @@ uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py \
 
 ```bash
 # Generate problem
-uv run python scripts/cc_math/math_tutor.py generate --topic calculus --difficulty 2
+uv run python scripts/math_tutor.py generate --topic calculus --difficulty 2
 
 # Get hints progressively
-uv run python scripts/cc_math/math_tutor.py hint "..." --level 1
-uv run python scripts/cc_math/math_tutor.py hint "..." --level 2
+uv run python scripts/math_tutor.py hint "..." --level 1
+uv run python scripts/math_tutor.py hint "..." --level 2
 
 # Full solution
-uv run python scripts/cc_math/math_tutor.py steps "..." --operation integrate
+uv run python scripts/math_tutor.py steps "..." --operation integrate
 ```
 
 ### Workflow 3: Prove and Formalize
@@ -271,7 +270,7 @@ uv run python scripts/cc_math/math_tutor.py steps "..." --operation integrate
 
 ```bash
 # Quick check with Z3
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py \
+uv run python -m runtime.harness scripts/z3_solve.py \
     prove "x*y == y*x" --vars x y --type int
 
 # For formal proof, use /lean4 skill

@@ -1,0 +1,116 @@
+[project]
+name = "mcp-execution"
+version = "3.0.0"
+description = "Python implementation of Anthropic's 'Code Execution with MCP' enhanced with Skills system (99.6% token reduction), multi-transport support (stdio/SSE/HTTP), and optional container sandboxing"
+readme = "README.md"
+authors = []
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0.0",
+    "aiofiles>=23.0.0",
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.13.2",
+    "requests>=2.32.5",
+    "autoevals>=0.0.90",
+    "openai>=1.0.0",
+    "sse-starlette>=3.0.4",
+    "symbolica-agentica>=0.3.1",
+    "fastapi>=0.127.0",
+    "uvicorn>=0.40.0",
+    "aiosqlite>=0.19.0",
+]
+
+[project.optional-dependencies]
+discovery = [
+    "anthropic>=0.28.0",
+]
+dev = [
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+    "ruff>=0.2.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "types-aiofiles>=23.0.0",
+    "anthropic>=0.28.0",
+]
+agentica = [
+    # Agentica SDK for building AI agents
+    # Requires Python 3.12+ - install with: uv sync --extra agentica
+    "symbolica-agentica>=0.1.0; python_version >= '3.12'",
+    "fastapi",
+    "uvicorn[standard]",
+    "rich>=13.0.0",
+]
+postgres = [
+    # PostgreSQL + pgvector for async memory operations
+    # Install with: uv sync --extra postgres
+    "asyncpg>=0.29.0",
+    "pgvector>=0.3.0",
+    "numpy>=1.24.0",  # Required for embedding padding
+]
+math = [
+    "sympy>=1.14.0",
+    "z3-solver>=4.15.4.0",
+]
+
+[project.scripts]
+mcp-exec = "runtime.harness:main"
+mcp-generate = "runtime.generate_wrappers:main"
+mcp-generate-discovery = "runtime.generate_test_params:main"
+mcp-discover = "runtime.discover_schemas:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/runtime"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+no_implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = "anthropic.*"
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["N815"]  # Allow mixedCase variable names for config compatibility
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.14.10",
+    "types-aiofiles>=25.1.0.20251011",
+]

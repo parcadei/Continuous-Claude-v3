@@ -45,22 +45,22 @@ Use this skill when working on proof-theory problems in mathematical logic.
 
 ### Z3_Induction_Base
 ```bash
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py prove "P(0)"
+uv run python -m runtime.harness scripts/z3_solve.py prove "P(0)"
 ```
 
 ### Z3_Induction_Step
 ```bash
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py prove "ForAll([n], Implies(P(n), P(n+1)))"
+uv run python -m runtime.harness scripts/z3_solve.py prove "ForAll([n], Implies(P(n), P(n+1)))"
 ```
 
 ### Z3_Soundness
 ```bash
-uv run python -m runtime.harness scripts/cc_math/z3_solve.py prove "Implies(derivable(phi), valid(phi))"
+uv run python -m runtime.harness scripts/z3_solve.py prove "Implies(derivable(phi), valid(phi))"
 ```
 
 ### Math_Verify
 ```bash
-uv run python -m runtime.harness scripts/cc_math/math_scratchpad.py verify "proof_structure"
+uv run python -m runtime.harness scripts/math_scratchpad.py verify "proof_structure"
 ```
 
 ## Cognitive Tools Reference

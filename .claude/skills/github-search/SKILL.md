@@ -15,7 +15,7 @@ allowed-tools: [Bash, Read]
 ## Instructions
 
 ```bash
-uv run python -m runtime.harness scripts/mcp/github_search.py \
+uv run python -m runtime.harness scripts/github_search.py \
     --type "code" \
     --query "your search query"
 ```
@@ -31,12 +31,12 @@ uv run python -m runtime.harness scripts/mcp/github_search.py \
 
 ```bash
 # Search code
-uv run python -m runtime.harness scripts/mcp/github_search.py \
+uv run python -m runtime.harness scripts/github_search.py \
     --type "code" \
     --query "authentication language:python"
 
 # Search issues
-uv run python -m runtime.harness scripts/mcp/github_search.py \
+uv run python -m runtime.harness scripts/github_search.py \
     --type "issues" \
     --query "bug label:critical" \
     --owner "anthropics"

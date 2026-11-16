@@ -2,67 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
 
-// Lock file to prevent multiple concurrent braintrust extractors
-const EXTRACTOR_LOCK = path.join(process.env.HOME || process.env.USERPROFILE || '', '.claude', 'braintrust-extractor.lock');
-const LOCK_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes - consider stale after this
-
 interface SessionEndInput {
   session_id: string;
   transcript_path: string;
   reason: 'clear' | 'logout' | 'prompt_input_exit' | 'other';
-}
-
-/**
- * Check if braintrust extractor is already running.
- * Uses lock file with PID to prevent orphan accumulation.
- * Similar pattern to daemon-client.ts isDaemonReachable().
- */
-function isExtractorRunning(): boolean {
-  if (!fs.existsSync(EXTRACTOR_LOCK)) {
-    return false;
-  }
-
-  try {
-    const lockContent = fs.readFileSync(EXTRACTOR_LOCK, 'utf-8').trim();
-    const [pidStr, timestampStr] = lockContent.split(':');
-    const pid = parseInt(pidStr, 10);
-    const timestamp = parseInt(timestampStr, 10);
-
-    // Check if lock is stale (older than 5 min)
-    if (Date.now() - timestamp > LOCK_MAX_AGE_MS) {
-      fs.unlinkSync(EXTRACTOR_LOCK);
-      return false;
-    }
-
-    // Check if process is actually running
-    try {
-      process.kill(pid, 0); // Signal 0 just checks if process exists
-      return true; // Process is running
-    } catch {
-      // Process not running, clean up stale lock
-      fs.unlinkSync(EXTRACTOR_LOCK);
-      return false;
-    }
-  } catch {
-    // Error reading lock file, remove it
-    try { fs.unlinkSync(EXTRACTOR_LOCK); } catch { /* ignore */ }
-    return false;
-  }
-}
-
-/**
- * Create lock file with PID and timestamp.
- */
-function createExtractorLock(pid: number): void {
-  try {
-    const lockDir = path.dirname(EXTRACTOR_LOCK);
-    if (!fs.existsSync(lockDir)) {
-      fs.mkdirSync(lockDir, { recursive: true });
-    }
-    fs.writeFileSync(EXTRACTOR_LOCK, `${pid}:${Date.now()}`);
-  } catch {
-    // Don't crash on lock creation failure
-  }
 }
 
 async function main() {
@@ -122,28 +65,11 @@ async function main() {
 
     // Trigger Braintrust learnings extraction (fire and forget, don't block session end)
     // Uses LLM-as-judge to extract What Worked/Failed/Decisions/Patterns
-    //
-    // Skip if Braintrust isn't configured - no point spawning a process that will just error
-    if (!process.env.BRAINTRUST_API_KEY) {
-      console.log(JSON.stringify({ result: 'continue' }));
-      return;
-    }
-
     const learnScript = path.join(projectDir, 'scripts', 'braintrust_analyze.py');
-    const globalScript = path.join(process.env.HOME || process.env.USERPROFILE || '', '.claude', 'scripts', 'braintrust_analyze.py');
+    const globalScript = path.join(process.env.HOME || '', '.claude', 'scripts', 'braintrust_analyze.py');
     const scriptPath = fs.existsSync(learnScript) ? learnScript : globalScript;
 
     if (fs.existsSync(scriptPath)) {
-      // Check if extractor is already running BEFORE spawning
-      // Prevents multiple concurrent extractors when sessions end rapidly
-      // (Similar pattern to daemon-client.ts tryStartDaemon)
-      if (isExtractorRunning()) {
-        // Already running, skip this extraction
-        // The running extractor will process recent sessions
-        console.log(JSON.stringify({ result: 'continue' }));
-        return;
-      }
-
       // Use spawn with detached mode so process survives hook exit
       // Pass the ending session's ID explicitly (new session may already be active in Braintrust)
 
@@ -159,12 +85,6 @@ async function main() {
         detached: true,
         stdio: 'ignore'
       });
-
-      // Create lock file with spawned PID
-      if (child.pid) {
-        createExtractorLock(child.pid);
-      }
-
       child.unref(); // Let parent exit without waiting for child
     }
 

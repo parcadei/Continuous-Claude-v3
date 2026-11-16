@@ -97,7 +97,7 @@ Latest handoff: ${handoffName}
 
 To mark outcome and improve future sessions:
 
-  cd ~/.claude && uv run python scripts/core/artifact_mark.py \\
+  uv run python scripts/artifact_mark.py \\
     --handoff <handoff-id> \\
     --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
 

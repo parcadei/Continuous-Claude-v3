@@ -12,25 +12,25 @@ Search across 3000+ packages (npm, PyPI, Crates, Go) and indexed sources for doc
 
 ### Semantic search in a package
 ```bash
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --package fastapi --query "dependency injection"
 ```
 
 ### Search with specific registry
 ```bash
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --package react --registry npm --query "hooks patterns"
 ```
 
 ### Grep search for specific patterns
 ```bash
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --package sqlalchemy --grep "session.execute"
 ```
 
 ### Universal search across indexed sources
 ```bash
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --search "error handling middleware"
 ```
 
@@ -49,15 +49,15 @@ uv run python -m runtime.harness scripts/mcp/nia_docs.py \
 
 ```bash
 # Python library usage
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --package pydantic --registry py_pi --query "validators"
 
 # React patterns
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --package react --query "useEffect cleanup"
 
 # Find specific function usage
-uv run python -m runtime.harness scripts/mcp/nia_docs.py \
+uv run python -m runtime.harness scripts/nia_docs.py \
   --package express --grep "app.use"
 ```
 

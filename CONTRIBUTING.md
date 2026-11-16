@@ -1,397 +1,271 @@
-# Contributing to Continuous Claude
+# Contributing to Claude Continuity Kit
 
-Thank you for your interest in contributing! This guide covers how to add skills, agents, hooks, and extend TLDR.
+Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
 
-## Table of Contents
+## Code of Conduct
 
-- [Development Setup](#development-setup)
-- [Adding Skills](#adding-skills)
-- [Creating Agents](#creating-agents)
-- [Developing Hooks](#developing-hooks)
-- [Extending TLDR](#extending-tldr)
-- [Code Style](#code-style)
-- [Testing](#testing)
-- [Pull Request Process](#pull-request-process)
+We are committed to providing a welcoming and inclusive environment. Please:
 
----
+- Be respectful and considerate in all interactions
+- Focus on constructive feedback
+- Accept responsibility for mistakes gracefully
+- Prioritize the community's best interests
+
+Unacceptable behavior includes harassment, trolling, or personal attacks. Violations may result in removal from the project.
+
+## Reporting Bugs
+
+### Before Submitting
+
+1. Check the [existing issues](https://github.com/your-org/claude-continuity-kit/issues) to avoid duplicates
+2. Ensure you're using the latest version
+3. Collect relevant information:
+   - Python version (`python --version`)
+   - OS and version
+   - Steps to reproduce
+   - Expected vs actual behavior
+
+### Submitting a Bug Report
+
+Open an issue with:
+
+- **Title**: Clear, concise description
+- **Environment**: Python version, OS, relevant package versions
+- **Steps to Reproduce**: Numbered list of actions
+- **Expected Behavior**: What should happen
+- **Actual Behavior**: What actually happened
+- **Logs/Errors**: Include full stack traces if available
+
+## Submitting Changes
+
+### PR Workflow
+
+1. **Fork and Clone**
+   ```bash
+   git clone https://github.com/your-username/claude-continuity-kit.git
+   cd claude-continuity-kit
+   ```
+
+2. **Create a Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/your-bug-fix
+   ```
+
+3. **Set Up Development Environment**
+   ```bash
+   # Install uv if you haven't
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
+   # Install dependencies
+   uv sync --all-extras
+   ```
+
+4. **Make Your Changes**
+   - Write tests for new functionality
+   - Follow the code style guidelines below
+   - Keep commits focused and atomic
+
+5. **Run Tests**
+   ```bash
+   # Run all tests
+   uv run pytest
+
+   # Run specific test files
+   uv run pytest tests/unit/test_your_feature.py
+
+   # Run with coverage
+   uv run pytest --cov=src
+   ```
+
+6. **Format and Lint**
+   ```bash
+   # Format code
+   uv run black src tests scripts
+
+   # Lint
+   uv run ruff check src tests scripts
+
+   # Type check
+   uv run mypy src
+   ```
+
+7. **Commit and Push**
+   ```bash
+   git add .
+   git commit -m "feat: add your feature description"
+   git push origin feature/your-feature-name
+   ```
+
+8. **Open a Pull Request**
+   - Use a clear, descriptive title
+   - Reference any related issues (`Fixes #123`)
+   - Describe what changes you made and why
+   - Include test plan or verification steps
+
+### Commit Message Format
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation only
+- `test:` Adding or updating tests
+- `refactor:` Code change that neither fixes a bug nor adds a feature
+- `chore:` Maintenance tasks
+
+Examples:
+```
+feat: add circuit breaker pattern to handler routing
+fix: resolve race condition in PostgreSQL pool initialization
+docs: update pattern selection guide in PATTERNS.md
+test: add E2E tests for hierarchical coordination
+```
 
 ## Development Setup
 
+### Prerequisites
+
+- Python 3.12+
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+- Node.js 18+ (for TypeScript hooks)
+- PostgreSQL 15+ with pgvector (optional, for memory features)
+
+### Quick Setup
+
 ```bash
-# Clone (your fork) of the repository
-cd Continuous-Claude-v3/opc
+# Clone the repository
+git clone https://github.com/your-org/claude-continuity-kit.git
+cd claude-continuity-kit
 
 # Install Python dependencies
-uv sync
+uv sync --all-extras
 
-# Install hook dependencies (TypeScript)
-cd ../.claude/hooks && npm install && npm run build && cd ../../opc
+# Install Node dependencies (for hooks)
+cd .claude/hooks && npm install && cd ../..
 
-# Verify installation
-claude
-> /help
+# Build TypeScript hooks
+npm run build --prefix .claude/hooks
+
+# Copy environment template
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
----
-
-## Adding Skills
-
-Skills are modular capabilities defined in `.claude/skills/<skill-name>/SKILL.md`.
-
-### Skill Structure
-
-```
-.claude/skills/my-skill/
-├── SKILL.md          # Main skill definition (required)
-└── templates/        # Optional templates
-```
-
-### SKILL.md Format
-
-```markdown
-# my-skill
-
-Short description of what this skill does.
-
-## When to Use
-
-- Trigger condition 1
-- Trigger condition 2
-
-## Workflow
-
-1. Step one
-2. Step two
-3. Step three
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `/my-skill` | Main invocation |
-| `/my-skill --option` | With options |
-
-## Example
-
-User: "do my-skill thing"
-Claude: [executes skill workflow]
-```
-
-### Registering Skill Triggers
-
-Add to `.claude/skills/skill-rules.json`:
-
-```json
-{
-  "skill": "my-skill",
-  "keywords": ["my-skill", "specific trigger"],
-  "intentPatterns": ["do.*my.*skill"],
-  "priority": 50
-}
-```
-
-### Quick Skill Creation
-
-```
-> /skill-developer
-```
-
-This interactive skill walks you through creating new skills.
-
----
-
-## Creating Agents
-
-Agents are specialized AI workers defined in `.claude/agents/<agent-name>.md`.
-
-### Agent Structure
-
-```markdown
-# Frontmatter
----
-name: <name of agent>
-description: <one line description of agent>
-model: <preferred model: opus | sonnet | haiku>
-tools: <list tools agent needs (optional): Read | Grep | Glob | etc...>
----
-
-## Prompt
-
-<system>
-You are the agent-name agent for Continuous Claude.
-
-Your job is to:
-1. Specific task
-2. Another task
-
-## Constraints
-
-- Constraint 1
-- Constraint 2
-
-## Output Format
-
-Return results as:
-[format description]
-</system>
-```
-
-### Agent Types
-
-| Type | Model | Use Case |
-|------|-------|----------|
-| **Orchestrator** | Opus | Coordinate multi-agent workflows |
-| **Researcher** | Sonnet/Opus | Explore codebase or external sources |
-| **Implementer** | Opus | Write/modify code |
-| **Reviewer** | Opus | Analyze and critique |
-| **Specialist** | Varies | Domain-specific tasks |
-
-### Spawning Agents
-
-Agents are spawned via the Task tool:
-
-```typescript
-Task({
-  subagent_type: "my-agent",
-  prompt: "Do the thing",
-  description: "Doing the thing"
-})
-```
-
----
-
-## Developing Hooks
-
-Hooks intercept Claude Code at lifecycle points. Located in `.claude/hooks/`.
-
-### Hook Types
-
-| Lifecycle | When it runs |
-|-----------|--------------|
-| `SessionStart` | Session begins |
-| `SessionEnd` | Session ends |
-| `PreToolUse` | Before tool execution |
-| `PostToolUse` | After tool execution |
-| `UserPromptSubmit` | User sends a message |
-| `PreCompact` | Before context compaction |
-| `SubagentStart` | Subagent spawned |
-| `SubagentStop` | Subagent completes |
-| `Stop` | LLM generation stops |
-
-### Shell Hook Template
+### Running Tests
 
 ```bash
-#!/bin/bash
-# .claude/hooks/my-hook.sh
+# All unit tests (fast, ~30 seconds)
+uv run pytest tests/unit/
 
-# Read input from stdin (JSON)
-INPUT=$(cat)
+# Pattern-specific tests
+uv run pytest tests/unit/test_*_pattern_type.py
+uv run pytest tests/unit/test_*_handlers.py
 
-# Parse relevant fields
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
-CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // empty')
+# Integration tests (requires PostgreSQL)
+uv run pytest tests/integration/
 
-# Your logic here
-if [[ "$TOOL_NAME" == "Read" ]]; then
-    # Do something
-    echo '{"result": "modified content"}'
-else
-    # Pass through
-    echo "$INPUT"
-fi
+# Full test suite
+uv run pytest
 ```
 
-### TypeScript Hook Template
+### Test Organization
 
-```typescript
-// .claude/hooks/src/my-hook.ts
-interface HookInput {
-  tool_name?: string;
-  tool_input?: Record<string, unknown>;
-  session_id?: string;
-}
-
-interface HookOutput {
-  result?: string;
-  permissionDecision?: 'allow' | 'deny';
-  reason?: string;
-}
-
-async function hook(input: HookInput): Promise<HookOutput> {
-  // Your logic here
-  return { result: 'success' };
-}
-
-// Entry point
-const input: HookInput = JSON.parse(
-  require('fs').readFileSync(0, 'utf-8')
-);
-hook(input).then(output => console.log(JSON.stringify(output)));
-```
-
-### Registering Hooks
-
-Add to `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "command": ".claude/hooks/my-hook.sh",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Hook Development Workflow
+The test suite is organized by pattern and layer:
 
 ```
-> /hook-developer
+tests/
+  unit/
+    test_<pattern>_pattern_type.py  # Pattern type definitions
+    test_<pattern>_handlers.py      # Handler implementations
+  integration/
+    test_<pattern>_e2e.py           # End-to-end flows
 ```
 
-Or debug existing hooks:
-
-```
-> /debug-hooks
-```
-
----
-
-## Extending TLDR
-
-TLDR is the 5-layer code analysis system in `opc/packages/tldr-code/`.
-
-### Architecture
-
-```
-tldr/
-├── api.py              # Unified API (all layers)
-├── ast_extractor.py    # L1: AST extraction
-├── hybrid_extractor.py # Multi-language support
-├── cross_file_calls.py # L2: Call graph
-├── cfg_extractor.py    # L3: Control flow
-├── dfg_extractor.py    # L4: Data flow
-└── pdg_extractor.py    # L5: Program dependence
-```
-
-### Adding Language Support
-
-1. Add tree-sitter grammar:
-```bash
-uv pip install tree-sitter-<language>
-```
-
-2. Update `hybrid_extractor.py`:
-```python
-LANGUAGE_CONFIGS = {
-    'mylang': LanguageConfig(
-        extension='.ml',
-        tree_sitter_lang='mylang',
-        function_patterns=['function_definition'],
-        class_patterns=['class_definition']
-    )
-}
-```
-
-3. Add tests in `tests/test_mylang.py`
-
-### Running TLDR Tests
-
-```bash
-cd opc/packages/tldr-code
-source .venv/bin/activate
-python -m pytest tests/ -v
-```
-
----
-
-## Code Style
+## Code Style Guidelines
 
 ### Python
 
-- Use type hints
-- Format with `ruff`
-- Follow PEP 8
+- **Formatter**: Black with 100 character line length
+- **Linter**: Ruff for style checks
+- **Type Hints**: Required for all public functions
+- **Docstrings**: Google style for public APIs
 
-### TypeScript
+```python
+def process_task(
+    task_id: str,
+    config: TaskConfig,
+    *,
+    timeout: float = 30.0,
+) -> TaskResult:
+    """Process a task with the given configuration.
 
-- Use strict mode
-- Format with Prettier
-- Follow existing patterns
+    Args:
+        task_id: Unique identifier for the task.
+        config: Configuration for task processing.
+        timeout: Maximum time to wait in seconds.
 
-### Markdown
+    Returns:
+        TaskResult containing the processing outcome.
 
-- Use CommonMark
-- Keep lines under 100 chars
-- Use tables for structured data
-
----
-
-## Testing
-
-### Running All Tests
-
-```bash
-# TLDR tests
-cd opc/packages/tldr-code && pytest tests/ -v
-
-# Hook tests (TypeScript)
-cd .claude/hooks && npm test
+    Raises:
+        TaskTimeoutError: If processing exceeds timeout.
+    """
+    ...
 ```
 
-### Testing Skills
+### TypeScript (Hooks)
 
-```bash
-# Manual test in Claude
-> /my-skill
+- **Style**: ESLint with TypeScript rules
+- **Formatting**: Prettier (2 spaces, no semicolons in output)
+- **Async**: Use async/await, handle errors properly
 
-# Check skill-rules.json triggers
-> "trigger phrase that should activate my-skill"
+```typescript
+interface HookInput {
+  session_id: string;
+  tool_name: string;
+}
+
+async function processHook(input: HookInput): Promise<HookOutput> {
+  // Implementation
+}
 ```
 
-### Testing Hooks
+### Testing
 
-```bash
-# Test hook directly
-echo '{"tool_name": "Read", "tool_input": {"file_path": "test.py"}}' | .claude/hooks/my-hook.sh
+- Write tests before or alongside implementation (TDD encouraged)
+- Test edge cases and error conditions
+- Use descriptive test names that explain the scenario
+- Mock external services in unit tests
+
+```python
+def test_circuit_breaker_opens_after_threshold_failures():
+    """Circuit breaker should open after N consecutive failures."""
+    breaker = CircuitBreaker(failure_threshold=3)
+
+    for _ in range(3):
+        breaker.record_failure()
+
+    assert breaker.is_open
 ```
 
----
+## Pattern Development
 
-## Pull Request Process
+When adding new multi-agent patterns:
 
-1. **Fork** the repository
-2. **Create branch**: `git checkout -b feature/my-feature`
-3. **Make changes** following the guidelines above
-4. **Test** your changes
-5. **Commit** with clear message
-6. **Push** to your fork
-7. **Open PR** with:
-   - Description of changes
-   - Testing done
-   - Any breaking changes
+1. **Type Definition**: Add to `scripts/agentica/patterns/types/<pattern>_type.py`
+2. **Handler Implementation**: Add to `scripts/agentica/patterns/<pattern>_handlers.py`
+3. **Router Integration**: Update `scripts/agentica/unified_scope.py`
+4. **Tests**: Add both unit tests and E2E tests
+5. **Documentation**: Update `scripts/agentica/PATTERNS.md`
 
-### PR Checklist
+Reference existing patterns (Swarm, Jury, Pipeline) for implementation guidance.
 
-- [ ] Tests pass
-- [ ] Documentation updated
-- [ ] No breaking changes (or documented)
-- [ ] Follows code style
+## Questions?
 
----
-
-## Getting Help
-
-- Open an issue for bugs or feature requests
-- Use `/help` in Claude for usage questions
-- Check existing skills/agents for patterns
+- Open a [Discussion](https://github.com/your-org/claude-continuity-kit/discussions) for questions
+- Check the [README](README.md) for usage documentation
+- Review [PATTERNS.md](scripts/agentica/PATTERNS.md) for pattern details
 
 Thank you for contributing!

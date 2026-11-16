@@ -1,9 +1,3 @@
----
-name: research-codebase
-description: Document the codebase comprehensively
-model: sonnet
----
-
 # Research Codebase Agent
 
 Document the codebase as-is without evaluation or recommendations.

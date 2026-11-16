@@ -76,7 +76,7 @@ Route to the appropriate specialist based on goal:
 
 | Goal | Primary Agent | Alias | Description |
 |------|---------------|-------|-------------|
-| **Research** | oracle | Librarian | Comprehensive research using MCP tools (nia, perplexity, repoprompt, firecrawl) |
+| **Research** | research-agent | Librarian | Comprehensive research using MCP tools (nia, perplexity, repoprompt, firecrawl) |
 | **Plan** | plan-agent | Oracle | Create implementation plans with phased approach |
 | **Build** | kraken | Kraken | Implementation agent - handles coding tasks via Task tool |
 | **Fix** | debug-agent | Sentinel | Investigate issues using codebase exploration and logs |
@@ -122,7 +122,7 @@ Wait for user confirmation before spawning agents. If user selects "Adjust setti
 ### Research (Librarian)
 ```
 Task(
-  subagent_type="oracle",
+  subagent_type="research-agent",
   prompt="""
   Research: [topic]
 
@@ -146,15 +146,6 @@ Task(
 ```
 
 ### Build (Kraken)
-
-**If plan exists:** Run pre-mortem before implementation:
-```
-/premortem deep <plan-path>
-```
-
-This identifies risks and blocks if HIGH severity issues found. User can accept, mitigate, or research solutions.
-
-**After premortem passes:**
 ```
 Task(
   subagent_type="kraken",
@@ -193,6 +184,5 @@ Task(
 
 - **Infer when possible:** If the user says "this test is failing", that's clearly a Fix goal
 - **Be adaptive:** Start with Balanced allocation; scale up if task proves complex
-- **Chain agents:** For complex tasks, Research -> Plan -> Premortem -> Build is the recommended flow
-- **Run premortem:** Before Build, always run `/premortem deep` on the plan to catch risks early
+- **Chain agents:** For complex tasks, Research -> Plan -> Build is a natural flow
 - **Preserve context:** Use handoffs between agents to maintain continuity

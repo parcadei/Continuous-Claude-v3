@@ -1,0 +1,1967 @@
+"""
+Agentica Multi-Agent Patterns
+
+This module implements 11 core multi-agent coordination patterns:
+
+1. **Swarm** - Parallel agents with different perspectives, aggregated results
+2. **Pipeline** - Sequential stages passing HandoffState
+3. **Hierarchical** - Coordinator decomposing tasks for specialists
+4. **Jury** - N independent agents voting via Consensus
+5. **GeneratorCritic** - Iterative refinement loop
+6. **CircuitBreaker** - Failure detection with fallback routing
+7. **Adversarial** - Opposing agents debate to stress-test ideas
+8. **ChainOfResponsibility** - Route request to first handler that can handle it
+9. **MapReduce** - Fan out to mappers, combine with reducer
+10. **Blackboard** - Specialists contribute to shared state, controller decides completion
+11. **EventDriven** - Agents react to events published on a bus, loose coupling
+
+Each pattern encapsulates a different multi-agent coordination strategy.
+"""
+
+import asyncio
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Optional
+
+# Import spawn from agentica if available, otherwise use a stub for testing
+try:
+    from agentica import spawn
+except ImportError:
+    # Stub for testing - tests will mock this
+    async def spawn(**kwargs):  # type: ignore
+        """Stub spawn function for testing."""
+        raise NotImplementedError("agentica not installed - use mocking in tests")
+
+from scripts.agentica.primitives import (
+    AggregateMode,
+    Aggregator,
+    Consensus,
+    ConsensusMode,
+    HandoffState,
+)
+
+if TYPE_CHECKING:
+    from scripts.agentica.coordination import CoordinationDB
+
+# ============================================================================
+# Swarm Pattern
+# ============================================================================
+
+
+class Swarm:
+    """
+    Swarm pattern: Spawn multiple agents with different perspectives in parallel.
+
+    Each agent attacks the problem from a different angle. Results are aggregated
+    using the Aggregator primitive.
+
+    Example:
+        swarm = Swarm(
+            perspectives=[
+                "You are a security expert.",
+                "You are a performance expert.",
+                "You are a UX expert."
+            ]
+        )
+        result = await swarm.execute("Analyze OAuth implementation")
+    """
+
+    def __init__(
+        self,
+        perspectives: list[str],
+        aggregate_mode: AggregateMode = AggregateMode.MERGE,
+        aggregation_separator: str = " ",
+        fail_fast: bool = False,
+        model: str | None = None,
+        scope: dict[str, Any] | None = None,
+        mcp: str | None = None,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Swarm pattern.
+
+        Args:
+            perspectives: List of agent premises (one per agent)
+            aggregate_mode: How to combine results (MERGE, CONCAT, BEST)
+            aggregation_separator: Separator for CONCAT mode
+            fail_fast: If True, stop on first error. If False, continue with partial results
+            model: Model to use for all agents
+            scope: Tools/functions available to all agents
+            mcp: MCP config path to pass to all agents
+            db: Optional coordination database for tracking agents
+
+        Raises:
+            ValueError: If perspectives is None or empty
+        """
+        if perspectives is None:
+            raise ValueError("perspectives cannot be None")
+        if not perspectives:
+            raise ValueError("perspectives cannot be empty")
+
+        self.perspectives = perspectives
+        self.fail_fast = fail_fast
+        self.model = model
+        self.scope = scope or {}
+        self.mcp = mcp
+        self.db = db
+
+        # Create aggregator
+        self.aggregator = Aggregator(
+            mode=aggregate_mode,
+            separator=aggregation_separator
+        )
+
+        # Set default return type based on aggregate mode
+        if aggregate_mode == AggregateMode.MERGE:
+            self.default_return_type = dict
+        elif aggregate_mode == AggregateMode.CONCAT:
+            self.default_return_type = str
+        else:  # BEST
+            self.default_return_type = dict
+
+    async def execute(
+        self,
+        query: str,
+        return_type: type = None
+    ) -> Any:
+        """
+        Execute swarm on a query.
+
+        Args:
+            query: Question or task for the swarm
+            return_type: Expected return type for each agent (defaults to aggregate mode default)
+
+        Returns:
+            Aggregated results from all agents
+        """
+        if return_type is None:
+            return_type = self.default_return_type
+
+        # Spawn agents for each perspective
+        agents = []
+        for perspective in self.perspectives:
+            spawn_kwargs = {"premise": perspective}
+            if self.model:
+                spawn_kwargs["model"] = self.model
+            if self.scope:
+                spawn_kwargs["scope"] = self.scope
+            if self.mcp:
+                spawn_kwargs["mcp"] = self.mcp
+
+            # Use tracked_spawn if db is set
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                agent = await tracked_spawn(db=self.db, pattern="swarm", **spawn_kwargs)
+            else:
+                agent = await spawn(**spawn_kwargs)
+            agents.append(agent)
+
+        # Execute all agents in parallel
+        async def call_agent(agent):
+            try:
+                return await agent.call(return_type, query)
+            except Exception:
+                if self.fail_fast:
+                    raise
+                # Return None for failed agents in non-fail-fast mode
+                return None
+
+        # Use asyncio.gather for parallel execution
+        if self.fail_fast:
+            results = await asyncio.gather(*[call_agent(agent) for agent in agents])
+        else:
+            results = await asyncio.gather(
+                *[call_agent(agent) for agent in agents],
+                return_exceptions=False
+            )
+
+        # Filter None results (failed agents in non-fail-fast mode)
+        results = [r for r in results if r is not None]
+
+        # Aggregate results
+        return self.aggregator.aggregate(results)
+
+
+# ============================================================================
+# Pipeline Pattern
+# ============================================================================
+
+
+class Pipeline:
+    """
+    Pipeline pattern: Sequential stage execution with HandoffState.
+
+    Each stage receives the output of the previous stage via HandoffState.
+    Stages execute sequentially: A → B → C.
+
+    Example:
+        async def fetch(state: HandoffState) -> HandoffState:
+            state.add_artifact("data", fetch_data())
+            return state
+
+        async def transform(state: HandoffState) -> HandoffState:
+            data = state.artifacts["data"]
+            state.add_artifact("transformed", transform(data))
+            return state
+
+        pipeline = Pipeline(stages=[fetch, transform])
+        result = await pipeline.run(initial_state)
+    """
+
+    def __init__(self, stages: list[Callable[[HandoffState], HandoffState]]):
+        """
+        Initialize Pipeline.
+
+        Args:
+            stages: List of async functions that take and return HandoffState
+
+        Raises:
+            ValueError: If stages is empty
+        """
+        if not stages:
+            raise ValueError("Pipeline requires at least one stage")
+
+        self.stages = stages
+
+    async def run(self, initial_state: HandoffState) -> HandoffState:
+        """
+        Run the pipeline.
+
+        Args:
+            initial_state: Starting state for the pipeline
+
+        Returns:
+            Final state after all stages
+        """
+        state = initial_state
+
+        # Execute stages sequentially
+        for stage in self.stages:
+            state = await stage(state)
+
+        return state
+
+
+# ============================================================================
+# Hierarchical Pattern
+# ============================================================================
+
+
+class Hierarchical:
+    """
+    Hierarchical pattern: Coordinator decomposes tasks for specialist agents.
+
+    Flow:
+    1. Coordinator decomposes task into subtasks
+    2. Specialists execute subtasks (in parallel when independent)
+    3. Results are aggregated
+    4. Coordinator synthesizes final answer
+
+    Example:
+        hierarchical = Hierarchical(
+            coordinator_premise="You break tasks into subtasks.",
+            specialist_premises={
+                "researcher": "You research topics.",
+                "analyst": "You analyze data."
+            }
+        )
+        result = await hierarchical.execute("Research and analyze topic X")
+    """
+
+    def __init__(
+        self,
+        coordinator_premise: str,
+        specialist_premises: dict[str, str],
+        coordinator_scope: dict[str, Any] | None = None,
+        specialist_scope: dict[str, Any] | None = None,
+        coordinator_model: str | None = None,
+        specialist_model: str | None = None,
+        aggregation_mode: AggregateMode = AggregateMode.CONCAT,
+        aggregation_separator: str = "\n\n",
+        aggregator: Aggregator | None = None,
+        fail_fast: bool = False,
+        return_type: type = str,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Hierarchical coordinator.
+
+        Args:
+            coordinator_premise: Premise for coordinator agent
+            specialist_premises: Dict mapping specialist name → premise
+            coordinator_scope: Tools for coordinator
+            specialist_scope: Tools for specialists
+            coordinator_model: Model for coordinator
+            specialist_model: Model for specialists
+            aggregation_mode: How to aggregate specialist results
+            aggregation_separator: Separator for aggregation
+            aggregator: Custom Aggregator instance (overrides mode/separator)
+            fail_fast: Stop on first specialist failure
+            return_type: Expected return type for final result
+            db: Optional coordination database for tracking agents
+        """
+        self.coordinator_premise = coordinator_premise
+        self.specialist_premises = specialist_premises
+        self.coordinator_scope = coordinator_scope or {}
+        self.specialist_scope = specialist_scope or {}
+        self.coordinator_model = coordinator_model
+        self.specialist_model = specialist_model
+        self.fail_fast = fail_fast
+        self.return_type = return_type
+        self.db = db
+
+        # Coordinator and specialists will be spawned on demand
+        self.coordinator = None
+        self.specialists: dict[str, Any] = {}
+
+        # Setup aggregator
+        if aggregator:
+            self.aggregator = aggregator
+        else:
+            self.aggregator = Aggregator(
+                mode=aggregation_mode,
+                separator=aggregation_separator
+            )
+
+    async def _ensure_coordinator(self):
+        """Lazy spawn coordinator."""
+        if self.coordinator is None:
+            spawn_kwargs = {"premise": self.coordinator_premise}
+            if self.coordinator_scope:
+                spawn_kwargs["scope"] = self.coordinator_scope
+            if self.coordinator_model:
+                spawn_kwargs["model"] = self.coordinator_model
+
+            # Use tracked_spawn if db is set
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.coordinator = await tracked_spawn(db=self.db, pattern="hierarchical", **spawn_kwargs)
+            else:
+                self.coordinator = await spawn(**spawn_kwargs)
+
+    async def _ensure_specialist(self, name: str):
+        """Lazy spawn specialist by name."""
+        if name not in self.specialists:
+            if name not in self.specialist_premises:
+                raise ValueError(f"Unknown specialist: {name}")
+
+            premise = self.specialist_premises[name]
+            spawn_kwargs = {"premise": premise}
+            if self.specialist_scope:
+                spawn_kwargs["scope"] = self.specialist_scope
+            if self.specialist_model:
+                spawn_kwargs["model"] = self.specialist_model
+
+            # Use tracked_spawn if db is set
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.specialists[name] = await tracked_spawn(db=self.db, pattern="hierarchical", **spawn_kwargs)
+            else:
+                self.specialists[name] = await spawn(**spawn_kwargs)
+
+    async def _decompose_task(self, task: str) -> list[dict[str, str]]:
+        """
+        Coordinator decomposes task into subtasks.
+
+        Returns:
+            List of dicts with keys: specialist, task
+        """
+        await self._ensure_coordinator()
+
+        prompt = f"""
+        Decompose this task into subtasks for specialists.
+
+        Task: {task}
+
+        Available specialists: {', '.join(self.specialist_premises.keys())}
+
+        Return a list of dicts with keys: specialist, task
+        Example: [{{"specialist": "researcher", "task": "Find papers"}}, ...]
+
+        If the task is simple enough to answer directly, return an empty list.
+        """
+
+        subtasks = await self.coordinator.call(list, prompt)
+        return subtasks
+
+    async def _execute_subtasks(self, subtasks: list[dict[str, str]]) -> list[Any]:
+        """
+        Execute subtasks in parallel.
+
+        Returns:
+            List of results from specialists
+        """
+        async def execute_subtask(subtask: dict[str, str]):
+            specialist_name = subtask["specialist"]
+            task = subtask["task"]
+
+            try:
+                await self._ensure_specialist(specialist_name)
+                specialist = self.specialists[specialist_name]
+                return await specialist.call(str, task)
+            except Exception:
+                if self.fail_fast:
+                    raise
+                # In non-fail-fast mode, return None for failed subtasks
+                return None
+
+        # Execute all subtasks in parallel
+        results = await asyncio.gather(*[execute_subtask(st) for st in subtasks])
+        return list(results)
+
+    def _aggregate_results(self, results: list[Any]) -> Any:
+        """Aggregate specialist results."""
+        # Filter None values (failed specialists in non-fail-fast mode)
+        filtered_results = [r for r in results if r is not None]
+        if not filtered_results:
+            return ""
+        return self.aggregator.aggregate(filtered_results)
+
+    async def _synthesize(self, task: str, aggregated_results: Any) -> Any:
+        """
+        Coordinator synthesizes final answer from aggregated results.
+
+        Returns:
+            Final synthesized result
+        """
+        await self._ensure_coordinator()
+
+        prompt = f"""
+        Synthesize a final answer based on specialist results.
+
+        Original task: {task}
+
+        Specialist results:
+        {aggregated_results}
+
+        Provide a comprehensive final answer.
+        """
+
+        return await self.coordinator.call(self.return_type, prompt)
+
+    async def execute(self, task: str) -> Any:
+        """
+        Execute hierarchical pattern on a task.
+
+        Args:
+            task: Task to decompose and execute
+
+        Returns:
+            Synthesized final result
+        """
+        # 1. Decompose
+        subtasks = await self._decompose_task(task)
+
+        # 2. If no subtasks (simple task), coordinator answers directly
+        if not subtasks:
+            await self._ensure_coordinator()
+            return await self.coordinator.call(self.return_type, task)
+
+        # 3. Execute specialists
+        results = await self._execute_subtasks(subtasks)
+
+        # 4. Aggregate
+        aggregated = self._aggregate_results(results)
+
+        # 5. Synthesize
+        final_result = await self._synthesize(task, aggregated)
+
+        return final_result
+
+
+# ============================================================================
+# Jury Pattern
+# ============================================================================
+
+
+class Jury:
+    """
+    Jury pattern: N independent agents vote on a question via Consensus.
+
+    All jurors evaluate independently and vote. Consensus mechanism
+    determines the final verdict (majority, unanimous, threshold).
+
+    Example:
+        jury = Jury(
+            num_jurors=5,
+            consensus_mode=ConsensusMode.MAJORITY
+        )
+        verdict = await jury.decide(bool, "Is this code safe?")
+    """
+
+    def __init__(
+        self,
+        num_jurors: int,
+        consensus_mode: ConsensusMode,
+        threshold: float | None = None,
+        weights: list[float] | None = None,
+        premise: str | None = None,
+        premises: list[str] | None = None,
+        model: str | None = None,
+        scope: dict[str, Any] | None = None,
+        key: Callable[[Any], Any] | None = None,
+        allow_partial: bool = False,
+        min_jurors: int | None = None,
+        debug: bool = False,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Jury.
+
+        Args:
+            num_jurors: Number of jurors to spawn
+            consensus_mode: Voting mode (MAJORITY, UNANIMOUS, THRESHOLD)
+            threshold: Required agreement percentage for THRESHOLD mode
+            weights: Optional weights for each juror
+            premise: Single premise for all jurors (mutually exclusive with premises)
+            premises: Different premise per juror (mutually exclusive with premise)
+            model: Model to use for all jurors
+            scope: Tools available to all jurors
+            key: Function to extract decision from structured votes
+            allow_partial: Continue with partial votes if some jurors fail
+            min_jurors: Minimum successful jurors required (only with allow_partial)
+            debug: Track individual votes for debugging
+            db: Optional coordination database for tracking agents
+
+        Raises:
+            ValueError: Invalid configuration
+        """
+        # Validation
+        if num_jurors < 1:
+            raise ValueError("num_jurors must be at least 1")
+
+        if weights and len(weights) != num_jurors:
+            raise ValueError("weights must be same length as num_jurors")
+
+        if premises and len(premises) != num_jurors:
+            raise ValueError("premises must be same length as num_jurors")
+
+        if consensus_mode == ConsensusMode.THRESHOLD and threshold is None:
+            raise ValueError("threshold parameter required for THRESHOLD mode")
+
+        if threshold is not None and not (0 <= threshold <= 1):
+            raise ValueError("threshold must be between 0 and 1")
+
+        self.num_jurors = num_jurors
+        self.consensus_mode = consensus_mode
+        self.threshold = threshold
+        self.weights = weights
+        self.premise = premise
+        self.premises = premises
+        self.model = model
+        self.scope = scope or {}
+        self.key = key
+        self.allow_partial = allow_partial
+        self.min_jurors = min_jurors or num_jurors
+        self.debug = debug
+        self.db = db
+
+        # Create consensus mechanism
+        self.consensus = Consensus(mode=consensus_mode, threshold=threshold)
+
+        # Debug: track last votes
+        if debug:
+            self.last_votes = []
+
+    def _get_juror_premise(self, index: int) -> str:
+        """Get premise for juror at given index."""
+        if self.premises:
+            return self.premises[index]
+        if self.premise:
+            return self.premise
+        return "You are an expert evaluator. Provide your honest assessment."
+
+    def _build_spawn_kwargs(self, premise: str) -> dict[str, Any]:
+        """Build spawn kwargs for a juror."""
+        kwargs: dict[str, Any] = {"premise": premise}
+        if self.model:
+            kwargs["model"] = self.model
+        if self.scope:
+            kwargs["scope"] = self.scope
+        return kwargs
+
+    async def _spawn_jurors(self) -> list:
+        """Spawn all jurors."""
+        jurors = []
+        for i in range(self.num_jurors):
+            premise = self._get_juror_premise(i)
+            spawn_kwargs = self._build_spawn_kwargs(premise)
+
+            # Use tracked_spawn if db is set
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                juror = await tracked_spawn(db=self.db, pattern="jury", **spawn_kwargs)
+            else:
+                juror = await spawn(**spawn_kwargs)
+            jurors.append(juror)
+        return jurors
+
+    async def _collect_votes(
+        self, jurors: list, return_type: type, question: str
+    ) -> list[Any]:
+        """Collect votes from jurors, handling failures if allow_partial."""
+        async def get_vote(juror):
+            try:
+                return await juror.call(return_type, question)
+            except Exception:
+                if self.allow_partial:
+                    return None
+                raise
+
+        votes = await asyncio.gather(*[get_vote(juror) for juror in jurors])
+
+        if self.allow_partial:
+            votes = [v for v in votes if v is not None]
+            if len(votes) < self.min_jurors:
+                raise ValueError(
+                    f"Not enough successful jurors: {len(votes)} < {self.min_jurors}"
+                )
+        return list(votes)
+
+    async def decide(self, return_type: type, question: str) -> Any:
+        """
+        Jury decides on a question.
+
+        Args:
+            return_type: Expected return type for votes
+            question: Question for jurors to decide
+
+        Returns:
+            Consensus verdict from jurors
+
+        Raises:
+            ConsensusNotReached: If consensus cannot be reached
+        """
+        jurors = await self._spawn_jurors()
+        votes = await self._collect_votes(jurors, return_type, question)
+
+        if self.debug:
+            self.last_votes = votes
+
+        return self.consensus.decide(votes=votes, weights=self.weights, key=self.key)
+
+
+# ============================================================================
+# GeneratorCritic Pattern
+# ============================================================================
+
+
+class GeneratorCritic:
+    """
+    GeneratorCritic pattern: Iterative refinement loop.
+
+    Flow:
+    1. Generator creates initial solution
+    2. Critic evaluates and provides feedback
+    3. Generator refines based on feedback
+    4. Repeat until critic approves or max_rounds reached
+
+    Example:
+        gc = GeneratorCritic(
+            generator_premise="You generate Python code.",
+            critic_premise="You review Python code for correctness."
+        )
+        result = await gc.run("Create a function to parse JSON")
+    """
+
+    def __init__(
+        self,
+        generator_premise: str,
+        critic_premise: str,
+        max_rounds: int = 3,
+        generator_scope: dict[str, Any] | None = None,
+        critic_scope: dict[str, Any] | None = None,
+        generator_model: str | None = None,
+        critic_model: str | None = None,
+        is_approved: Callable[[HandoffState], bool] | None = None,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize GeneratorCritic.
+
+        Args:
+            generator_premise: Premise for generator agent
+            critic_premise: Premise for critic agent
+            max_rounds: Maximum iteration rounds
+            generator_scope: Tools for generator
+            critic_scope: Tools for critic
+            generator_model: Model for generator
+            critic_model: Model for critic
+            is_approved: Custom function to check if state is approved
+            db: Optional coordination database for tracking agents
+        """
+        self.generator_premise = generator_premise
+        self.critic_premise = critic_premise
+        self.max_rounds = max_rounds
+        self.generator_scope = generator_scope or {}
+        self.critic_scope = critic_scope or {}
+        self.generator_model = generator_model
+        self.critic_model = critic_model
+        self.db = db
+
+        # Default approval check
+        if is_approved:
+            self.is_approved = is_approved
+        else:
+            self.is_approved = lambda state: "APPROVED" in state.next_instruction
+
+        # Agents spawned lazily
+        self.generator = None
+        self.critic = None
+
+    async def _ensure_generator(self):
+        """Lazy spawn generator."""
+        if self.generator is None:
+            spawn_kwargs = {"premise": self.generator_premise}
+            if self.generator_scope:
+                spawn_kwargs["scope"] = self.generator_scope
+            if self.generator_model:
+                spawn_kwargs["model"] = self.generator_model
+
+            # Use tracked_spawn if db is set
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.generator = await tracked_spawn(db=self.db, pattern="generator_critic", **spawn_kwargs)
+            else:
+                self.generator = await spawn(**spawn_kwargs)
+
+    async def _ensure_critic(self):
+        """Lazy spawn critic."""
+        if self.critic is None:
+            spawn_kwargs = {"premise": self.critic_premise}
+            if self.critic_scope:
+                spawn_kwargs["scope"] = self.critic_scope
+            if self.critic_model:
+                spawn_kwargs["model"] = self.critic_model
+
+            # Use tracked_spawn if db is set
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.critic = await tracked_spawn(db=self.db, pattern="generator_critic", **spawn_kwargs)
+            else:
+                self.critic = await spawn(**spawn_kwargs)
+
+    async def run(self, task: str) -> HandoffState:
+        """
+        Run generator/critic loop.
+
+        Args:
+            task: Task for generator to complete
+
+        Returns:
+            Final HandoffState (approved or max rounds reached)
+        """
+        await self._ensure_generator()
+        await self._ensure_critic()
+
+        # Initialize state
+        state = HandoffState(
+            context=f"Task: {task}",
+            next_instruction="Generate initial solution"
+        )
+
+        for _ in range(1, self.max_rounds + 1):
+            # Generator produces/refines solution
+            feedback = state.artifacts.get('feedback', '')
+            if feedback:
+                feedback_text = f"Feedback from previous round: {feedback}"
+            else:
+                feedback_text = "First attempt."
+            prompt = f"""
+            {state.context}
+
+            Task: {task}
+
+            {feedback_text}
+
+            Generate your solution. Return HandoffState with artifacts.
+            """
+
+            state = await self.generator.call(HandoffState, prompt, state=state)
+
+            # Critic evaluates
+            critique_prompt = f"""
+            Review this solution:
+
+            Task: {task}
+
+            Solution artifacts: {state.artifacts}
+
+            Provide feedback. If approved, set next_instruction to "APPROVED".
+            Otherwise, provide constructive feedback in artifacts['feedback'].
+            """
+
+            state = await self.critic.call(HandoffState, critique_prompt, state=state)
+
+            # Check if approved
+            if self.is_approved(state):
+                break
+
+        return state
+
+
+# ============================================================================
+# CircuitBreaker Pattern
+# ============================================================================
+
+
+class CircuitState(Enum):
+    """Circuit breaker states."""
+    CLOSED = "closed"      # Normal operation, using primary
+    OPEN = "open"          # Failure threshold reached, using fallback
+    HALF_OPEN = "half_open"  # Testing if primary has recovered
+
+
+class CircuitBreaker:
+    """
+    CircuitBreaker pattern: Failure detection with fallback routing.
+
+    Wraps agent execution with failure detection. After N consecutive
+    failures, the circuit "opens" and routes to a fallback agent. After
+    a timeout, the circuit enters "half-open" state and tests the primary
+    agent again.
+
+    States:
+    - CLOSED: Normal operation, primary agent is used
+    - OPEN: Primary has failed too many times, fallback is used
+    - HALF_OPEN: Testing primary after timeout, one failure reopens
+
+    Example:
+        cb = CircuitBreaker(
+            primary_premise="You implement features.",
+            fallback_premise="You implement simpler versions.",
+            max_failures=3,
+            reset_timeout=60
+        )
+        result = await cb.execute("Implement OAuth flow")
+    """
+
+    def __init__(
+        self,
+        primary_premise: str,
+        fallback_premise: str,
+        max_failures: int = 3,
+        reset_timeout: float = 60,
+        primary_model: str | None = None,
+        fallback_model: str | None = None,
+        primary_scope: dict[str, Any] | None = None,
+        fallback_scope: dict[str, Any] | None = None,
+        return_type: type = str,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize CircuitBreaker.
+
+        Args:
+            primary_premise: Premise for primary agent
+            fallback_premise: Premise for fallback agent
+            max_failures: Consecutive failures before opening circuit
+            reset_timeout: Seconds before trying primary again
+            primary_model: Model for primary agent
+            fallback_model: Model for fallback agent
+            primary_scope: Tools for primary agent
+            fallback_scope: Tools for fallback agent
+            return_type: Expected return type for agent calls
+            db: Optional coordination database for tracking agents
+        """
+        self.primary_premise = primary_premise
+        self.fallback_premise = fallback_premise
+        self.max_failures = max_failures
+        self.reset_timeout = reset_timeout
+        self.primary_model = primary_model
+        self.fallback_model = fallback_model
+        self.primary_scope = primary_scope or {}
+        self.fallback_scope = fallback_scope or {}
+        self.return_type = return_type
+        self.db = db
+
+        # Circuit state
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.last_failure_time: float | None = None
+
+        # Agents spawned lazily
+        self.primary_agent = None
+        self.fallback_agent = None
+
+    async def _ensure_primary(self):
+        """Lazy spawn primary agent."""
+        if self.primary_agent is None:
+            spawn_kwargs = {"premise": self.primary_premise}
+            if self.primary_scope:
+                spawn_kwargs["scope"] = self.primary_scope
+            if self.primary_model:
+                spawn_kwargs["model"] = self.primary_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.primary_agent = await tracked_spawn(
+                    db=self.db, pattern="circuit_breaker", **spawn_kwargs
+                )
+            else:
+                self.primary_agent = await spawn(**spawn_kwargs)
+
+    async def _ensure_fallback(self):
+        """Lazy spawn fallback agent."""
+        if self.fallback_agent is None:
+            spawn_kwargs = {"premise": self.fallback_premise}
+            if self.fallback_scope:
+                spawn_kwargs["scope"] = self.fallback_scope
+            if self.fallback_model:
+                spawn_kwargs["model"] = self.fallback_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.fallback_agent = await tracked_spawn(
+                    db=self.db, pattern="circuit_breaker", **spawn_kwargs
+                )
+            else:
+                self.fallback_agent = await spawn(**spawn_kwargs)
+
+    def _should_try_primary(self) -> bool:
+        """Check if we should attempt primary agent."""
+        if self.state == CircuitState.CLOSED:
+            return True
+
+        if self.state == CircuitState.OPEN:
+            # Check if timeout has elapsed
+            if self.last_failure_time is not None:
+                elapsed = time.time() - self.last_failure_time
+                if elapsed >= self.reset_timeout:
+                    self.state = CircuitState.HALF_OPEN
+                    return True
+            return False
+
+        # HALF_OPEN: try primary
+        return True
+
+    def _record_success(self):
+        """Record successful primary execution."""
+        self.failure_count = 0
+        self.state = CircuitState.CLOSED
+        self.last_failure_time = None
+
+    def _record_failure(self):
+        """Record failed primary execution."""
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+
+        if self.failure_count >= self.max_failures:
+            self.state = CircuitState.OPEN
+        elif self.state == CircuitState.HALF_OPEN:
+            # Failed during half-open test, reopen
+            self.state = CircuitState.OPEN
+
+    async def execute(self, query: str) -> Any:
+        """
+        Execute query with circuit breaker protection.
+
+        Args:
+            query: Query/task for the agent
+
+        Returns:
+            Result from primary or fallback agent
+        """
+        await self._ensure_primary()
+        await self._ensure_fallback()
+
+        if self._should_try_primary():
+            try:
+                result = await self.primary_agent.call(self.return_type, query)
+                self._record_success()
+                return result
+            except Exception:
+                self._record_failure()
+                # Always use fallback on failure (graceful degradation)
+                return await self.fallback_agent.call(self.return_type, query)
+
+        # Circuit is OPEN, use fallback
+        return await self.fallback_agent.call(self.return_type, query)
+
+
+# ============================================================================
+# Adversarial Pattern
+# ============================================================================
+
+
+class Adversarial:
+    """
+    Adversarial pattern: Agents take opposing positions to stress-test ideas.
+
+    Flow:
+    1. Advocate presents argument in favor
+    2. Adversary critiques and attacks
+    3. Iterate for max_rounds
+    4. Optional judge decides which position is stronger
+
+    Example:
+        adv = Adversarial(
+            advocate_premise="You argue in favor of this architectural decision.",
+            adversary_premise="You find flaws in architectural decisions.",
+            judge_premise="You decide which position is stronger.",
+            max_rounds=3
+        )
+        result = await adv.debate("Should we use microservices or monolith?")
+    """
+
+    def __init__(
+        self,
+        advocate_premise: str,
+        adversary_premise: str,
+        judge_premise: str | None = None,
+        max_rounds: int = 3,
+        advocate_model: str | None = None,
+        adversary_model: str | None = None,
+        judge_model: str | None = None,
+        advocate_scope: dict[str, Any] | None = None,
+        adversary_scope: dict[str, Any] | None = None,
+        judge_scope: dict[str, Any] | None = None,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Adversarial pattern.
+
+        Args:
+            advocate_premise: Premise for the advocate agent (argues in favor)
+            adversary_premise: Premise for the adversary agent (attacks/critiques)
+            judge_premise: Optional premise for judge agent (decides winner)
+            max_rounds: Maximum debate rounds
+            advocate_model: Model for advocate agent
+            adversary_model: Model for adversary agent
+            judge_model: Model for judge agent
+            advocate_scope: Tools for advocate agent
+            adversary_scope: Tools for adversary agent
+            judge_scope: Tools for judge agent
+            db: Optional coordination database for tracking agents
+        """
+        self.advocate_premise = advocate_premise
+        self.adversary_premise = adversary_premise
+        self.judge_premise = judge_premise
+        self.max_rounds = max_rounds
+        self.advocate_model = advocate_model
+        self.adversary_model = adversary_model
+        self.judge_model = judge_model
+        self.advocate_scope = advocate_scope or {}
+        self.adversary_scope = adversary_scope or {}
+        self.judge_scope = judge_scope or {}
+        self.db = db
+
+        # Agents spawned lazily
+        self.advocate = None
+        self.adversary = None
+        self.judge = None
+
+        # Track debate history
+        self.debate_history: list[dict[str, str]] = []
+
+    async def _ensure_advocate(self):
+        """Lazy spawn advocate agent."""
+        if self.advocate is None:
+            spawn_kwargs = {"premise": self.advocate_premise}
+            if self.advocate_scope:
+                spawn_kwargs["scope"] = self.advocate_scope
+            if self.advocate_model:
+                spawn_kwargs["model"] = self.advocate_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.advocate = await tracked_spawn(
+                    db=self.db, pattern="adversarial", **spawn_kwargs
+                )
+            else:
+                self.advocate = await spawn(**spawn_kwargs)
+
+    async def _ensure_adversary(self):
+        """Lazy spawn adversary agent."""
+        if self.adversary is None:
+            spawn_kwargs = {"premise": self.adversary_premise}
+            if self.adversary_scope:
+                spawn_kwargs["scope"] = self.adversary_scope
+            if self.adversary_model:
+                spawn_kwargs["model"] = self.adversary_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.adversary = await tracked_spawn(
+                    db=self.db, pattern="adversarial", **spawn_kwargs
+                )
+            else:
+                self.adversary = await spawn(**spawn_kwargs)
+
+    async def _ensure_judge(self):
+        """Lazy spawn judge agent."""
+        if self.judge is None and self.judge_premise:
+            spawn_kwargs = {"premise": self.judge_premise}
+            if self.judge_scope:
+                spawn_kwargs["scope"] = self.judge_scope
+            if self.judge_model:
+                spawn_kwargs["model"] = self.judge_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.judge = await tracked_spawn(
+                    db=self.db, pattern="adversarial", **spawn_kwargs
+                )
+            else:
+                self.judge = await spawn(**spawn_kwargs)
+
+    async def debate(self, question: str) -> dict[str, Any]:
+        """
+        Run adversarial debate on a question.
+
+        Args:
+            question: The question or topic to debate
+
+        Returns:
+            Dict with debate history and final positions
+        """
+        await self._ensure_advocate()
+        await self._ensure_adversary()
+
+        self.debate_history = []
+        advocate_position = ""
+        adversary_position = ""
+
+        for round_num in range(1, self.max_rounds + 1):
+            # Advocate presents/refines argument
+            if round_num == 1:
+                advocate_prompt = f"""
+                Question: {question}
+
+                Present your argument in favor. Be persuasive and thorough.
+                """
+            else:
+                advocate_prompt = f"""
+                Question: {question}
+
+                Your previous argument: {advocate_position}
+
+                Adversary's critique: {adversary_position}
+
+                Refine and strengthen your argument, addressing the critique.
+                """
+
+            advocate_position = await self.advocate.call(str, advocate_prompt)
+            self.debate_history.append({
+                "round": round_num,
+                "role": "advocate",
+                "content": advocate_position
+            })
+
+            # Adversary critiques
+            adversary_prompt = f"""
+            Question: {question}
+
+            Advocate's argument: {advocate_position}
+
+            Critique this argument. Find flaws, weaknesses, and counterarguments.
+            """
+
+            adversary_position = await self.adversary.call(str, adversary_prompt)
+            self.debate_history.append({
+                "round": round_num,
+                "role": "adversary",
+                "content": adversary_position
+            })
+
+        return {
+            "question": question,
+            "advocate_final": advocate_position,
+            "adversary_final": adversary_position,
+            "history": self.debate_history
+        }
+
+    async def resolve(self, question: str) -> dict[str, Any] | str:
+        """
+        Run debate and resolve with judge (if available).
+
+        Args:
+            question: The question or topic to debate
+
+        Returns:
+            Judge's verdict if judge exists, otherwise both final positions
+        """
+        debate_result = await self.debate(question)
+
+        if self.judge_premise:
+            await self._ensure_judge()
+
+            judge_prompt = f"""
+            You are judging a debate on: {question}
+
+            ADVOCATE'S POSITION:
+            {debate_result['advocate_final']}
+
+            ADVERSARY'S POSITION:
+            {debate_result['adversary_final']}
+
+            Evaluate both positions and decide which is stronger.
+            Provide your verdict with reasoning.
+            """
+
+            verdict = await self.judge.call(str, judge_prompt)
+            return {
+                "question": question,
+                "advocate_final": debate_result["advocate_final"],
+                "adversary_final": debate_result["adversary_final"],
+                "verdict": verdict,
+                "history": debate_result["history"]
+            }
+
+        # No judge - return both positions
+        return debate_result
+
+
+# ============================================================================
+# Chain of Responsibility Pattern
+# ============================================================================
+
+
+@dataclass
+class Handler:
+    """
+    Handler for Chain of Responsibility pattern.
+
+    Attributes:
+        premise: The agent premise for this handler
+        can_handle: Callable that returns True if this handler can handle the query
+        priority: Lower number = higher priority (default 0)
+    """
+    premise: str
+    can_handle: Callable[[str], bool]
+    priority: int = 0
+
+
+class ChainOfResponsibility:
+    """
+    Chain of Responsibility pattern: Pass request through chain until one handles it.
+
+    Each handler has a can_handle predicate. The first handler (by priority) where
+    can_handle returns True processes the request. Good for routing to specialized agents.
+
+    Example:
+        chain = ChainOfResponsibility(handlers=[
+            Handler(premise="You handle Python questions.", can_handle=lambda q: "python" in q.lower()),
+            Handler(premise="You handle JavaScript questions.", can_handle=lambda q: "javascript" in q.lower()),
+            Handler(premise="You handle general programming questions.", can_handle=lambda q: True),  # fallback
+        ])
+        result = await chain.process("How do I use async in Python?")
+    """
+
+    def __init__(
+        self,
+        handlers: list[Handler],
+        model: str | None = None,
+        scope: dict[str, Any] | None = None,
+        return_type: type = str,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Chain of Responsibility.
+
+        Args:
+            handlers: List of Handler objects (will be sorted by priority)
+            model: Model to use for handler agents
+            scope: Tools available to handler agents
+            return_type: Expected return type from handler
+            db: Optional coordination database for tracking agents
+        """
+        # Sort handlers by priority (lower = higher priority)
+        self.handlers = sorted(handlers, key=lambda h: h.priority)
+        self.model = model
+        self.scope = scope or {}
+        self.return_type = return_type
+        self.db = db
+
+    async def process(self, query: str) -> Any:
+        """
+        Process a query through the chain of handlers.
+
+        Args:
+            query: The query/request to process
+
+        Returns:
+            Result from the handler that processed the request
+
+        Raises:
+            ValueError: If no handler can handle the query
+        """
+        # Find first handler that can handle the query
+        for handler in self.handlers:
+            if handler.can_handle(query):
+                # Spawn agent for this handler
+                spawn_kwargs = {"premise": handler.premise}
+                if self.model:
+                    spawn_kwargs["model"] = self.model
+                if self.scope:
+                    spawn_kwargs["scope"] = self.scope
+
+                if self.db:
+                    from scripts.agentica.tracked_agent import tracked_spawn
+                    agent = await tracked_spawn(
+                        db=self.db, pattern="chain_of_responsibility", **spawn_kwargs
+                    )
+                else:
+                    agent = await spawn(**spawn_kwargs)
+
+                # Process the query
+                return await agent.call(self.return_type, query)
+
+        # No handler could handle the query
+        raise ValueError(f"No handler could process the query: {query}")
+
+
+# ============================================================================
+# MapReduce Pattern
+# ============================================================================
+
+
+class MapReduce:
+    """
+    MapReduce pattern: Fan out work to N mapper agents, then combine with reducer.
+
+    Distributes independent subtasks across mapper agents in parallel (map phase),
+    then aggregates all results with a reducer agent (reduce phase). Good for
+    parallel processing of independent subtasks.
+
+    Flow:
+    1. Map phase: Spawn N mappers, assign chunks to each, execute in parallel
+    2. Reduce phase: Spawn reducer, pass all mapper outputs, synthesize result
+
+    Example:
+        mr = MapReduce(
+            mapper_premise="You analyze one section of code.",
+            reducer_premise="You synthesize analysis from multiple reviewers.",
+            num_mappers=4
+        )
+        result = await mr.execute("Review this codebase", chunks=["file1.py", "file2.py", "file3.py", "file4.py"])
+    """
+
+    def __init__(
+        self,
+        mapper_premise: str,
+        reducer_premise: str,
+        num_mappers: int = 3,
+        mapper_model: str | None = None,
+        reducer_model: str | None = None,
+        mapper_scope: dict[str, Any] | None = None,
+        reducer_scope: dict[str, Any] | None = None,
+        fail_fast: bool = True,
+        return_type: type = str,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize MapReduce pattern.
+
+        Args:
+            mapper_premise: Premise for mapper agents
+            reducer_premise: Premise for reducer agent
+            num_mappers: Number of mapper agents to spawn
+            mapper_model: Model for mapper agents
+            reducer_model: Model for reducer agent
+            mapper_scope: Tools for mapper agents
+            reducer_scope: Tools for reducer agent
+            fail_fast: If True, stop on first mapper error. If False, continue with partial results
+            return_type: Expected return type for the final result
+            db: Optional coordination database for tracking agents
+
+        Raises:
+            ValueError: If num_mappers < 1
+        """
+        if num_mappers < 1:
+            raise ValueError("num_mappers must be at least 1")
+
+        self.mapper_premise = mapper_premise
+        self.reducer_premise = reducer_premise
+        self.num_mappers = num_mappers
+        self.mapper_model = mapper_model
+        self.reducer_model = reducer_model
+        self.mapper_scope = mapper_scope or {}
+        self.reducer_scope = reducer_scope or {}
+        self.fail_fast = fail_fast
+        self.return_type = return_type
+        self.db = db
+
+        # Reducer spawned lazily
+        self.reducer_agent = None
+
+    async def _spawn_mapper(self) -> Any:
+        """Spawn a single mapper agent."""
+        spawn_kwargs = {"premise": self.mapper_premise}
+        if self.mapper_scope:
+            spawn_kwargs["scope"] = self.mapper_scope
+        if self.mapper_model:
+            spawn_kwargs["model"] = self.mapper_model
+
+        if self.db:
+            from scripts.agentica.tracked_agent import tracked_spawn
+            return await tracked_spawn(db=self.db, pattern="map_reduce", **spawn_kwargs)
+        else:
+            return await spawn(**spawn_kwargs)
+
+    async def _ensure_reducer(self):
+        """Lazy spawn reducer agent."""
+        if self.reducer_agent is None:
+            spawn_kwargs = {"premise": self.reducer_premise}
+            if self.reducer_scope:
+                spawn_kwargs["scope"] = self.reducer_scope
+            if self.reducer_model:
+                spawn_kwargs["model"] = self.reducer_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.reducer_agent = await tracked_spawn(
+                    db=self.db, pattern="map_reduce", **spawn_kwargs
+                )
+            else:
+                self.reducer_agent = await spawn(**spawn_kwargs)
+
+    def _distribute_chunks(self, chunks: list[Any]) -> list[list[Any]]:
+        """
+        Distribute chunks across mappers.
+
+        If there are more chunks than mappers, chunks are distributed round-robin.
+        If fewer chunks than mappers, some mappers get empty lists.
+
+        Returns:
+            List of chunk lists, one per mapper
+        """
+        distributed: list[list[Any]] = [[] for _ in range(self.num_mappers)]
+        for i, chunk in enumerate(chunks):
+            mapper_idx = i % self.num_mappers
+            distributed[mapper_idx].append(chunk)
+        return distributed
+
+    async def _map_phase(
+        self, query: str, chunks: list[Any]
+    ) -> list[Any]:
+        """
+        Execute map phase: spawn mappers and process chunks in parallel.
+
+        Args:
+            query: Base query/task for mappers
+            chunks: List of chunks to distribute
+
+        Returns:
+            List of mapper results
+        """
+        distributed = self._distribute_chunks(chunks)
+
+        async def process_chunk_set(mapper_chunks: list[Any]) -> Any:
+            if not mapper_chunks:
+                return None
+
+            mapper = await self._spawn_mapper()
+            chunk_description = "\n".join(str(c) for c in mapper_chunks)
+            prompt = f"""
+            {query}
+
+            Your assigned chunks:
+            {chunk_description}
+
+            Process these chunks and return your analysis.
+            """
+
+            try:
+                return await mapper.call(str, prompt)
+            except Exception:
+                if self.fail_fast:
+                    raise
+                return None
+
+        # Execute all mappers in parallel
+        results = await asyncio.gather(
+            *[process_chunk_set(chunk_set) for chunk_set in distributed],
+            return_exceptions=not self.fail_fast
+        )
+
+        # Filter None results and exceptions (failed mappers in non-fail-fast mode)
+        filtered = []
+        for r in results:
+            if r is not None and not isinstance(r, Exception):
+                filtered.append(r)
+
+        return filtered
+
+    async def _reduce_phase(
+        self, query: str, mapper_outputs: list[Any]
+    ) -> Any:
+        """
+        Execute reduce phase: combine mapper outputs.
+
+        Args:
+            query: Original query for context
+            mapper_outputs: Results from all mappers
+
+        Returns:
+            Synthesized result from reducer
+        """
+        await self._ensure_reducer()
+
+        outputs_text = "\n\n---\n\n".join(str(o) for o in mapper_outputs)
+        prompt = f"""
+        Original task: {query}
+
+        Results from {len(mapper_outputs)} mappers:
+
+        {outputs_text}
+
+        Synthesize these results into a comprehensive final answer.
+        """
+
+        return await self.reducer_agent.call(self.return_type, prompt)
+
+    async def execute(
+        self, query: str, chunks: list[Any]
+    ) -> Any:
+        """
+        Execute MapReduce pattern.
+
+        Args:
+            query: Task/question for the mappers
+            chunks: List of data chunks to distribute across mappers
+
+        Returns:
+            Final synthesized result from reducer
+        """
+        # Map phase
+        mapper_outputs = await self._map_phase(query=query, chunks=chunks)
+
+        # Reduce phase
+        result = await self._reduce_phase(query=query, mapper_outputs=mapper_outputs)
+
+        return result
+
+
+# ============================================================================
+# Blackboard Pattern
+# ============================================================================
+
+
+@dataclass
+class Specialist:
+    """
+    A specialist agent that contributes to the blackboard.
+
+    Attributes:
+        premise: The premise/role for this specialist agent
+        writes_to: List of blackboard keys this specialist writes to
+        reads_from: List of blackboard keys this specialist reads from
+    """
+    premise: str
+    writes_to: list[str] = field(default_factory=list)
+    reads_from: list[str] = field(default_factory=list)
+
+
+class BlackboardState:
+    """
+    Shared state for the Blackboard pattern.
+
+    Provides dict-like access to state values while tracking history
+    of all changes for debugging and auditing.
+
+    Example:
+        state = BlackboardState()
+        state["requirements"] = "User auth needed"
+        state["architecture"] = "Microservices"
+        print(state.history)  # Shows all changes
+    """
+
+    def __init__(self):
+        """Initialize empty blackboard state."""
+        self._data: dict[str, Any] = {}
+        self.history: list[dict[str, Any]] = []
+
+    def __getitem__(self, key: str) -> Any:
+        """Get a value from the blackboard."""
+        return self._data[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set a value on the blackboard and record in history."""
+        self._data[key] = value
+        self.history.append({
+            "action": "set",
+            "key": key,
+            "value": value
+        })
+
+    def __contains__(self, key: str) -> bool:
+        """Check if a key exists in the blackboard."""
+        return key in self._data
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a value with a default."""
+        return self._data.get(key, default)
+
+    def keys(self):
+        """Return all keys in the blackboard."""
+        return self._data.keys()
+
+    def items(self):
+        """Return all items in the blackboard."""
+        return self._data.items()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a copy of the blackboard data."""
+        return dict(self._data)
+
+
+@dataclass
+class BlackboardResult:
+    """Result from Blackboard.solve()."""
+    state: BlackboardState
+    iterations: int
+    completed: bool
+
+
+class Blackboard:
+    """
+    Blackboard pattern: Multiple specialists contribute to shared state.
+
+    A controller agent monitors the blackboard state and decides when
+    the solution is complete. Specialists read relevant keys from the
+    blackboard, process information, and write their contributions back.
+
+    Flow:
+    1. Initialize blackboard with query
+    2. Each iteration:
+       a. Run each specialist (they read/write to blackboard)
+       b. Ask controller if solution is complete
+    3. Return when controller approves or max_iterations reached
+
+    Example:
+        bb = Blackboard(
+            specialists=[
+                Specialist(premise="You analyze requirements.", writes_to=["requirements"]),
+                Specialist(premise="You design architecture.", writes_to=["architecture"], reads_from=["requirements"]),
+                Specialist(premise="You write implementation plan.", writes_to=["plan"], reads_from=["architecture"]),
+            ],
+            controller_premise="You check if the design is complete and coherent.",
+            max_iterations=5
+        )
+        result = await bb.solve("Build a user authentication system")
+    """
+
+    def __init__(
+        self,
+        specialists: list[Specialist],
+        controller_premise: str,
+        max_iterations: int = 5,
+        controller_model: str | None = None,
+        specialist_model: str | None = None,
+        controller_scope: dict[str, Any] | None = None,
+        specialist_scope: dict[str, Any] | None = None,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Blackboard pattern.
+
+        Args:
+            specialists: List of Specialist definitions
+            controller_premise: Premise for the controller agent
+            max_iterations: Maximum iterations before stopping
+            controller_model: Model for controller agent
+            specialist_model: Model for specialist agents
+            controller_scope: Tools for controller agent
+            specialist_scope: Tools for specialist agents
+            db: Optional coordination database for tracking agents
+
+        Raises:
+            ValueError: If specialists is empty
+        """
+        if not specialists:
+            raise ValueError("specialists cannot be empty")
+
+        self.specialists = specialists
+        self.controller_premise = controller_premise
+        self.max_iterations = max_iterations
+        self.controller_model = controller_model
+        self.specialist_model = specialist_model
+        self.controller_scope = controller_scope or {}
+        self.specialist_scope = specialist_scope or {}
+        self.db = db
+
+        # Agents spawned lazily
+        self.controller_agent = None
+        self.specialist_agents: dict[int, Any] = {}
+
+    async def _ensure_controller(self):
+        """Lazy spawn controller agent."""
+        if self.controller_agent is None:
+            spawn_kwargs = {"premise": self.controller_premise}
+            if self.controller_scope:
+                spawn_kwargs["scope"] = self.controller_scope
+            if self.controller_model:
+                spawn_kwargs["model"] = self.controller_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.controller_agent = await tracked_spawn(
+                    db=self.db, pattern="blackboard", **spawn_kwargs
+                )
+            else:
+                self.controller_agent = await spawn(**spawn_kwargs)
+
+    async def _ensure_specialist(self, index: int):
+        """Lazy spawn specialist agent by index."""
+        if index not in self.specialist_agents:
+            specialist = self.specialists[index]
+            spawn_kwargs = {"premise": specialist.premise}
+            if self.specialist_scope:
+                spawn_kwargs["scope"] = self.specialist_scope
+            if self.specialist_model:
+                spawn_kwargs["model"] = self.specialist_model
+
+            if self.db:
+                from scripts.agentica.tracked_agent import tracked_spawn
+                self.specialist_agents[index] = await tracked_spawn(
+                    db=self.db, pattern="blackboard", **spawn_kwargs
+                )
+            else:
+                self.specialist_agents[index] = await spawn(**spawn_kwargs)
+
+    async def _run_specialist(
+        self, index: int, query: str, state: BlackboardState
+    ) -> dict[str, Any]:
+        """
+        Run a single specialist and get their contribution.
+
+        Returns:
+            Dict of key-value pairs to write to blackboard
+        """
+        await self._ensure_specialist(index)
+        specialist = self.specialists[index]
+        agent = self.specialist_agents[index]
+
+        # Build context from keys the specialist reads
+        read_context = ""
+        if specialist.reads_from:
+            for key in specialist.reads_from:
+                if key in state:
+                    read_context += f"\n{key}: {state[key]}"
+
+        prompt = f"""
+        Task: {query}
+
+        You are responsible for: {specialist.writes_to}
+        {f"Based on: {read_context}" if read_context else ""}
+
+        Current blackboard state: {state.to_dict()}
+
+        Provide your contribution as a dict with keys: {specialist.writes_to}
+        """
+
+        result = await agent.call(dict, prompt)
+        return result if isinstance(result, dict) else {}
+
+    async def _check_completion(
+        self, query: str, state: BlackboardState
+    ) -> dict[str, Any]:
+        """
+        Ask controller if the solution is complete.
+
+        Returns:
+            Dict with 'complete' key (bool) and optional feedback
+        """
+        await self._ensure_controller()
+
+        prompt = f"""
+        Task: {query}
+
+        Current blackboard state: {state.to_dict()}
+
+        Is the solution complete and coherent?
+        Return a dict with:
+        - 'complete': True if done, False if more work needed
+        - 'feedback': Optional guidance for next iteration
+        """
+
+        result = await self.controller_agent.call(dict, prompt)
+        return result if isinstance(result, dict) else {"complete": False}
+
+    async def solve(self, query: str) -> BlackboardResult:
+        """
+        Solve a problem using the blackboard pattern.
+
+        Args:
+            query: The problem/task to solve
+
+        Returns:
+            BlackboardResult with final state, iterations, and completion status
+        """
+        state = BlackboardState()
+        state["query"] = query
+
+        for iteration in range(1, self.max_iterations + 1):
+            # Run each specialist
+            for i, specialist in enumerate(self.specialists):
+                contribution = await self._run_specialist(i, query, state)
+
+                # Write specialist's contributions to blackboard
+                for key in specialist.writes_to:
+                    if key in contribution:
+                        state[key] = contribution[key]
+
+            # Check if controller approves
+            completion = await self._check_completion(query, state)
+
+            if completion.get("complete", False):
+                return BlackboardResult(
+                    state=state,
+                    iterations=iteration,
+                    completed=True
+                )
+
+        # Max iterations reached
+        return BlackboardResult(
+            state=state,
+            iterations=self.max_iterations,
+            completed=False
+        )
+
+
+# ============================================================================
+# Event-Driven Pattern
+# ============================================================================
+
+
+@dataclass
+class Event:
+    """
+    An event to be published on the event bus.
+
+    Attributes:
+        type: Event type string (e.g., "user.created", "order.placed")
+        payload: Event data as a dictionary
+        timestamp: When the event was created (defaults to now)
+    """
+    type: str
+    payload: dict[str, Any]
+    timestamp: Any = field(default_factory=lambda: __import__('datetime').datetime.now())
+
+
+@dataclass
+class Subscriber:
+    """
+    A subscriber that reacts to specific event types.
+
+    Attributes:
+        premise: The agent premise for this subscriber
+        event_types: List of event types to subscribe to. Use "*" for wildcard (all events)
+    """
+    premise: str
+    event_types: list[str]
+
+
+class EventDriven:
+    """
+    Event-Driven pattern: Agents react to events published on a bus.
+
+    Events are published to a bus, and subscriber agents are notified based
+    on their subscribed event types. Good for loose coupling between agents.
+
+    Features:
+    - Subscribers specify which event types they handle
+    - Wildcard "*" subscribes to all events
+    - Concurrent dispatch to all matching subscribers
+    - CoordinationDB integration for tracking
+
+    Example:
+        bus = EventDriven(subscribers=[
+            Subscriber(premise="You handle user created events.", event_types=["user.created"]),
+            Subscriber(premise="You handle order placed events.", event_types=["order.placed"]),
+            Subscriber(premise="You log all events.", event_types=["*"]),  # wildcard
+        ])
+        await bus.publish(Event(type="user.created", payload={"user_id": "123"}))
+    """
+
+    def __init__(
+        self,
+        subscribers: list[Subscriber],
+        model: str | None = None,
+        scope: dict[str, Any] | None = None,
+        return_type: type = str,
+        db: Optional["CoordinationDB"] = None
+    ):
+        """
+        Initialize Event-Driven pattern.
+
+        Args:
+            subscribers: List of Subscriber definitions
+            model: Model to use for subscriber agents
+            scope: Tools available to subscriber agents
+            return_type: Expected return type from subscriber handlers
+            db: Optional coordination database for tracking agents
+        """
+        self.subscribers = subscribers
+        self.model = model
+        self.scope = scope or {}
+        self.return_type = return_type
+        self.db = db
+
+    def _matches_event(self, subscriber: Subscriber, event: Event) -> bool:
+        """Check if subscriber should receive this event."""
+        for event_type in subscriber.event_types:
+            if event_type == "*":
+                return True
+            if event_type == event.type:
+                return True
+        return False
+
+    async def _spawn_subscriber_agent(self, subscriber: Subscriber) -> Any:
+        """Spawn an agent for a subscriber."""
+        spawn_kwargs = {"premise": subscriber.premise}
+        if self.model:
+            spawn_kwargs["model"] = self.model
+        if self.scope:
+            spawn_kwargs["scope"] = self.scope
+
+        if self.db:
+            from scripts.agentica.tracked_agent import tracked_spawn
+            return await tracked_spawn(
+                db=self.db, pattern="event_driven", **spawn_kwargs
+            )
+        else:
+            return await spawn(**spawn_kwargs)
+
+    async def _dispatch_to_subscriber(
+        self, subscriber: Subscriber, event: Event
+    ) -> Any:
+        """Dispatch event to a single subscriber."""
+        agent = await self._spawn_subscriber_agent(subscriber)
+
+        prompt = f"""
+        Event received:
+        Type: {event.type}
+        Payload: {event.payload}
+        Timestamp: {event.timestamp}
+
+        Handle this event according to your role.
+        """
+
+        return await agent.call(self.return_type, prompt)
+
+    async def publish(self, event: Event) -> list[Any]:
+        """
+        Publish an event to all matching subscribers.
+
+        Args:
+            event: The event to publish
+
+        Returns:
+            List of results from all matching subscriber handlers
+        """
+        # Find all matching subscribers
+        matching = [s for s in self.subscribers if self._matches_event(s, event)]
+
+        if not matching:
+            return []
+
+        # Dispatch concurrently to all matching subscribers
+        results = await asyncio.gather(
+            *[self._dispatch_to_subscriber(sub, event) for sub in matching]
+        )
+
+        return list(results)

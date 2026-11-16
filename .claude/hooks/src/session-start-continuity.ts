@@ -88,43 +88,20 @@ export function findSessionHandoffWithUUID(sessionName: string, sessionId: strin
 }
 
 /**
- * Check if file is a handoff file (.md, .yaml, .yml)
- */
-function isHandoffFile(filename: string): boolean {
-  return filename.endsWith('.md') || filename.endsWith('.yaml') || filename.endsWith('.yml');
-}
-
-/**
- * Find most recent handoff file (.md, .yaml, .yml) in a directory by mtime.
+ * Find most recent .md file in a directory by mtime.
  */
 function findMostRecentMdFile(dirPath: string): string | null {
   if (!fs.existsSync(dirPath)) return null;
 
-  const handoffFiles = fs.readdirSync(dirPath)
-    .filter(f => isHandoffFile(f))
+  const mdFiles = fs.readdirSync(dirPath)
+    .filter(f => f.endsWith('.md'))
     .sort((a, b) => {
       const statA = fs.statSync(path.join(dirPath, a));
       const statB = fs.statSync(path.join(dirPath, b));
       return statB.mtime.getTime() - statA.mtime.getTime();
     });
 
-  return handoffFiles.length > 0 ? path.join(dirPath, handoffFiles[0]) : null;
-}
-
-/**
- * Extract goal and now from YAML handoff content.
- * Returns { goal, now } or null if neither found.
- */
-export function extractYamlFields(content: string): { goal: string; now: string } | null {
-  const goalMatch = content.match(/^goal:\s*(.+)$/m);
-  const nowMatch = content.match(/^now:\s*(.+)$/m);
-
-  if (!goalMatch && !nowMatch) return null;
-
-  return {
-    goal: goalMatch ? goalMatch[1].trim().replace(/^["']|["']$/g, '') : '',
-    now: nowMatch ? nowMatch[1].trim().replace(/^["']|["']$/g, '') : ''
-  };
+  return mdFiles.length > 0 ? path.join(dirPath, mdFiles[0]) : null;
 }
 
 /**
@@ -147,7 +124,7 @@ export function extractLedgerSection(handoffContent: string): string | null {
 /**
  * Find the most recent handoff file for a given session.
  * Looks in thoughts/shared/handoffs/{sessionName}/ directory.
- * Returns absolute path to the most recent handoff file (.md, .yaml, .yml) by mtime, or null if not found.
+ * Returns absolute path to the most recent .md file by mtime, or null if not found.
  */
 export function findSessionHandoff(sessionName: string): string | null {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -156,7 +133,7 @@ export function findSessionHandoff(sessionName: string): string | null {
   if (!fs.existsSync(handoffDir)) return null;
 
   const handoffFiles = fs.readdirSync(handoffDir)
-    .filter(f => isHandoffFile(f))
+    .filter(f => f.endsWith('.md'))
     .sort((a, b) => {
       const statA = fs.statSync(path.join(handoffDir, a));
       const statB = fs.statSync(path.join(handoffDir, b));
@@ -210,9 +187,9 @@ function pruneLedger(ledgerPath: string): void {
 function getLatestHandoff(handoffDir: string): HandoffSummary | null {
   if (!fs.existsSync(handoffDir)) return null;
 
-  // Match task-* and auto-handoff-* files with .md, .yaml, or .yml extensions
+  // Match both task-*.md and auto-handoff-*.md files
   const handoffFiles = fs.readdirSync(handoffDir)
-    .filter(f => (f.startsWith('task-') || f.startsWith('auto-handoff-')) && isHandoffFile(f))
+    .filter(f => (f.startsWith('task-') || f.startsWith('auto-handoff-')) && f.endsWith('.md'))
     .sort((a, b) => {
       // Sort by modification time (most recent first)
       const statA = fs.statSync(path.join(handoffDir, a));
@@ -345,44 +322,21 @@ async function main() {
         const handoffPath = findSessionHandoff(sessionName);
         if (handoffPath) {
           const content = fs.readFileSync(handoffPath, 'utf-8');
-          const isYaml = handoffPath.endsWith('.yaml') || handoffPath.endsWith('.yml');
-
-          // Try YAML format first for .yaml/.yml files, then markdown format
-          let goalSummary = 'No goal found';
-          let currentFocus = 'Unknown';
-          let ledgerContent = '';
-
-          if (isYaml) {
-            // YAML format: extract goal: and now: fields directly
-            const yamlFields = extractYamlFields(content);
-            if (yamlFields) {
-              goalSummary = yamlFields.goal || 'No goal found';
-              currentFocus = yamlFields.now || 'Unknown';
-              ledgerContent = content; // Use full YAML content as context
-            }
-          } else {
-            // Markdown format: look for ## Ledger section
-            const ledgerSection = extractLedgerSection(content);
-            if (ledgerSection) {
-              const goalMatch = ledgerSection.match(/\*\*Goal:\*\*\s*([^\n]+)/);
-              const nowMatch = ledgerSection.match(/### Now\n\[?-?>?\]?\s*([^\n]+)/);
-              goalSummary = goalMatch ? goalMatch[1].trim().substring(0, 100) : 'No goal found';
-              currentFocus = nowMatch ? nowMatch[1].trim() : 'Unknown';
-              ledgerContent = ledgerSection;
-            }
-          }
-
-          // Only process if we found content
-          if (ledgerContent || (isYaml && (goalSummary !== 'No goal found' || currentFocus !== 'Unknown'))) {
+          const ledgerSection = extractLedgerSection(content);
+          if (ledgerSection) {
             const mtime = fs.statSync(handoffPath).mtime.getTime();
             if (!mostRecentLedger || mtime > mostRecentLedger.mtime) {
+              // Extract goal and focus from the Ledger section
+              const goalMatch = ledgerSection.match(/\*\*Goal:\*\*\s*([^\n]+)/);
+              const nowMatch = ledgerSection.match(/### Now\n\[?-?>?\]?\s*([^\n]+)/);
+
               mostRecentLedger = {
-                content: ledgerContent || content,
+                content: ledgerSection,
                 sessionName,
                 handoffPath,
                 mtime,
-                goalSummary: goalSummary.substring(0, 100),
-                currentFocus
+                goalSummary: goalMatch ? goalMatch[1].trim().substring(0, 100) : 'No goal found',
+                currentFocus: nowMatch ? nowMatch[1].trim() : 'Unknown'
               };
             }
           }
@@ -415,7 +369,7 @@ async function main() {
                 const summaryPreview = h.task_summary ? h.task_summary.substring(0, 60) + '...' : '(no summary)';
                 additionalContext += `- **${h.session_name}/${taskLabel}** (ID: \`${h.id.substring(0, 8)}\`): ${summaryPreview}\n`;
               }
-              additionalContext += `\nTo mark an outcome:\n\`\`\`bash\ncd ~/.claude && uv run python scripts/core/artifact_mark.py --handoff <ID> --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED\n\`\`\`\n`;
+              additionalContext += `\nTo mark an outcome:\n\`\`\`bash\nuv run python scripts/artifact_mark.py --handoff <ID> --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED\n\`\`\`\n`;
             }
 
             // Add full handoff path for reference
@@ -508,7 +462,7 @@ async function main() {
               const summaryPreview = h.task_summary ? h.task_summary.substring(0, 60) + '...' : '(no summary)';
               additionalContext += `- **${h.session_name}/${taskLabel}** (ID: \`${h.id.substring(0, 8)}\`): ${summaryPreview}\n`;
             }
-            additionalContext += `\nTo mark an outcome:\n\`\`\`bash\ncd ~/.claude && uv run python scripts/core/artifact_mark.py --handoff <ID> --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED\n\`\`\`\n`;
+            additionalContext += `\nTo mark an outcome:\n\`\`\`bash\nuv run python scripts/artifact_mark.py --handoff <ID> --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED\n\`\`\`\n`;
           }
 
           // Add handoff context if available
@@ -528,7 +482,7 @@ async function main() {
 
             // List other handoffs in directory
             const allHandoffs = fs.readdirSync(handoffDir)
-              .filter(f => (f.startsWith('task-') || f.startsWith('auto-handoff-')) && isHandoffFile(f))
+              .filter(f => (f.startsWith('task-') || f.startsWith('auto-handoff-')) && f.endsWith('.md'))
               .sort((a, b) => {
                 // Sort by modification time (most recent first)
                 const statA = fs.statSync(path.join(handoffDir, a));

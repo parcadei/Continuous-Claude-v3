@@ -72,7 +72,7 @@ async function main() {
 
     // Find the script - check both project and global locations
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    const homeDir = process.env.HOME || '';
 
     let scriptPath = path.join(projectDir, 'scripts', 'typescript_check.py');
     if (!fs.existsSync(scriptPath)) {

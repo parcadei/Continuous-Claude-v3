@@ -2,7 +2,6 @@
 name: agentica-server
 description: Agentica server + Claude proxy setup - architecture, startup sequence, debugging
 allowed-tools: [Bash, Read]
-user-invocable: false
 ---
 
 # Agentica Server + Claude Proxy Setup

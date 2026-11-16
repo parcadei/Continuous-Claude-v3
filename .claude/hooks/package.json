@@ -5,7 +5,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "esbuild src/*.ts --bundle --platform=node --format=esm --outdir=dist --out-extension:.js=.mjs --external:better-sqlite3",
+        "build": "esbuild src/*.ts --bundle --platform=node --format=esm --outdir=dist --out-extension:.js=.mjs",
         "check": "tsc --noEmit",
         "dev": "npm run build && npm run check",
         "test": "vitest run --reporter=verbose",
@@ -16,8 +16,5 @@
         "esbuild": "^0.24.0",
         "typescript": "^5.3.3",
         "vitest": "^4.0.16"
-    },
-    "dependencies": {
-        "better-sqlite3": "^12.5.0"
     }
 }

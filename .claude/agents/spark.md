@@ -67,7 +67,7 @@ npx tsc --noEmit path/to/file.ts
 
 **Write summary to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/spark/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/spark/latest-output.md
 ```
 
 ## Output Format

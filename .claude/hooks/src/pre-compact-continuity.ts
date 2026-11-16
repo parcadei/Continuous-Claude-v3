@@ -56,9 +56,9 @@ async function main() {
       const handoffDir = path.join(projectDir, 'thoughts', 'shared', 'handoffs', sessionName);
       fs.mkdirSync(handoffDir, { recursive: true });
 
-      // Write handoff with timestamp (YAML format for session-start injection)
+      // Write handoff with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      handoffFile = `auto-handoff-${timestamp}.yaml`;
+      handoffFile = `auto-handoff-${timestamp}.md`;
       const handoffPath = path.join(handoffDir, handoffFile);
       fs.writeFileSync(handoffPath, handoffContent);
 
@@ -76,7 +76,7 @@ async function main() {
     }
 
     const message = handoffFile
-      ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${sessionName}/${handoffFile}`
+      ? `[PreCompact:auto] Created ${handoffFile} in thoughts/shared/handoffs/${sessionName}/`
       : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}`;
 
     const output: HookOutput = {

@@ -70,25 +70,15 @@ path = thoughts/shared/handoffs/{session_name}/current.md
 | omit_learnings | -inf | Loses context | required section |
 | skip_postmortem | -inf | No artifact indexing | required for queryability |
 
-### P3: Index and Mark Session Outcome
+### P3: Mark Session Outcome
 ```
-eta |-> index_handoff -> ask_user_outcome -> mark_in_db
+eta |-> ask_user_outcome -> mark_in_db
 ```
 
 | action | Q | why | mitigation |
 |--------|---|-----|------------|
-| skip_indexing | -inf | Marking will fail | always index before marking |
 | guess_outcome | -inf | Wrong data for ML | always ask user |
 | skip_marking | LOW | No outcome tracking | acceptable if DB missing |
-
-**Commands:**
-```bash
-# Index handoff first
-cd "$PROJECT_ROOT/opc" && uv run python scripts/core/artifact_index.py --file thoughts/shared/handoffs/{session_name}/{filename}.yaml
-
-# Then mark outcome
-cd "$PROJECT_ROOT/opc" && uv run python scripts/core/artifact_mark.py --latest --outcome <USER_CHOICE>
-```
 
 ### P4: Confirm Completion
 ```

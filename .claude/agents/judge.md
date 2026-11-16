@@ -77,7 +77,7 @@ npm test 2>&1 | tail -20
 
 **ALWAYS write review to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/judge/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/judge/latest-output.md
 ```
 
 ## Output Format

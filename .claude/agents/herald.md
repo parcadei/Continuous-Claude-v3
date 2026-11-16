@@ -86,7 +86,7 @@ npm version <version> --no-git-tag-version
 
 **ALWAYS write release notes to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/herald/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/herald/latest-output.md
 ```
 
 **Also update:**

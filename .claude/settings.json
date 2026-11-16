@@ -1,90 +1,15 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "uv run $HOME/.claude/scripts/status.py"
+    "command": "$HOME/.claude/scripts/status.sh"
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/pre-tool-use-broadcast.mjs"
-          }
-        ]
-      },
-      {
-        "matcher": "Read|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/path-rules.mjs",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/tldr-read-enforcer.mjs",
-            "timeout": 20
-          }
-        ]
-      },
-      {
-        "matcher": "Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/smart-search-router.mjs",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/tldr-context-inject.mjs",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/arch-context-inject.mjs",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/file-claims.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/edit-context-inject.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/signature-helper.mjs",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "PreCompact": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/pre-compact-continuity.mjs"
+            "command": "$HOME/.claude/hooks/pre-compact-continuity.sh"
           }
         ]
       }
@@ -94,21 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/hooks/persist-project-dir.sh"
-          },
-          {
-            "type": "command",
             "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/session_start.sh"
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-register.mjs",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py session-symbol-index",
-            "timeout": 5
           }
         ]
       },
@@ -117,17 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-start-continuity.mjs"
-          }
-        ]
-      },
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-start-tldr-cache.mjs",
-            "timeout": 2
+            "command": "$HOME/.claude/hooks/session-start-continuity.sh"
           }
         ]
       }
@@ -137,22 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/skill-activation-prompt.mjs"
-          },
-          {
-            "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py premortem-suggest",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/memory-awareness.mjs",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/impact-refactor.mjs",
-            "timeout": 10
+            "command": "$HOME/.claude/hooks/skill-activation-prompt.sh"
           },
           {
             "type": "command",
@@ -167,23 +53,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/typescript-preflight.mjs",
+            "command": "$HOME/.claude/hooks/typescript-preflight.sh",
             "timeout": 40
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/compiler-in-the-loop.mjs",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/post-edit-notify.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/post-edit-diagnostics.mjs",
-            "timeout": 10
           }
         ]
       },
@@ -192,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/handoff-index.mjs"
+            "command": "$HOME/.claude/hooks/handoff-index.sh"
           }
         ]
       },
@@ -201,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py post-tool-use-tracker",
+            "command": "$HOME/.claude/hooks/post-tool-use-tracker.sh",
             "timeout": 120
           }
         ]
@@ -214,26 +85,6 @@
             "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/post_tool_use.sh"
           }
         ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/import-validator.mjs",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/import-error-detector.mjs",
-            "timeout": 5
-          }
-        ]
       }
     ],
     "Stop": [
@@ -241,15 +92,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py auto-handoff-stop"
-          },
-          {
-            "type": "command",
             "command": "bash $HOME/.claude/plugins/braintrust-tracing/hooks/stop_hook.sh"
-          },
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/compiler-in-the-loop-stop.mjs"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-start.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-stop.sh"
           }
         ]
       }
@@ -259,11 +122,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-end-cleanup.mjs"
+            "command": "$HOME/.claude/hooks/session-end-cleanup.sh"
           },
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-outcome.mjs"
+            "command": "$HOME/.claude/hooks/session-outcome.sh"
           },
           {
             "type": "command",

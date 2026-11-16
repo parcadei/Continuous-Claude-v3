@@ -111,17 +111,15 @@ After agents complete:
 
 ```bash
 # Read agent outputs
-SCOUT_OUTPUT=$(ls -t .claude/cache/agents/scout/output-*.md 2>/dev/null | head -1)
-cat "$SCOUT_OUTPUT"
-ORACLE_OUTPUT=$(ls -t .claude/cache/agents/oracle/output-*.md 2>/dev/null | head -1)
-cat "$ORACLE_OUTPUT"
+cat .claude/cache/agents/scout/latest-output.md
+cat .claude/cache/agents/oracle/latest-output.md
 ```
 
 ## Step 5: Write Output
 
 **ALWAYS write orchestration summary to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/maestro/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/maestro/latest-output.md
 ```
 
 ## Output Format

@@ -1,22 +1,21 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: continuous-claude-postgres
+    container_name: agentica-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-claude}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-claude_dev}
-      POSTGRES_DB: ${POSTGRES_DB:-continuous_claude}
+      POSTGRES_USER: agentica
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agentica_dev}
+      POSTGRES_DB: agentica_memory
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5433:5432"
     volumes:
-      - continuous_claude_data:/var/lib/postgresql/data
-      - ./init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U claude -d continuous_claude"]
+      test: ["CMD-SHELL", "pg_isready -U agentica -d agentica_memory"]
       interval: 5s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
 volumes:
-  continuous_claude_data:
+  postgres_data:

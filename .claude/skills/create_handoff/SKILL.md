@@ -1,5 +1,4 @@
 ---
-name: create-handoff
 description: Create handoff document for transferring work to another session
 ---
 
@@ -12,81 +11,105 @@ You are tasked with writing a handoff document to hand off your work to another 
 ### 1. Filepath & Metadata
 Use the following information to understand how to create your document:
 
-**First, determine the session name from existing handoffs:**
+**First, determine the session name from the active ledger:**
 ```bash
-ls -td thoughts/shared/handoffs/*/ 2>/dev/null | head -1 | xargs basename
+ls thoughts/ledgers/CONTINUITY_CLAUDE-*.md 2>/dev/null | head -1 | sed 's/.*CONTINUITY_CLAUDE-\(.*\)\.md/\1/'
 ```
 
-This returns the most recently modified handoff folder name (e.g., `open-source-release`). Use this as the handoff folder name.
+This returns the active work stream name (e.g., `open-source-release`). Use this as the handoff folder name.
 
-If no handoffs exist, use `general` as the folder name.
+If no ledger exists, use `general` as the folder name.
 
-**Create your file under:** `thoughts/shared/handoffs/{session-name}/YYYY-MM-DD_HH-MM_description.yaml`, where:
-- `{session-name}` is from existing handoffs (e.g., `open-source-release`) or `general` if none exist
+**Create your file under:** `thoughts/shared/handoffs/{session-name}/YYYY-MM-DD_HH-MM-SS_description.md`, where:
+- `{session-name}` is from the ledger (e.g., `open-source-release`) or `general` if no ledger
 - `YYYY-MM-DD` is today's date
-- `HH-MM` is the current time in 24-hour format (no seconds needed)
+- `HH-MM-SS` is the current time in 24-hour format
 - `description` is a brief kebab-case description
 
-**Examples:**
-- `thoughts/shared/handoffs/open-source-release/2026-01-08_16-30_memory-system-fix.yaml`
-- `thoughts/shared/handoffs/general/2026-01-08_16-30_bug-investigation.yaml`
+Run the `~/.claude/scripts/spec_metadata.sh` script to generate all relevant metadata
 
-### 2. Write YAML handoff (~400 tokens vs ~2000 for markdown)
+### 1b. Braintrust Trace IDs (for Artifact Index)
+Read the Braintrust session state file to get trace IDs for linking this handoff to the session:
 
-**CRITICAL: Use EXACTLY this YAML format. Do NOT deviate or use alternative field names.**
-
-The `goal:` and `now:` fields are shown in the statusline - they MUST be named exactly this.
-
-```yaml
----
-session: {session-name from ledger}
-date: YYYY-MM-DD
-status: complete|partial|blocked
-outcome: SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
----
-
-goal: {What this session accomplished - shown in statusline}
-now: {What next session should do first - shown in statusline}
-test: {Command to verify this work, e.g., pytest tests/test_foo.py}
-
-done_this_session:
-  - task: {First completed task}
-    files: [{file1.py}, {file2.py}]
-  - task: {Second completed task}
-    files: [{file3.py}]
-
-blockers: [{any blocking issues}]
-
-questions: [{unresolved questions for next session}]
-
-decisions:
-  - {decision_name}: {rationale}
-
-findings:
-  - {key_finding}: {details}
-
-worked: [{approaches that worked}]
-failed: [{approaches that failed and why}]
-
-next:
-  - {First next step}
-  - {Second next step}
-
-files:
-  created: [{new files}]
-  modified: [{changed files}]
+```bash
+cat ~/.claude/state/braintrust_sessions/*.json | jq -s 'sort_by(.started) | last'
 ```
 
-**Field guide:**
-- `goal:` + `now:` - REQUIRED, shown in statusline
-- `done_this_session:` - What was accomplished with file references
-- `decisions:` - Important choices and rationale
-- `findings:` - Key learnings
-- `worked:` / `failed:` - What to repeat vs avoid
-- `next:` - Action items for next session
+This returns JSON with:
+- `root_span_id`: The Braintrust trace ID (use this)
+- `current_turn_span_id`: The current turn span ID (use this as turn_span_id)
 
-**DO NOT use alternative field names like `session_goal`, `objective`, `focus`, `current`, etc.**
-**The statusline parser looks for EXACTLY `goal:` and `now:` - nothing else works.**
+The `session_id` is the filename stem (same as root_span_id in most cases).
+
+If no state file exists (Braintrust not configured), leave these fields blank.
+
+**Examples:**
+- With ledger `open-source-release`: `thoughts/shared/handoffs/open-source-release/2025-01-08_13-55-22_create-context-compaction.md`
+- No ledger (general): `thoughts/shared/handoffs/general/2025-01-08_13-55-22_create-context-compaction.md`
+
+### 2. Handoff writing.
+using the above conventions, write your document. use the defined filepath, and the following YAML frontmatter pattern. Use the metadata gathered in step 1, Structure the document with YAML frontmatter followed by content:
+
+Use the following template structure:
+```markdown
+---
+date: [Current date and time with timezone in ISO format]
+session_name: [From ledger, e.g., "open-source-release" - see step 1]
+researcher: [Researcher name from thoughts status]
+git_commit: [Current commit hash]
+branch: [Current branch name]
+repository: [Repository name]
+topic: "[Feature/Task Name] Implementation Strategy"
+tags: [implementation, strategy, relevant-component-names]
+status: complete
+last_updated: [Current date in YYYY-MM-DD format]
+last_updated_by: [Researcher name]
+type: implementation_strategy
+root_span_id: [Braintrust trace ID - see step 1b]
+turn_span_id: [Current turn span ID - see step 1b]
+---
+
+# Handoff: {very concise description}
+
+## Task(s)
+{description of the task(s) that you were working on, along with the status of each (completed, work in progress, planned/discussed). If you are working on an implementation plan, make sure to call out which phase you are on. Make sure to reference the plan document and/or research document(s) you are working from that were provided to you at the beginning of the session, if applicable.}
+
+## Critical References
+{List any critical specification documents, architectural decisions, or design docs that must be followed. Include only 2-3 most important file paths. Leave blank if none.}
+
+## Recent changes
+{describe recent changes made to the codebase that you made in line:file syntax}
+
+## Learnings
+{describe important things that you learned - e.g. patterns, root causes of bugs, or other important pieces of information someone that is picking up your work after you should know. consider listing explicit file paths.}
+
+## Post-Mortem (Required for Artifact Index)
+
+### What Worked
+{Describe successful approaches, patterns that helped, tools that worked well. Be specific - these get indexed for future sessions.}
+- Approach 1: [what and why it worked]
+- Pattern: [pattern name] was effective because [reason]
+
+### What Failed
+{Describe attempted approaches that didn't work, errors encountered, dead ends. This helps future sessions avoid the same mistakes.}
+- Tried: [approach] → Failed because: [reason]
+- Error: [error type] when [action] → Fixed by: [solution]
+
+### Key Decisions
+{Document important choices made during this task and WHY they were made. Future sessions will reference these.}
+- Decision: [choice made]
+  - Alternatives considered: [other options]
+  - Reason: [why this choice]
+
+## Artifacts
+{ an exhaustive list of artifacts you produced or updated as filepaths and/or file:line references - e.g. paths to feature documents, implementation plans, etc that should be read in order to resume your work.}
+
+## Action Items & Next Steps
+{ a list of action items and next steps for the next agent to accomplish based on your tasks and their statuses}
+
+## Other Notes
+{ other notes, references, or useful information - e.g. where relevant sections of the codebase are, where relevant documents are, or other important things you leanrned that you want to pass on but that don't fall into the above categories}
+```
 ---
 
 ### 3. Mark Session Outcome (REQUIRED)
@@ -104,24 +127,16 @@ Options:
   - FAILED: Task abandoned or blocked
 ```
 
-After the user responds, index and mark the outcome:
+After the user responds, mark the outcome:
 ```bash
-# Mark the most recent handoff (works with PostgreSQL or SQLite)
-# Use git root to find project, then opc/scripts/core/
-PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}")
+# Get the handoff ID (use the one just created)
+HANDOFF_ID=$(sqlite3 .claude/cache/artifact-index/context.db "SELECT id FROM handoffs ORDER BY indexed_at DESC LIMIT 1")
 
-# First, index the handoff into the database
-cd "$PROJECT_ROOT/opc" && uv run python scripts/core/artifact_index.py --file thoughts/shared/handoffs/{session_name}/{filename}.yaml
-
-# Then mark the outcome
-cd "$PROJECT_ROOT/opc" && uv run python scripts/core/artifact_mark.py --latest --outcome <USER_CHOICE>
+# Mark the outcome
+uv run python scripts/artifact_mark.py --handoff $HANDOFF_ID --outcome <USER_CHOICE>
 ```
 
-**IMPORTANT:** Replace `{session_name}` and `{filename}` with the actual values from step 1.
-
-These commands auto-detect the database (PostgreSQL if configured, SQLite fallback).
-
-**Note:** If indexing fails, the marking step will show "Database marking was not available" - this is acceptable for the first handoff but indicates the indexing step was skipped.
+If the database doesn't exist yet (first handoff), skip the marking step but still ask the question.
 
 ### 4. Confirm completion
 
@@ -131,7 +146,7 @@ After marking the outcome, respond to the user:
 Handoff created! Outcome marked as [OUTCOME].
 
 Resume in a new session with:
-/resume_handoff path/to/handoff.yaml
+/resume_handoff path/to/handoff.md
 ```
 
 ---

@@ -23,15 +23,12 @@ Complete reference for developing Claude Code hooks. Use this to write hooks wit
 | **PostToolUse** | After tool completes | Partial | React to tool results |
 | **UserPromptSubmit** | User sends prompt | YES | Validate/inject context |
 | **PermissionRequest** | Permission dialog shows | YES | Auto-approve/deny |
-| **SessionStart** | Session begins | NO | Load context, set env vars |
+| **SessionStart** | Session begins | NO | Load context |
 | **SessionEnd** | Session ends | NO | Cleanup/save state |
 | **Stop** | Agent finishes | YES | Force continuation |
-| **SubagentStart** | Subagent spawns | NO | Pattern coordination |
 | **SubagentStop** | Subagent finishes | YES | Force continuation |
 | **PreCompact** | Before compaction | NO | Save state |
 | **Notification** | Notification sent | NO | Custom alerts |
-
-**Hook type options:** `type: "command"` (bash) or `type: "prompt"` (LLM evaluation)
 
 ---
 
@@ -283,26 +280,6 @@ Plain text stdout is added as context.
 
 ---
 
-### SubagentStart
-
-**Purpose:** Run when a subagent (Task tool) is spawned.
-
-**Input:**
-```json
-{
-  "session_id": "string",
-  "transcript_path": "string",
-  "cwd": "string",
-  "permission_mode": "string",
-  "hook_event_name": "SubagentStart",
-  "agent_id": "string"
-}
-```
-
-**Output:** Context injection only (cannot block).
-
----
-
 ### SubagentStop
 
 **Purpose:** Control when subagents (Task tool) stop.
@@ -442,55 +419,6 @@ Plain text stdout is added as context.
 
 ---
 
-## Hook Types
-
-### Command Hooks (type: "command")
-
-Default type. Executes bash commands or scripts.
-
-```json
-{
-  "type": "command",
-  "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/my-hook.sh",
-  "timeout": 60
-}
-```
-
-### Prompt-Based Hooks (type: "prompt")
-
-Uses LLM (Haiku) for context-aware decisions. Best for Stop/SubagentStop.
-
-```json
-{
-  "type": "prompt",
-  "prompt": "Evaluate if Claude should stop. Context: $ARGUMENTS. Check if all tasks are complete.",
-  "timeout": 30
-}
-```
-
-**Response schema:**
-```json
-{
-  "decision": "approve" | "block",
-  "reason": "Explanation",
-  "continue": false,
-  "stopReason": "Message to user",
-  "systemMessage": "Warning"
-}
-```
-
-## MCP Tool Naming
-
-MCP tools use pattern `mcp__<server>__<tool>`:
-
-| Pattern | Matches |
-|---------|---------|
-| `mcp__memory__.*` | All memory server tools |
-| `mcp__.*__write.*` | All MCP write tools |
-| `mcp__github__.*` | All GitHub tools |
-
----
-
 ## Environment Variables
 
 ### Available to All Hooks
@@ -498,19 +426,13 @@ MCP tools use pattern `mcp__<server>__<tool>`:
 | Variable | Description |
 |----------|-------------|
 | `CLAUDE_PROJECT_DIR` | Absolute path to project root |
-| `CLAUDE_CODE_REMOTE` | "true" if remote/web, empty if local CLI |
+| `CLAUDE_CODE_REMOTE` | "true" if remote, empty if local |
 
 ### SessionStart Only
 
 | Variable | Description |
 |----------|-------------|
 | `CLAUDE_ENV_FILE` | Path to write `export VAR=value` lines |
-
-### Plugin Hooks Only
-
-| Variable | Description |
-|----------|-------------|
-| `CLAUDE_PLUGIN_ROOT` | Absolute path to plugin directory |
 
 ---
 

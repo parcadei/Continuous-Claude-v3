@@ -1,9 +1,3 @@
----
-name: context-query-agent
-description: Query the artifact index for precedent and guidance
-model: sonnet
----
-
 # Context Query Agent
 
 You are a specialized agent for querying the Artifact Index to find relevant precedent.

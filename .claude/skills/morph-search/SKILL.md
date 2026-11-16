@@ -18,19 +18,19 @@ Fast, AI-powered codebase search using WarpGrep. 20x faster than traditional gre
 
 ### Search for code patterns
 ```bash
-uv run python -m runtime.harness scripts/mcp/morph_search.py \
+uv run python -m runtime.harness scripts/morph_search.py \
     --search "authentication" --path "."
 ```
 
 ### Search with regex
 ```bash
-uv run python -m runtime.harness scripts/mcp/morph_search.py \
+uv run python -m runtime.harness scripts/morph_search.py \
     --search "def.*login" --path "./src"
 ```
 
 ### Edit a file
 ```bash
-uv run python -m runtime.harness scripts/mcp/morph_search.py \
+uv run python -m runtime.harness scripts/morph_search.py \
     --edit "/path/to/file.py" --content "new content"
 ```
 
@@ -47,11 +47,11 @@ uv run python -m runtime.harness scripts/mcp/morph_search.py \
 
 ```bash
 # Find all async functions
-uv run python -m runtime.harness scripts/mcp/morph_search.py \
+uv run python -m runtime.harness scripts/morph_search.py \
     --search "async def" --path "./src"
 
 # Search for imports
-uv run python -m runtime.harness scripts/mcp/morph_search.py \
+uv run python -m runtime.harness scripts/morph_search.py \
     --search "from fastapi import" --path "."
 ```
 

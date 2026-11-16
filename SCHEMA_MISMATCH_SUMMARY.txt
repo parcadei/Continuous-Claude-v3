@@ -1,0 +1,141 @@
+===============================================================================
+SCHEMA MISMATCH SUMMARY: Stop Hook vs coordination.db
+===============================================================================
+
+PROBLEM: The Stop hook will crash when it tries to query completed_tasks.swarm_id
+         The completed_tasks table in the actual schema has NO swarm_id column
+
+===============================================================================
+ACTUAL SCHEMA (from coordination.py)
+===============================================================================
+
+completed_tasks table (REAL):
+┌─────────────────────────────────────────────────────────────────────┐
+│ Column                  │ Type    │ Notes                           │
+├─────────────────────────────────────────────────────────────────────┤
+│ id                      │ TEXT    │ PRIMARY KEY                     │
+│ agent_id                │ TEXT    │ FOREIGN KEY(agents.id)          │
+│ pattern                 │ TEXT    │ Pattern name (optional)         │
+│ input_summary           │ TEXT    │ Truncated input                 │
+│ output_summary          │ TEXT    │ Truncated output                │
+│ output_type             │ TEXT    │ Python type name                │
+│ artifacts               │ TEXT    │ JSON-serialized dict            │
+│ duration_ms             │ INTEGER │ Task duration                   │
+│ completed_at            │ TEXT    │ ISO timestamp                   │
+├─────────────────────────────────────────────────────────────────────┤
+│ MISSING: swarm_id       │         │ ← STOP HOOK EXPECTS THIS        │
+└─────────────────────────────────────────────────────────────────────┘
+
+broadcasts table (REAL):
+┌─────────────────────────────────────────────────────────────────────┐
+│ Column           │ Type    │ Notes                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│ id               │ TEXT    │ PRIMARY KEY                             │
+│ swarm_id         │ TEXT    │ ✓ PRESENT                              │
+│ sender_agent     │ TEXT    │ Agent ID sending broadcast              │
+│ broadcast_type   │ TEXT    │ finding, question, blocker, done, abort │
+│ payload          │ TEXT    │ JSON-serialized                         │
+│ created_at       │ TEXT    │ ISO timestamp                           │
+└─────────────────────────────────────────────────────────────────────┘
+
+agents table (REAL):
+┌─────────────────────────────────────────────────────────────────────┐
+│ Column               │ Type    │ Notes                               │
+├─────────────────────────────────────────────────────────────────────┤
+│ id                   │ TEXT    │ PRIMARY KEY                         │
+│ session_id           │ TEXT    │ NOT NULL                            │
+│ premise              │ TEXT    │ Agent premise                       │
+│ model                │ TEXT    │ Model name                          │
+│ scope_keys           │ TEXT    │ JSON array                          │
+│ pattern              │ TEXT    │ swarm, hierarchical, jury, etc      │
+│ parent_agent_id      │ TEXT    │ For hierarchical patterns           │
+│ spawned_at           │ TEXT    │ ISO timestamp                       │
+│ completed_at         │ TEXT    │ ISO timestamp (nullable)            │
+│ status               │ TEXT    │ running, completed, failed          │
+│ error_message        │ TEXT    │ Error text (nullable)               │
+├─────────────────────────────────────────────────────────────────────┤
+│ MISSING: swarm_id    │         │ ← NO LINK TO SWARM EITHER          │
+└─────────────────────────────────────────────────────────────────────┘
+
+===============================================================================
+WHAT THE STOP HOOK TRIES TO DO
+===============================================================================
+
+File: .claude/hooks/src/stop-swarm-coordinator.ts (lines 77-81)
+
+  cursor = conn.execute('''
+      SELECT COUNT(DISTINCT agent_id) as total_count
+      FROM completed_tasks
+      WHERE swarm_id = ?
+  ''', (swarm_id,))
+
+Error: SQLite3Error: no such column: swarm_id
+
+===============================================================================
+WHY TESTS PASS (FALSE CONFIDENCE)
+===============================================================================
+
+File: tests/unit/test_stop_swarm_coordinator.py (lines 109-115)
+
+Test creates ITS OWN schema with swarm_id:
+
+  CREATE TABLE IF NOT EXISTS completed_tasks (
+      id TEXT PRIMARY KEY,
+      swarm_id TEXT NOT NULL,      ← TEST ONLY, NOT IN PRODUCTION
+      agent_id TEXT NOT NULL,
+      task_prompt TEXT NOT NULL,   ← DIFFERENT FIELD NAME
+      completed_at TEXT NOT NULL
+  );
+
+Result: Tests pass but production code crashes
+
+===============================================================================
+WHERE swarm_id SHOULD COME FROM
+===============================================================================
+
+Phase 12.7 (PostToolUse Hook for Task Completion)
+- Status: PENDING (not implemented)
+- Purpose: Track when Task tool completes, record swarm_id
+
+When this phase completes:
+1. completed_tasks.swarm_id will be populated
+2. Stop hook query will work
+3. Swarm coordination becomes observable
+
+Current state: Phase 12.7 exists in plan but code doesn't exist
+
+===============================================================================
+THE FIX (OPTION A - RECOMMENDED)
+===============================================================================
+
+1. Update schema in coordination.py:
+   - Add: swarm_id TEXT (nullable) to completed_tasks
+   - Add: INDEX on (swarm_id) for fast queries
+
+2. Update CoordinationDB.record_task():
+   - Accept swarm_id parameter
+   - Insert swarm_id value
+
+3. Implement Phase 12.7:
+   - PostToolUse hook detects Task completions
+   - Reads SWARM_ID env variable
+   - Calls record_task(swarm_id=swarm_id)
+
+Result: Stop hook queries will work
+
+===============================================================================
+ALTERNATIVES CONSIDERED
+===============================================================================
+
+Option B (Query agents table instead):
+- Problem: agents table also lacks swarm_id
+- Doesn't solve the problem
+
+Option C (Store swarm info in files):
+- Defeats purpose of coordination.db
+- Race conditions
+- Not idempotent
+
+Verdict: Option A is the only correct approach
+
+===============================================================================

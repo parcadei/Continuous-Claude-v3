@@ -3,7 +3,7 @@
  *
  * Implements pipeline coordination logic for sequential stage execution:
  * - onSubagentStart: Inject stage context
- * - onSubagentStop: Track stage completion + AUTO-SPAWN next stage
+ * - onSubagentStop: Track stage completion
  * - onPreToolUse: Inject upstream artifacts
  * - onStop: Provide pipeline completion summary
  *
@@ -11,25 +11,10 @@
  * - PIPELINE_ID: Pipeline identifier (required for pipeline operations)
  * - PIPELINE_STAGE_INDEX: Index of this stage (0-indexed)
  * - PIPELINE_TOTAL_STAGES: Total number of stages in pipeline
- * - PIPELINE_CONFIG_PATH: Path to pipeline config JSON (for auto-spawn)
  * - CLAUDE_PROJECT_DIR: Project directory for DB path
- *
- * Pipeline Config Format (JSON):
- * {
- *   "id": "pipeline-id",
- *   "task": "Task description",
- *   "stages": [
- *     {"agent": "research-agent", "prompt": "Research..."},
- *     {"agent": "plan-agent", "prompt": "Plan..."},
- *     ...
- *   ],
- *   "output_dir": "/path/to/outputs"
- * }
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { spawn } from 'child_process';
-import { join, dirname } from 'path';
+import { existsSync } from 'fs';
 
 // Import shared utilities
 import { getDbPath, runPythonQuery, isValidId } from '../shared/db-utils.js';
@@ -51,117 +36,6 @@ export type {
   StopInput,
   HookOutput
 };
-
-// =============================================================================
-// Pipeline Config Interface
-// =============================================================================
-
-interface PipelineStage {
-  agent: string;
-  prompt: string;
-  output_file?: string;
-}
-
-interface PipelineConfig {
-  id: string;
-  task: string;
-  stages: PipelineStage[];
-  output_dir: string;
-  current_stage?: number;
-}
-
-/**
- * Load pipeline config from JSON file.
- */
-function loadPipelineConfig(): PipelineConfig | null {
-  const configPath = process.env.PIPELINE_CONFIG_PATH;
-  if (!configPath || !existsSync(configPath)) {
-    return null;
-  }
-  try {
-    return JSON.parse(readFileSync(configPath, 'utf-8'));
-  } catch (err) {
-    console.error('[pipeline] Failed to load config:', err);
-    return null;
-  }
-}
-
-/**
- * Update pipeline config (e.g., current stage).
- */
-function savePipelineConfig(config: PipelineConfig): void {
-  const configPath = process.env.PIPELINE_CONFIG_PATH;
-  if (!configPath) return;
-  try {
-    const dir = dirname(configPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-    writeFileSync(configPath, JSON.stringify(config, null, 2));
-  } catch (err) {
-    console.error('[pipeline] Failed to save config:', err);
-  }
-}
-
-/**
- * Spawn the next stage agent.
- * Runs detached so the current process can exit.
- */
-function spawnNextStage(config: PipelineConfig, nextIndex: number): void {
-  const stage = config.stages[nextIndex];
-  if (!stage) {
-    console.error('[pipeline] No stage found at index', nextIndex);
-    return;
-  }
-
-  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const configPath = process.env.PIPELINE_CONFIG_PATH;
-
-  // Build environment for next stage
-  const env = {
-    ...process.env,
-    PATTERN_TYPE: 'pipeline',
-    PIPELINE_ID: config.id,
-    PIPELINE_STAGE_INDEX: nextIndex.toString(),
-    PIPELINE_TOTAL_STAGES: config.stages.length.toString(),
-    PIPELINE_CONFIG_PATH: configPath,
-  };
-
-  // Inject upstream context into prompt
-  let prompt = stage.prompt;
-
-  // Read previous stage output if available
-  if (nextIndex > 0) {
-    const prevStage = config.stages[nextIndex - 1];
-    const prevOutputPath = prevStage.output_file ||
-      join(config.output_dir, `stage-${nextIndex - 1}-output.md`);
-
-    if (existsSync(prevOutputPath)) {
-      const prevOutput = readFileSync(prevOutputPath, 'utf-8');
-      prompt = `## Previous Stage Output\n${prevOutput.slice(0, 8000)}\n\n---\n\n${prompt}`;
-    }
-  }
-
-  // Update config with current stage
-  config.current_stage = nextIndex;
-  savePipelineConfig(config);
-
-  console.error(`[pipeline] Spawning stage ${nextIndex + 1}/${config.stages.length}: ${stage.agent}`);
-
-  // Spawn claude with the agent
-  const child = spawn('claude', [
-    '-p', prompt,
-    '--agent', stage.agent,
-  ], {
-    env,
-    cwd: projectDir,
-    detached: true,
-    stdio: 'ignore',
-  });
-
-  // Unref so parent can exit
-  child.unref();
-}
 
 // =============================================================================
 // onSubagentStart Handler
@@ -319,29 +193,15 @@ print(json.dumps({'completed': completed_count}))
     console.error(`[pipeline] Stage ${stageIndex} done. Progress: ${counts.completed}/${totalStages}`);
 
     // Check if this is the final stage
-    if (stageIndex === totalStages - 1) {
+    if (stageIndex === totalStages - 1 && counts.completed >= totalStages) {
       return {
         result: 'continue',
         message: 'Pipeline complete! All stages have finished execution. Review the final output.'
       };
-    }
-
-    // AUTO-SPAWN: Load config and spawn next stage
-    const nextIndex = stageIndex + 1;
-    const config = loadPipelineConfig();
-
-    if (config && nextIndex < config.stages.length) {
-      // Spawn next stage in detached process
-      spawnNextStage(config, nextIndex);
+    } else if (counts.completed < totalStages) {
       return {
         result: 'continue',
-        message: `Stage ${stageIndex + 1} complete. Auto-spawning stage ${nextIndex + 1}/${totalStages}: ${config.stages[nextIndex].agent}`
-      };
-    } else if (!config) {
-      // No config - manual mode, just report progress
-      return {
-        result: 'continue',
-        message: `Stage ${stageIndex + 1} complete. Pipeline progress: ${counts.completed}/${totalStages}. No config found for auto-spawn - proceed manually.`
+        message: `Stage ${stageIndex + 1} complete. Pipeline progress: ${counts.completed}/${totalStages} stages done.`
       };
     }
 

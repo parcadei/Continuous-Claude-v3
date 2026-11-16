@@ -88,7 +88,7 @@ $CLAUDE_PROJECT_DIR/thoughts/shared/plans/refactor-[target]-plan.md
 
 **Also write summary to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/phoenix/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/phoenix/latest-output.md
 ```
 
 ## Output Format

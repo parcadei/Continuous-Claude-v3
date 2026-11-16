@@ -1,7 +1,6 @@
 ---
 name: braintrust-analyst
 description: Analyze Claude Code sessions using Braintrust logs
-model: opus
 ---
 
 # Braintrust Analyst Agent
@@ -41,7 +40,7 @@ Other analyses (run as needed):
 
 **ALWAYS write your findings to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/braintrust-analyst/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/braintrust-analyst/latest-output.md
 ```
 
 Use Read-then-Write pattern:

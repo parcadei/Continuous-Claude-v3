@@ -1,7 +1,6 @@
 ---
 name: braintrust-tracing
 description: Braintrust tracing for Claude Code - hook architecture, sub-agent correlation, debugging
-user-invocable: false
 ---
 
 # Braintrust Tracing for Claude Code
@@ -98,7 +97,7 @@ But SessionStart only receives session metadata, not the modified prompt. The in
 - `totalTokens`, `totalToolUseCount` - metrics
 - `content` - full agent response/summary
 - `tool_input.prompt` - original task prompt
-- `tool_input.subagent_type` - agent type (e.g., "oracle")
+- `tool_input.subagent_type` - agent type (e.g., "research-agent")
 
 **SubagentStop hook receives the sub-agent's `session_id`:**
 - This equals the sub-agent's orphaned trace `root_span_id`
@@ -187,11 +186,11 @@ export BRAINTRUST_CC_DEBUG=true
 
 # Test hooks manually
 echo '{"session_id":"test-123","type":"resume"}' | \
-  bash "$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/session_start.sh"
+  bash .claude/plugins/braintrust-tracing/hooks/session_start.sh
 
 # Test PreToolUse (Task injection)
 echo '{"session_id":"test-123","tool_name":"Task","tool_input":{"prompt":"test"}}' | \
-  bash "$CLAUDE_PROJECT_DIR/.claude/plugins/braintrust-tracing/hooks/pre_tool_use.sh"
+  bash .claude/plugins/braintrust-tracing/hooks/pre_tool_use.sh
 ```
 
 ### Troubleshooting Checklist
@@ -309,7 +308,7 @@ Parent session Task spans contain:
 - `totalTokens`, `totalToolUseCount` - aggregated metrics
 - `content` - full agent response/summary
 - `tool_input.prompt` - original task prompt
-- `tool_input.subagent_type` - agent type (e.g., "oracle")
+- `tool_input.subagent_type` - agent type (e.g., "research-agent")
 - Start/end timestamps
 
 Sub-agent sessions contain:

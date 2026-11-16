@@ -7,7 +7,6 @@
 
 import { readFileSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
 
 interface StopHookInput {
   session_id: string;
@@ -27,7 +26,7 @@ interface CompilerState {
 
 const STATE_DIR = process.env.CLAUDE_PROJECT_DIR
   ? join(process.env.CLAUDE_PROJECT_DIR, '.claude', 'cache', 'lean')
-  : join(tmpdir(), 'claude-lean');
+  : '/tmp/claude-lean';
 
 const STATE_FILE = join(STATE_DIR, 'compiler-state.json');
 

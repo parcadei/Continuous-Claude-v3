@@ -332,19 +332,6 @@ The build-check hook automatically cleans up session cache on successful builds.
 3. **Check path:** Ensure `$CLAUDE_PROJECT_DIR` is set correctly
 4. **Check TypeScript:** Run `cd .claude/hooks && npx tsc` to check for errors
 
-### Path Resolution Issues (FIXED)
-
-**Issue:** Hooks using relative paths may have had path doubling problems
-
-**Status:** Fixed in `hook_launcher.py` (2026-01-10)
-
-**What was changed:** The `hook_launcher.py` script now executes all hooks from the project root directory instead of the hooks directory. This ensures relative paths in hook commands resolve correctly.
-
-**If you still see path issues:**
-- Verify `$CLAUDE_PROJECT_DIR` environment variable is set correctly
-- Check that hooks use absolute paths or paths relative to project root
-- Test hook manually: `echo '{}' | python3 .claude/hooks/hook_launcher.py <hook-name>`
-
 ### False Positive Detections
 
 **Issue:** Hook triggers for files it shouldn't
@@ -457,5 +444,5 @@ fi
 ## See Also
 
 - [README.md](./README.md) - Hooks overview
-- [../../docs/hooks/README.md](../../docs/hooks/README.md) - Complete hooks reference
-- [../../docs/skills/README.md](../../docs/skills/README.md) - Skills integration
+- [../../docs/HOOKS_SYSTEM.md](../../docs/HOOKS_SYSTEM.md) - Complete hooks reference
+- [../../docs/SKILLS_SYSTEM.md](../../docs/SKILLS_SYSTEM.md) - Skills integration

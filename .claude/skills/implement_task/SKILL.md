@@ -1,7 +1,5 @@
 ---
-name: implement_task
 description: Implementation agent that executes a single task and creates handoff on completion
-user-invocable: false
 ---
 
 # Implementation Task Agent
@@ -86,7 +84,7 @@ For implementing code changes, choose based on file size and context:
 **Using morph-apply (recommended for large files):**
 ```bash
 # Fast edit without reading file first
-uv run python -m runtime.harness scripts/mcp/morph_apply.py \
+uv run python -m runtime.harness scripts/morph_apply.py \
     --file "src/auth.ts" \
     --instruction "I will add null check for user" \
     --code_edit "// ... existing code ...
@@ -246,7 +244,7 @@ The orchestrator will spawn you like this:
 ```
 Task(
   subagent_type="general-purpose",
-  model="claude-opus-4-5-20251101",
+  model="opus",
   prompt="""
   # Implementation Task Agent
 

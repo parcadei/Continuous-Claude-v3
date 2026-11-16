@@ -2,7 +2,6 @@
 name: complete-skill
 description: A complete skill for E2E testing
 allowed-tools: [Bash, Read, Write]
-user-invocable: false
 ---
 
 # complete-skill

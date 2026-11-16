@@ -120,7 +120,7 @@ cat test-results/*.json 2>/dev/null | head -100
 
 **ALWAYS write report to:**
 ```
-$CLAUDE_PROJECT_DIR/.claude/cache/agents/atlas/output-{timestamp}.md
+$CLAUDE_PROJECT_DIR/.claude/cache/agents/atlas/latest-output.md
 ```
 
 ## Output Format

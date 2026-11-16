@@ -2,7 +2,6 @@
 name: mcp-chaining
 description: Research-to-implement pipeline chaining 5 MCP tools with graceful degradation
 allowed-tools: [Bash, Read]
-user-invocable: false
 ---
 
 # MCP Chaining Pipeline

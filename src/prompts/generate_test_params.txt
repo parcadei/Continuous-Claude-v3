@@ -1,0 +1,18 @@
+Generate minimal test parameters for this MCP tool.
+
+Tool: {tool_name}
+{description_line}
+
+Input Schema:
+```json
+{schema_json}
+```
+
+Requirements:
+- Return ONLY valid JSON that satisfies the schema
+- Use minimal values: empty strings, 0, 1, [], {{}}
+- Be conservative: avoid URLs, file paths, or special values unless required
+- Ensure all required fields are present
+- For arrays/objects, use minimal examples (1-2 items)
+
+Return ONLY the JSON object, no explanation.
